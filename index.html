@@ -357,17 +357,45 @@
     onsubmit="saveListing(event)">
 
 
+    <!-- ===================================== -->
+    <!-- صور الحيوان -->
+    <!-- ===================================== -->
+
     <div class="upload">
 
-      📷
+      <div style="font-size:45px;">
+        📷
+      </div>
 
       <b>
         صور الحيوان
       </b>
 
       <small>
-        يمكن إضافة الصور في النسخة التشغيلية
+        اختر حتى 5 صور من الهاتف
       </small>
+
+      <input
+        id="animalImages"
+        type="file"
+        accept="image/*"
+        multiple
+        style="
+          display:block;
+          width:100%;
+          margin-top:15px;
+        "
+      >
+
+      <div
+        id="imagePreview"
+        style="
+          display:grid;
+          grid-template-columns:repeat(3,1fr);
+          gap:8px;
+          margin-top:15px;
+        "
+      ></div>
 
     </div>
 
@@ -476,7 +504,9 @@
         placeholder="السعر بالدرهم">
 
 
+      <!-- ===================================== -->
       <!-- حقول المزاد -->
+      <!-- ===================================== -->
 
       <div
         id="auctionFields"
@@ -711,7 +741,124 @@ function toggleAuctionFields() {
 document.addEventListener(
   "DOMContentLoaded",
   function () {
+
     toggleAuctionFields();
+
+  }
+);
+
+</script>
+
+
+<!-- ===================================== -->
+<!-- معاينة الصور قبل الحفظ -->
+<!-- ===================================== -->
+
+<script>
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
+
+    const imageInput =
+      document.getElementById(
+        "animalImages"
+      );
+
+    const preview =
+      document.getElementById(
+        "imagePreview"
+      );
+
+
+    if (!imageInput || !preview) {
+      return;
+    }
+
+
+    imageInput.addEventListener(
+      "change",
+      function () {
+
+        preview.innerHTML = "";
+
+
+        const files =
+          Array.from(
+            imageInput.files || []
+          );
+
+
+        if (files.length > 5) {
+
+          alert(
+            "يمكن اختيار 5 صور كحد أقصى."
+          );
+
+          imageInput.value = "";
+
+          return;
+        }
+
+
+        files.forEach(
+          function (file) {
+
+            if (
+              !file.type.startsWith(
+                "image/"
+              )
+            ) {
+              return;
+            }
+
+
+            const reader =
+              new FileReader();
+
+
+            reader.onload =
+              function (event) {
+
+                const img =
+                  document.createElement(
+                    "img"
+                  );
+
+
+                img.src =
+                  event.target.result;
+
+
+                img.style.width =
+                  "100%";
+
+                img.style.height =
+                  "100px";
+
+                img.style.objectFit =
+                  "cover";
+
+                img.style.borderRadius =
+                  "10px";
+
+
+                preview.appendChild(
+                  img
+                );
+              };
+
+
+            reader.readAsDataURL(
+              file
+            );
+
+          }
+        );
+
+      }
+    );
+
   }
 );
 
