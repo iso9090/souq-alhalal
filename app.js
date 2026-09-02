@@ -7,6 +7,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  addDoc,
   runTransaction,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
@@ -126,7 +127,7 @@ function accountTypeText(type) {
 
 
 // =====================================
-// إنشاء حساب المستخدم داخل Firestore
+// إنشاء حساب المستخدم
 // =====================================
 
 async function ensureUserProfile(user) {
@@ -143,7 +144,6 @@ async function ensureUserProfile(user) {
         "users",
         user.uid
       );
-
 
     const userSnap =
       await getDoc(userRef);
@@ -173,10 +173,6 @@ async function ensureUserProfile(user) {
         }
       );
 
-      console.log(
-        "تم إنشاء حساب المستخدم في Firestore"
-      );
-
     } else {
 
       await setDoc(
@@ -192,15 +188,9 @@ async function ensureUserProfile(user) {
           merge: true
         }
       );
-
-      console.log(
-        "تم تحديث بيانات المستخدم"
-      );
     }
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(
       "USER PROFILE ERROR:",
@@ -219,11 +209,9 @@ async function getUserProfile() {
   const user =
     auth.currentUser;
 
-
   if (!user) {
     return null;
   }
-
 
   try {
 
@@ -234,24 +222,19 @@ async function getUserProfile() {
         user.uid
       );
 
-
     const userSnap =
       await getDoc(userRef);
-
 
     if (!userSnap.exists()) {
       return null;
     }
-
 
     return {
       id: userSnap.id,
       ...userSnap.data()
     };
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(
       "GET PROFILE ERROR:",
@@ -277,16 +260,12 @@ function showModal(html) {
       "modalContent"
     );
 
-
   if (!modal || !content) {
     return;
   }
 
-
   content.innerHTML = html;
-
-  modal.style.display =
-    "flex";
+  modal.style.display = "flex";
 }
 
 
@@ -295,24 +274,20 @@ window.closeModal = function () {
   const modal =
     document.getElementById("modal");
 
-
   if (modal) {
-
-    modal.style.display =
-      "none";
+    modal.style.display = "none";
   }
 };
 
 
 // =====================================
-// نافذة حسابي
+// حسابي
 // =====================================
 
 async function showAccount() {
 
   const user =
     auth.currentUser;
-
 
   if (!user) {
     return;
@@ -328,23 +303,15 @@ async function showAccount() {
       padding:20px;
     ">
 
-      <div style="
-        font-size:55px;
-        margin-bottom:10px;
-      ">
+      <div style="font-size:55px;">
         👤
       </div>
 
-      <h2 style="
-        color:#68e6b0;
-        margin:5px 0;
-      ">
+      <h2 style="color:#68e6b0;">
         حسابي
       </h2>
 
-      <p style="
-        color:#aaa;
-      ">
+      <p style="color:#aaa;">
         جاري تحميل بيانات الحساب...
       </p>
 
@@ -354,7 +321,6 @@ async function showAccount() {
 
 
   await ensureUserProfile(user);
-
 
   const profile =
     await getUserProfile();
@@ -401,15 +367,11 @@ async function showAccount() {
 
         <h2 style="
           color:#68e6b0;
-          margin:5px 0;
         ">
           حسابي
         </h2>
 
-        <p style="
-          color:#aaa;
-          margin:5px 0;
-        ">
+        <p style="color:#aaa;">
           سوق الحلال الإلكتروني
         </p>
 
@@ -484,11 +446,10 @@ async function showAccount() {
         id="profileAccountType"
         style="
           width:100%;
-          box-sizing:border-box;
           padding:14px;
+          box-sizing:border-box;
           margin-bottom:18px;
           border-radius:10px;
-          border:1px solid #555;
           background:#171717;
           color:white;
           font-size:17px;
@@ -521,11 +482,9 @@ async function showAccount() {
 
       <div style="
         background:#10271c;
+        padding:14px;
         border-radius:10px;
-        padding:12px;
         margin-bottom:18px;
-        color:#ccc;
-        font-size:14px;
       ">
 
         حالة الحساب:
@@ -547,9 +506,7 @@ async function showAccount() {
         id="profileStatus"
         style="
           text-align:center;
-          min-height:22px;
-          margin:8px 0;
-          color:#ddd;
+          min-height:25px;
         "
       ></p>
 
@@ -564,7 +521,6 @@ async function showAccount() {
           background:#00643e;
           color:white;
           font-size:18px;
-          font-weight:bold;
           margin-bottom:12px;
         "
       >
@@ -602,7 +558,6 @@ async function () {
 
   const user =
     auth.currentUser;
-
 
   if (!user) {
 
@@ -655,43 +610,21 @@ async function () {
   }
 
 
-  if (
-    ![
-      "buyer",
-      "seller",
-      "both"
-    ].includes(accountType)
-  ) {
-
-    status.innerHTML =
-      "❌ نوع الحساب غير صحيح.";
-
-    return;
-  }
-
-
   try {
 
     status.innerHTML =
       "جاري حفظ البيانات...";
 
 
-    const userRef =
+    await setDoc(
       doc(
         db,
         "users",
         user.uid
-      );
-
-
-    await setDoc(
-      userRef,
+      ),
       {
-        displayName:
-          displayName,
-
-        accountType:
-          accountType,
+        displayName,
+        accountType,
 
         phoneNumber:
           user.phoneNumber || "",
@@ -708,38 +641,9 @@ async function () {
     status.innerHTML =
       "✅ تم حفظ بيانات الحساب بنجاح";
 
+  } catch (error) {
 
-    const loginButton =
-      document.querySelector(
-        ".login"
-      );
-
-
-    if (loginButton) {
-
-      loginButton.textContent =
-        "✅ حسابي";
-    }
-
-
-    setTimeout(
-      async () => {
-
-        await showAccount();
-
-      },
-      700
-    );
-
-  }
-
-  catch (error) {
-
-    console.error(
-      "SAVE PROFILE ERROR:",
-      error
-    );
-
+    console.error(error);
 
     status.innerHTML =
       "❌ تعذر حفظ بيانات الحساب.";
@@ -748,7 +652,7 @@ async function () {
 
 
 // =====================================
-// تسجيل الدخول برقم الهاتف
+// تسجيل الدخول
 // =====================================
 
 window.openLogin =
@@ -777,9 +681,7 @@ async function () {
         تسجيل الدخول
       </h2>
 
-      <p style="
-        text-align:center;
-      ">
+      <p style="text-align:center;">
         أدخل رقم الهاتف الإماراتي
       </p>
 
@@ -793,16 +695,13 @@ async function () {
           box-sizing:border-box;
           padding:14px;
           border-radius:10px;
-          border:1px solid #555;
           margin:10px 0;
           font-size:18px;
           direction:ltr;
         "
       >
 
-      <div
-        id="recaptcha-container">
-      </div>
+      <div id="recaptcha-container"></div>
 
       <button
         onclick="sendPhoneCode()"
@@ -824,7 +723,6 @@ async function () {
         style="
           text-align:center;
           margin-top:15px;
-          color:#ddd;
           word-break:break-word;
         "
       ></p>
@@ -879,9 +777,7 @@ async function () {
   }
 
 
-  if (
-    !phone.startsWith("+9715")
-  ) {
+  if (!phone.startsWith("+9715")) {
 
     status.innerHTML =
       "❌ أدخل رقم إماراتي صحيح مثل +971501234567";
@@ -899,21 +795,10 @@ async function () {
     if (recaptchaVerifier) {
 
       try {
-
         recaptchaVerifier.clear();
+      } catch (e) {}
 
-      }
-
-      catch (e) {
-
-        console.log(
-          "Recaptcha clear:",
-          e
-        );
-      }
-
-      recaptchaVerifier =
-        null;
+      recaptchaVerifier = null;
     }
 
 
@@ -937,9 +822,7 @@ async function () {
 
     showCodeScreen(phone);
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(
       "PHONE AUTH ERROR:",
@@ -950,29 +833,10 @@ async function () {
     if (recaptchaVerifier) {
 
       try {
-
         recaptchaVerifier.clear();
+      } catch (e) {}
 
-      }
-
-      catch (e) {}
-
-
-      recaptchaVerifier =
-        null;
-    }
-
-
-    if (
-      error.code ===
-      "auth/unauthorized-domain"
-    ) {
-
-      status.innerHTML =
-        "❌ auth/unauthorized-domain<br>" +
-        "نطاق الموقع غير موجود ضمن Authorized domains في Firebase.";
-
-      return;
+      recaptchaVerifier = null;
     }
 
 
@@ -995,60 +859,7 @@ async function () {
     ) {
 
       status.innerHTML =
-        "❌ auth/quota-exceeded<br>" +
-        "تم الوصول إلى الحد المتاح لرسائل SMS.";
-
-      return;
-    }
-
-
-    if (
-      error.code ===
-      "auth/operation-not-allowed"
-    ) {
-
-      status.innerHTML =
-        "❌ auth/operation-not-allowed<br>" +
-        "تسجيل الدخول برقم الهاتف غير مفعل في Firebase.";
-
-      return;
-    }
-
-
-    if (
-      error.code ===
-      "auth/invalid-phone-number"
-    ) {
-
-      status.innerHTML =
-        "❌ auth/invalid-phone-number<br>" +
-        "رقم الهاتف غير صحيح.";
-
-      return;
-    }
-
-
-    if (
-      error.code ===
-      "auth/captcha-check-failed"
-    ) {
-
-      status.innerHTML =
-        "❌ auth/captcha-check-failed<br>" +
-        "فشل التحقق من reCAPTCHA.";
-
-      return;
-    }
-
-
-    if (
-      error.code ===
-      "auth/invalid-app-credential"
-    ) {
-
-      status.innerHTML =
-        "❌ auth/invalid-app-credential<br>" +
-        "تعذر التحقق من بيانات التطبيق أو reCAPTCHA.";
+        "❌ تم الوصول إلى الحد المتاح لرسائل SMS.";
 
       return;
     }
@@ -1060,7 +871,7 @@ async function () {
         error.code ||
         "UNKNOWN"
       ) +
-      "<br><br>" +
+      "<br>" +
       (
         error.message ||
         "تعذر إرسال رمز التحقق."
@@ -1090,14 +901,10 @@ function showCodeScreen(phone) {
         رمز التحقق
       </h2>
 
-      <p style="
-        text-align:center;
-      ">
+      <p style="text-align:center;">
         تم إرسال رمز SMS إلى
         <br>
-        <b>
-          ${escapeHtml(phone)}
-        </b>
+        <b>${escapeHtml(phone)}</b>
       </p>
 
       <input
@@ -1109,12 +916,9 @@ function showCodeScreen(phone) {
           width:100%;
           box-sizing:border-box;
           padding:15px;
-          border-radius:10px;
-          border:1px solid #555;
           margin:10px 0;
           font-size:22px;
           text-align:center;
-          direction:ltr;
         "
       >
 
@@ -1135,11 +939,7 @@ function showCodeScreen(phone) {
 
       <p
         id="verifyStatus"
-        style="
-          text-align:center;
-          margin-top:15px;
-          word-break:break-word;
-        "
+        style="text-align:center;"
       ></p>
 
     </div>
@@ -1149,7 +949,7 @@ function showCodeScreen(phone) {
 
 
 // =====================================
-// التحقق من رمز SMS
+// تأكيد رمز SMS
 // =====================================
 
 window.verifyPhoneCode =
@@ -1222,27 +1022,12 @@ async function () {
       700
     );
 
-  }
+  } catch (error) {
 
-  catch (error) {
-
-    console.error(
-      "VERIFY CODE ERROR:",
-      error
-    );
-
+    console.error(error);
 
     status.innerHTML =
-      "❌ " +
-      (
-        error.code ||
-        ""
-      ) +
-      "<br>" +
-      (
-        error.message ||
-        "رمز التحقق غير صحيح أو انتهت صلاحيته."
-      );
+      "❌ رمز التحقق غير صحيح أو انتهت صلاحيته.";
   }
 };
 
@@ -1264,9 +1049,7 @@ async function () {
       "تم تسجيل الخروج."
     );
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
@@ -1293,10 +1076,7 @@ onAuthStateChanged(
 
     if (user) {
 
-      await ensureUserProfile(
-        user
-      );
-
+      await ensureUserProfile(user);
 
       if (loginButton) {
 
@@ -1350,7 +1130,6 @@ function createFirebaseArea() {
       margin:35px auto;
       padding:20px;
       direction:rtl;
-      font-family:Arial,Tahoma,sans-serif;
     ">
 
       <h2 style="
@@ -1384,10 +1163,7 @@ function createFirebaseArea() {
         style="
           display:grid;
           grid-template-columns:
-            repeat(
-              auto-fit,
-              minmax(250px,1fr)
-            );
+          repeat(auto-fit,minmax(250px,1fr));
           gap:20px;
         "
       ></div>
@@ -1405,10 +1181,7 @@ function createFirebaseArea() {
         style="
           display:grid;
           grid-template-columns:
-            repeat(
-              auto-fit,
-              minmax(250px,1fr)
-            );
+          repeat(auto-fit,minmax(250px,1fr));
           gap:20px;
         "
       ></div>
@@ -1419,14 +1192,11 @@ function createFirebaseArea() {
 
 
   const target =
-    document.querySelector(
-      "main"
-    ) ||
+    document.querySelector("main") ||
     document.body;
 
 
   target.appendChild(area);
-
 
   return area;
 }
@@ -1478,13 +1248,8 @@ async function loadMarket() {
     animalSnapshot.forEach(
       animalDoc => {
 
-        animals[
-          animalDoc.id
-        ] = {
-
-          id:
-            animalDoc.id,
-
+        animals[animalDoc.id] = {
+          id: animalDoc.id,
           ...animalDoc.data()
         };
       }
@@ -1492,93 +1257,89 @@ async function loadMarket() {
 
 
     const directAnimals =
-      Object.values(
-        animals
-      ).filter(
-        animal =>
-          animal.saleType ===
-          "direct"
-      );
+      Object.values(animals)
+        .filter(
+          animal =>
+            animal.saleType ===
+            "direct"
+        );
 
 
-    if (
-      directAnimals.length === 0
-    ) {
+    if (directAnimals.length === 0) {
 
-      directContainer.innerHTML = `
-
-        <div style="
-          background:#222;
-          color:white;
-          padding:20px;
-          border-radius:15px;
-          text-align:center;
-        ">
-          لا توجد عروض بيع مباشر حالياً
-        </div>
-
-      `;
+      directContainer.innerHTML =
+        "<p>لا توجد عروض بيع مباشر حالياً</p>";
 
     } else {
 
       directContainer.innerHTML =
-        directAnimals
-          .map(
-            animal => `
-
-          <div style="
-            background:#222;
-            color:white;
-            padding:20px;
-            border-radius:18px;
-          ">
+        directAnimals.map(
+          animal => `
 
             <div style="
-              font-size:90px;
-              text-align:center;
-              background:#10271c;
-              border-radius:14px;
+              background:#222;
+              color:white;
               padding:20px;
+              border-radius:18px;
             ">
-              ${animalIcon(animal.type)}
+
+              <div style="
+                font-size:90px;
+                text-align:center;
+                background:#10271c;
+                border-radius:14px;
+                padding:20px;
+              ">
+                ${animalIcon(animal.type)}
+              </div>
+
+              <h3>
+                ${escapeHtml(
+                  animal.name ||
+                  "حلال للبيع"
+                )}
+              </h3>
+
+              <p>
+                📍
+                ${escapeHtml(
+                  animal.location ||
+                  "الذيد - الشارقة"
+                )}
+              </p>
+
+              <div style="
+                font-size:25px;
+                font-weight:bold;
+                color:#68e6b0;
+                margin:15px 0;
+              ">
+                ${money(animal.price)}
+              </div>
+
+              <button
+                onclick="
+                  requestPurchase(
+                    '${animal.id}'
+                  )
+                "
+                style="
+                  width:100%;
+                  background:#00643e;
+                  color:white;
+                  border:0;
+                  padding:14px;
+                  border-radius:10px;
+                  font-size:17px;
+                "
+              >
+                طلب شراء
+              </button>
+
             </div>
 
-            <h3>
-              ${animal.name || "حلال للبيع"}
-            </h3>
-
-            <p>
-              📍 ${animal.location || "الذيد - الشارقة"}
-            </p>
-
-            <div style="
-              font-size:25px;
-              font-weight:bold;
-              color:#68e6b0;
-              margin:15px 0;
-            ">
-              ${money(animal.price)}
-            </div>
-
-            <button
-              onclick="requestPurchase('${animal.id}')"
-              style="
-                width:100%;
-                background:#00643e;
-                color:white;
-                border:0;
-                padding:14px;
-                border-radius:10px;
-                font-size:17px;
-              "
-            >
-              طلب شراء
-            </button>
-
-          </div>
-
-        `)
-          .join("");
+          `
+        ).join("");
     }
 
 
@@ -1598,10 +1359,7 @@ async function loadMarket() {
       auctionDoc => {
 
         auctions.push({
-
-          id:
-            auctionDoc.id,
-
+          id: auctionDoc.id,
           ...auctionDoc.data()
         });
       }
@@ -1616,153 +1374,142 @@ async function loadMarket() {
       );
 
 
-    if (
-      activeAuctions.length === 0
-    ) {
+    if (activeAuctions.length === 0) {
 
-      auctionContainer.innerHTML = `
-
-        <div style="
-          background:#222;
-          color:white;
-          padding:20px;
-          border-radius:15px;
-          text-align:center;
-        ">
-          لا توجد مزادات نشطة حالياً
-        </div>
-
-      `;
+      auctionContainer.innerHTML =
+        "<p>لا توجد مزادات نشطة حالياً</p>";
 
     } else {
 
       auctionContainer.innerHTML =
-        activeAuctions
-          .map(
-            auction => {
+        activeAuctions.map(
+          auction => {
 
-              const animal =
-                animals[
-                  auction.animalId
-                ] || {};
-
-
-              const currentPrice =
-                Number(
-                  auction.currentPrice ||
-                  auction.startPrice ||
-                  0
-                );
+            const animal =
+              animals[
+                auction.animalId
+              ] || {};
 
 
-              const increment =
-                Number(
-                  auction.minIncrement ||
-                  0
-                );
+            const currentPrice =
+              Number(
+                auction.currentPrice ||
+                auction.startPrice ||
+                0
+              );
 
 
-              const minimumNextBid =
-                currentPrice +
-                increment;
+            const increment =
+              Number(
+                auction.minIncrement ||
+                0
+              );
 
 
-              return `
+            const minimumNextBid =
+              currentPrice +
+              increment;
+
+
+            return `
+
+              <div style="
+                background:#222;
+                color:white;
+                padding:20px;
+                border-radius:18px;
+              ">
 
                 <div style="
-                  background:#222;
-                  color:white;
+                  font-size:90px;
+                  text-align:center;
+                  background:#10271c;
+                  border-radius:14px;
                   padding:20px;
-                  border-radius:18px;
                 ">
-
-                  <div style="
-                    font-size:90px;
-                    text-align:center;
-                    background:#10271c;
-                    border-radius:14px;
-                    padding:20px;
-                  ">
-                    ${animalIcon(animal.type)}
-                  </div>
-
-                  <div style="
-                    display:inline-block;
-                    background:#00643e;
-                    padding:6px 12px;
-                    border-radius:20px;
-                    margin-top:12px;
-                  ">
-                    مزاد نشط
-                  </div>
-
-                  <h3>
-                    ${animal.name || "مزاد حلال"}
-                  </h3>
-
-                  <p>
-                    📍 ${animal.location || "الذيد - الشارقة"}
-                  </p>
-
-                  <p>
-                    سعر البداية:
-                    <b>
-                      ${money(auction.startPrice)}
-                    </b>
-                  </p>
-
-                  <p>
-                    أقل زيادة:
-                    <b>
-                      ${money(increment)}
-                    </b>
-                  </p>
-
-                  <div style="
-                    font-size:27px;
-                    color:#68e6b0;
-                    font-weight:bold;
-                    margin:15px 0;
-                  ">
-                    السعر الحالي:
-                    <br>
-                    ${money(currentPrice)}
-                  </div>
-
-                  <p>
-                    الحد الأدنى للمزايدة القادمة:
-                    <b>
-                      ${money(minimumNextBid)}
-                    </b>
-                  </p>
-
-                  <p>
-                    ⏱ ينتهي:
-                    ${formatDate(auction.endTime)}
-                  </p>
-
-                  <button
-                    onclick="placeBid('${auction.id}')"
-                    style="
-                      width:100%;
-                      background:#984d00;
-                      color:white;
-                      border:0;
-                      padding:16px;
-                      border-radius:10px;
-                      font-size:19px;
-                      font-weight:bold;
-                    "
-                  >
-                    زايد الآن
-                  </button>
-
+                  ${animalIcon(animal.type)}
                 </div>
 
-              `;
-            }
-          )
-          .join("");
+                <h3>
+                  ${escapeHtml(
+                    animal.name ||
+                    "مزاد حلال"
+                  )}
+                </h3>
+
+                <p>
+                  📍
+                  ${escapeHtml(
+                    animal.location ||
+                    "الذيد - الشارقة"
+                  )}
+                </p>
+
+                <p>
+                  سعر البداية:
+                  <b>
+                    ${money(
+                      auction.startPrice
+                    )}
+                  </b>
+                </p>
+
+                <p>
+                  أقل زيادة:
+                  <b>
+                    ${money(increment)}
+                  </b>
+                </p>
+
+                <div style="
+                  font-size:27px;
+                  color:#68e6b0;
+                  font-weight:bold;
+                  margin:15px 0;
+                ">
+                  السعر الحالي:
+                  <br>
+                  ${money(currentPrice)}
+                </div>
+
+                <p>
+                  الحد الأدنى للمزايدة القادمة:
+                  <b>
+                    ${money(minimumNextBid)}
+                  </b>
+                </p>
+
+                <p>
+                  ⏱ ينتهي:
+                  ${formatDate(
+                    auction.endTime
+                  )}
+                </p>
+
+                <button
+                  onclick="
+                    placeBid(
+                      '${auction.id}'
+                    )
+                  "
+                  style="
+                    width:100%;
+                    background:#984d00;
+                    color:white;
+                    border:0;
+                    padding:16px;
+                    border-radius:10px;
+                    font-size:19px;
+                  "
+                >
+                  زايد الآن
+                </button>
+
+              </div>
+
+            `;
+          }
+        ).join("");
     }
 
 
@@ -1773,9 +1520,7 @@ async function loadMarket() {
         auctions.length
       }`;
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
@@ -2013,7 +1758,8 @@ async function (auctionId) {
               auth.currentUser.uid,
 
             lastBidderPhone:
-              auth.currentUser.phoneNumber || ""
+              auth.currentUser.phoneNumber ||
+              ""
           }
         );
       }
@@ -2029,9 +1775,7 @@ async function (auctionId) {
 
     await loadMarket();
 
-  }
-
-  catch (error) {
+  } catch (error) {
 
     console.error(error);
 
@@ -2094,6 +1838,276 @@ async function (auctionId) {
 
 
 // =====================================
+// إضافة حلال جديد
+// =====================================
+
+window.saveListing =
+async function (event) {
+
+  event.preventDefault();
+
+
+  const user =
+    auth.currentUser;
+
+
+  if (!user) {
+
+    alert(
+      "يجب تسجيل الدخول أولاً لإضافة الحلال."
+    );
+
+    window.openLogin();
+
+    return;
+  }
+
+
+  try {
+
+    const profile =
+      await getUserProfile();
+
+
+    if (!profile) {
+
+      alert(
+        "تعذر قراءة بيانات الحساب."
+      );
+
+      return;
+    }
+
+
+    if (
+      profile.accountType !== "seller" &&
+      profile.accountType !== "both"
+    ) {
+
+      alert(
+        "لإضافة الحلال يجب تغيير استخدام الحساب إلى بائع أو بائع ومشتري من صفحة حسابي."
+      );
+
+      await showAccount();
+
+      return;
+    }
+
+
+    const form =
+      event.target;
+
+
+    const inputs =
+      form.querySelectorAll(
+        "input"
+      );
+
+
+    const select =
+      form.querySelector(
+        "#method"
+      );
+
+
+    const textarea =
+      form.querySelector(
+        "textarea"
+      );
+
+
+    if (
+      inputs.length < 5 ||
+      !select
+    ) {
+
+      alert(
+        "تعذر قراءة نموذج إضافة الحلال."
+      );
+
+      return;
+    }
+
+
+    const type =
+      inputs[0].value.trim();
+
+    const breed =
+      inputs[1].value.trim();
+
+    const age =
+      inputs[2].value.trim();
+
+    const location =
+      inputs[3].value.trim();
+
+    const price =
+      Number(
+        inputs[4].value
+      );
+
+    const method =
+      select.value;
+
+    const description =
+      textarea
+        ? textarea.value.trim()
+        : "";
+
+
+    if (!type) {
+
+      alert(
+        "يرجى إدخال نوع الحيوان."
+      );
+
+      return;
+    }
+
+
+    if (
+      !Number.isFinite(price) ||
+      price <= 0
+    ) {
+
+      alert(
+        "يرجى إدخال سعر صحيح."
+      );
+
+      return;
+    }
+
+
+    // في هذه المرحلة نفعّل البيع المباشر
+    // المزاد سيتم ربطه في الخطوة التالية
+
+    if (
+      method === "مزاد إلكتروني"
+    ) {
+
+      alert(
+        "سنقوم بتفعيل إنشاء المزاد الإلكتروني في الخطوة التالية.\n\nاختر البيع المباشر الآن لاختبار إضافة الحلال."
+      );
+
+      return;
+    }
+
+
+    const animalData = {
+
+      name:
+        type,
+
+      type:
+        type,
+
+      breed:
+        breed,
+
+      age:
+        age,
+
+      location:
+        location ||
+        "الذيد - الشارقة",
+
+      saleType:
+        "direct",
+
+      price:
+        price,
+
+      description:
+        description,
+
+      sellerId:
+        user.uid,
+
+      sellerName:
+        profile.displayName || "",
+
+      sellerPhone:
+        user.phoneNumber || "",
+
+      status:
+        "active",
+
+      createdAt:
+        serverTimestamp(),
+
+      updatedAt:
+        serverTimestamp()
+    };
+
+
+    const animalRef =
+      await addDoc(
+        collection(
+          db,
+          "animals"
+        ),
+        animalData
+      );
+
+
+    alert(
+      "✅ تم إضافة الحلال بنجاح\n\n" +
+      "رقم العرض:\n" +
+      animalRef.id
+    );
+
+
+    form.reset();
+
+
+    const locationInput =
+      form.querySelectorAll(
+        "input"
+      )[3];
+
+
+    if (locationInput) {
+
+      locationInput.value =
+        "الذيد";
+    }
+
+
+    await loadMarket();
+
+  } catch (error) {
+
+    console.error(
+      "SAVE LISTING ERROR:",
+      error
+    );
+
+
+    if (
+      error.code ===
+      "permission-denied"
+    ) {
+
+      alert(
+        "❌ Firebase رفض إضافة الحلال.\n\nتحقق من قواعد Firestore."
+      );
+
+      return;
+    }
+
+
+    alert(
+      "❌ تعذر إضافة الحلال.\n\n" +
+      (
+        error.message ||
+        "حدث خطأ غير معروف."
+      )
+    );
+  }
+};
+
+
+// =====================================
 // أزرار النسخة القديمة
 // =====================================
 
@@ -2114,17 +2128,6 @@ function (name, price) {
     "\nالسعر: " +
     price +
     " AED"
-  );
-};
-
-
-window.saveListing =
-function (event) {
-
-  event.preventDefault();
-
-  alert(
-    "سيتم ربط إضافة الحلال بحساب البائع في الخطوة القادمة."
   );
 };
 
