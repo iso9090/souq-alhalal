@@ -8,6 +8,7 @@ import {
   getDoc,
   setDoc,
   addDoc,
+  deleteDoc,
   writeBatch,
   runTransaction,
   serverTimestamp
@@ -51,7 +52,10 @@ let auctionTimerInterval = null;
 // =====================================
 
 function money(value) {
-  return Number(value || 0).toLocaleString("en-US") + " AED";
+
+  return Number(value || 0)
+    .toLocaleString("en-US") +
+    " AED";
 }
 
 
@@ -115,7 +119,7 @@ function animalIcon(type = "") {
 
 
 // =====================================
-// تحويل التاريخ
+// التاريخ
 // =====================================
 
 function timestampToDate(timestamp) {
@@ -132,9 +136,14 @@ function timestampToDate(timestamp) {
     return timestamp;
   }
 
-  const date = new Date(timestamp);
+  const date =
+    new Date(timestamp);
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(
+      date.getTime()
+    )
+  ) {
     return null;
   }
 
@@ -144,7 +153,8 @@ function timestampToDate(timestamp) {
 
 function timestampToMillis(timestamp) {
 
-  const date = timestampToDate(timestamp);
+  const date =
+    timestampToDate(timestamp);
 
   if (!date) {
     return 0;
@@ -156,7 +166,8 @@ function timestampToMillis(timestamp) {
 
 function formatDate(timestamp) {
 
-  const date = timestampToDate(timestamp);
+  const date =
+    timestampToDate(timestamp);
 
   if (!date) {
     return "غير محدد";
@@ -173,19 +184,20 @@ function formatDate(timestamp) {
 
 
 // =====================================
-// العداد التنازلي
+// العد التنازلي
 // =====================================
 
 function getCountdownText(endTime) {
 
-  const end = timestampToMillis(endTime);
+  const end =
+    timestampToMillis(endTime);
 
   if (!end) {
     return "غير محدد";
   }
 
-  const now = Date.now();
-  const difference = end - now;
+  const difference =
+    end - Date.now();
 
   if (difference <= 0) {
     return "انتهى المزاد";
@@ -203,12 +215,14 @@ function getCountdownText(endTime) {
 
   const hours =
     Math.floor(
-      (totalSeconds % 86400) / 3600
+      (totalSeconds % 86400) /
+      3600
     );
 
   const minutes =
     Math.floor(
-      (totalSeconds % 3600) / 60
+      (totalSeconds % 3600) /
+      60
     );
 
   const seconds =
@@ -279,7 +293,8 @@ function startAuctionTimers() {
 
         const end =
           Number(
-            timer.dataset.auctionEnd || 0
+            timer.dataset.auctionEnd ||
+            0
           );
 
         const auctionId =
@@ -287,12 +302,14 @@ function startAuctionTimers() {
 
         const button =
           document.getElementById(
-            "bid-button-" + auctionId
+            "bid-button-" +
+            auctionId
           );
 
         const tag =
           document.getElementById(
-            "auction-tag-" + auctionId
+            "auction-tag-" +
+            auctionId
           );
 
         const difference =
@@ -319,9 +336,6 @@ function startAuctionTimers() {
 
             button.style.background =
               "#555";
-
-            button.style.cursor =
-              "not-allowed";
           }
 
           if (tag) {
@@ -348,12 +362,14 @@ function startAuctionTimers() {
 
         const hours =
           Math.floor(
-            (totalSeconds % 86400) / 3600
+            (totalSeconds % 86400) /
+            3600
           );
 
         const minutes =
           Math.floor(
-            (totalSeconds % 3600) / 60
+            (totalSeconds % 3600) /
+            60
           );
 
         const seconds =
@@ -437,8 +453,7 @@ function accountTypeText(type) {
 
 
 // =====================================
-// تجهيز صور الحيوان
-// نسخة تجريبية بدون Firebase Storage
+// ضغط الصور
 // =====================================
 
 function compressImageFile(file) {
@@ -449,11 +464,15 @@ function compressImageFile(file) {
       if (
         !file ||
         !file.type ||
-        !file.type.startsWith("image/")
+        !file.type.startsWith(
+          "image/"
+        )
       ) {
 
         reject(
-          new Error("INVALID_IMAGE")
+          new Error(
+            "INVALID_IMAGE"
+          )
         );
 
         return;
@@ -491,10 +510,14 @@ function compressImageFile(file) {
           img.onload =
             function () {
 
-              const maxSize = 640;
+              const maxSize =
+                640;
 
-              let width = img.width;
-              let height = img.height;
+              let width =
+                img.width;
+
+              let height =
+                img.height;
 
               if (
                 width > maxSize ||
@@ -587,7 +610,7 @@ function compressImageFile(file) {
 
 
 // =====================================
-// قراءة وضغط الصور المختارة
+// صور نموذج إضافة الحلال
 // =====================================
 
 async function getListingImages() {
@@ -652,7 +675,7 @@ async function getListingImages() {
 
 
 // =====================================
-// التحقق من صورة محفوظة
+// صورة آمنة
 // =====================================
 
 function safeImageData(value) {
@@ -676,7 +699,7 @@ function safeImageData(value) {
 
 
 // =====================================
-// صورة الحيوان داخل بطاقة السوق
+// عرض صورة الحيوان
 // =====================================
 
 function animalPhotoHtml(
@@ -730,7 +753,6 @@ function animalPhotoHtml(
                 color:white;
                 padding:6px 10px;
                 border-radius:20px;
-                font-size:14px;
               ">
                 📷 ${images.length} صور
               </div>
@@ -762,7 +784,50 @@ function animalPhotoHtml(
 
 
 // =====================================
-// إنشاء / تحديث حساب المستخدم
+// زر إدارة الإعلان
+// =====================================
+
+function ownerManagementButton(
+  animal
+) {
+
+  const user =
+    auth.currentUser;
+
+  if (
+    !user ||
+    !animal ||
+    animal.sellerId !==
+      user.uid
+  ) {
+    return "";
+  }
+
+  return `
+
+    <button
+      onclick="manageListing('${animal.id}')"
+      style="
+        width:100%;
+        background:#28566f;
+        color:white;
+        border:0;
+        padding:14px;
+        border-radius:10px;
+        font-size:17px;
+        margin-top:10px;
+        font-weight:bold;
+      "
+    >
+      ⚙️ إدارة إعلاني
+    </button>
+
+  `;
+}
+
+
+// =====================================
+// إنشاء حساب المستخدم
 // =====================================
 
 async function ensureUserProfile(user) {
@@ -794,7 +859,8 @@ async function ensureUserProfile(user) {
             user.uid,
 
           phoneNumber:
-            user.phoneNumber || "",
+            user.phoneNumber ||
+            "",
 
           displayName:
             "",
@@ -819,7 +885,8 @@ async function ensureUserProfile(user) {
         userRef,
         {
           phoneNumber:
-            user.phoneNumber || "",
+            user.phoneNumber ||
+            "",
 
           lastLoginAt:
             serverTimestamp()
@@ -841,7 +908,7 @@ async function ensureUserProfile(user) {
 
 
 // =====================================
-// جلب بيانات الحساب
+// جلب الحساب
 // =====================================
 
 async function getUserProfile() {
@@ -855,16 +922,13 @@ async function getUserProfile() {
 
   try {
 
-    const userRef =
-      doc(
-        db,
-        "users",
-        user.uid
-      );
-
     const userSnap =
       await getDoc(
-        userRef
+        doc(
+          db,
+          "users",
+          user.uid
+        )
       );
 
     if (!userSnap.exists()) {
@@ -874,7 +938,6 @@ async function getUserProfile() {
     return {
       id:
         userSnap.id,
-
       ...userSnap.data()
     };
 
@@ -891,7 +954,7 @@ async function getUserProfile() {
 
 
 // =====================================
-// النافذة المنبثقة
+// Modal
 // =====================================
 
 function showModal(html) {
@@ -951,28 +1014,22 @@ async function showAccount() {
   }
 
   showModal(`
-
     <div style="
       direction:rtl;
       text-align:center;
       color:white;
       padding:20px;
     ">
-
       <div style="font-size:55px;">
         👤
       </div>
-
       <h2 style="color:#68e6b0;">
         حسابي
       </h2>
-
       <p style="color:#aaa;">
-        جاري تحميل بيانات الحساب...
+        جاري تحميل البيانات...
       </p>
-
     </div>
-
   `);
 
   await ensureUserProfile(
@@ -1005,38 +1062,17 @@ async function showAccount() {
 
       <div style="
         text-align:center;
-        margin-bottom:20px;
       ">
-
-        <div style="
-          width:75px;
-          height:75px;
-          border-radius:50%;
-          background:#00643e;
-          display:flex;
-          align-items:center;
-          justify-content:center;
-          font-size:40px;
-          margin:0 auto 10px;
-        ">
+        <div style="font-size:55px;">
           👤
         </div>
 
         <h2 style="color:#68e6b0;">
           حسابي
         </h2>
-
-        <p style="color:#aaa;">
-          سوق الحلال الإلكتروني
-        </p>
-
       </div>
 
-      <label style="
-        display:block;
-        margin-bottom:7px;
-        font-weight:bold;
-      ">
+      <label>
         الاسم
       </label>
 
@@ -1045,52 +1081,32 @@ async function showAccount() {
         type="text"
         maxlength="50"
         value="${escapeHtml(displayName)}"
-        placeholder="أدخل اسمك"
         style="
           width:100%;
           box-sizing:border-box;
           padding:14px;
-          margin-bottom:16px;
+          margin:8px 0 16px;
           border-radius:10px;
-          border:1px solid #555;
-          background:#171717;
-          color:white;
-          font-size:17px;
         "
       >
 
-      <label style="
-        display:block;
-        margin-bottom:7px;
-        font-weight:bold;
-      ">
+      <label>
         رقم الهاتف
       </label>
 
       <input
-        type="text"
         value="${escapeHtml(phone)}"
         disabled
         style="
           width:100%;
           box-sizing:border-box;
           padding:14px;
-          margin-bottom:16px;
+          margin:8px 0 16px;
           border-radius:10px;
-          border:1px solid #444;
-          background:#292929;
-          color:#aaa;
-          font-size:17px;
-          direction:ltr;
-          text-align:left;
         "
       >
 
-      <label style="
-        display:block;
-        margin-bottom:7px;
-        font-weight:bold;
-      ">
+      <label>
         استخدام الحساب
       </label>
 
@@ -1099,12 +1115,7 @@ async function showAccount() {
         style="
           width:100%;
           padding:14px;
-          box-sizing:border-box;
-          margin-bottom:18px;
-          border-radius:10px;
-          background:#171717;
-          color:white;
-          font-size:17px;
+          margin:8px 0 18px;
         "
       >
 
@@ -1131,46 +1142,25 @@ async function showAccount() {
 
       </select>
 
-      <div style="
-        background:#10271c;
-        padding:14px;
-        border-radius:10px;
-        margin-bottom:18px;
-      ">
-
-        حالة الحساب:
-        <b style="color:#68e6b0;">
-          ✅ نشط
-        </b>
-
-        <br><br>
-
-        نوع الحساب الحالي:
+      <p>
+        نوع الحساب:
         <b style="color:#68e6b0;">
           ${accountTypeText(accountType)}
         </b>
+      </p>
 
-      </div>
-
-      <p
-        id="profileStatus"
-        style="
-          text-align:center;
-          min-height:25px;
-        "
-      ></p>
+      <p id="profileStatus"></p>
 
       <button
         onclick="saveProfile()"
         style="
           width:100%;
           padding:15px;
-          border:0;
-          border-radius:10px;
           background:#00643e;
           color:white;
-          font-size:18px;
-          margin-bottom:12px;
+          border:0;
+          border-radius:10px;
+          margin-bottom:10px;
         "
       >
         💾 حفظ بيانات الحساب
@@ -1180,25 +1170,23 @@ async function showAccount() {
         onclick="logoutUser()"
         style="
           width:100%;
-          padding:14px;
-          border:0;
-          border-radius:10px;
+          padding:15px;
           background:#8b2929;
           color:white;
-          font-size:17px;
+          border:0;
+          border-radius:10px;
         "
       >
         تسجيل الخروج
       </button>
 
     </div>
-
   `);
 }
 
 
 // =====================================
-// حفظ بيانات الحساب
+// حفظ الحساب
 // =====================================
 
 window.saveProfile =
@@ -1208,11 +1196,6 @@ async function () {
     auth.currentUser;
 
   if (!user) {
-
-    alert(
-      "يجب تسجيل الدخول أولاً."
-    );
-
     return;
   }
 
@@ -1221,7 +1204,7 @@ async function () {
       "profileName"
     );
 
-  const accountTypeInput =
+  const typeInput =
     document.getElementById(
       "profileAccountType"
     );
@@ -1233,7 +1216,7 @@ async function () {
 
   if (
     !nameInput ||
-    !accountTypeInput ||
+    !typeInput ||
     !status
   ) {
     return;
@@ -1243,36 +1226,19 @@ async function () {
     nameInput.value.trim();
 
   const accountType =
-    accountTypeInput.value;
+    typeInput.value;
 
   if (
     displayName.length < 2
   ) {
 
     status.innerHTML =
-      "❌ أدخل الاسم بشكل صحيح.";
-
-    return;
-  }
-
-  if (
-    ![
-      "buyer",
-      "seller",
-      "both"
-    ].includes(accountType)
-  ) {
-
-    status.innerHTML =
-      "❌ نوع الحساب غير صحيح.";
+      "❌ أدخل الاسم.";
 
     return;
   }
 
   try {
-
-    status.innerHTML =
-      "جاري حفظ البيانات...";
 
     await setDoc(
       doc(
@@ -1288,7 +1254,8 @@ async function () {
           accountType,
 
         phoneNumber:
-          user.phoneNumber || "",
+          user.phoneNumber ||
+          "",
 
         updatedAt:
           serverTimestamp()
@@ -1299,28 +1266,16 @@ async function () {
     );
 
     status.innerHTML =
-      "✅ تم حفظ بيانات الحساب بنجاح";
+      "✅ تم الحفظ";
 
-    const loginButton =
-      document.querySelector(
-        ".login"
-      );
-
-    if (loginButton) {
-
-      loginButton.textContent =
-        "✅ حسابي";
-    }
+    await loadMarket();
 
   } catch (error) {
 
-    console.error(
-      "SAVE PROFILE ERROR:",
-      error
-    );
+    console.error(error);
 
     status.innerHTML =
-      "❌ تعذر حفظ بيانات الحساب.";
+      "❌ تعذر الحفظ";
   }
 };
 
@@ -1354,10 +1309,6 @@ async function () {
         تسجيل الدخول
       </h2>
 
-      <p style="text-align:center;">
-        أدخل رقم الهاتف الإماراتي
-      </p>
-
       <input
         id="phoneNumber"
         type="tel"
@@ -1367,50 +1318,34 @@ async function () {
           width:100%;
           box-sizing:border-box;
           padding:14px;
-          border-radius:10px;
-          border:1px solid #555;
           margin:10px 0;
-          font-size:18px;
-          direction:ltr;
         "
       >
 
-      <div id="recaptcha-container"></div>
+      <div
+        id="recaptcha-container"
+      ></div>
 
       <button
         onclick="sendPhoneCode()"
         style="
           width:100%;
           padding:15px;
-          border:0;
-          border-radius:10px;
           background:#00643e;
           color:white;
-          font-size:18px;
+          border:0;
+          border-radius:10px;
         "
       >
         إرسال رمز التحقق
       </button>
 
-      <p
-        id="loginStatus"
-        style="
-          text-align:center;
-          margin-top:15px;
-          color:#ddd;
-          word-break:break-word;
-        "
-      ></p>
+      <p id="loginStatus"></p>
 
     </div>
-
   `);
 };
 
-
-// =====================================
-// إرسال رمز SMS
-// =====================================
 
 window.sendPhoneCode =
 async function () {
@@ -1460,15 +1395,12 @@ async function () {
   ) {
 
     status.innerHTML =
-      "❌ أدخل رقم إماراتي صحيح مثل +971501234567";
+      "❌ رقم الهاتف غير صحيح.";
 
     return;
   }
 
   try {
-
-    status.innerHTML =
-      "جاري إرسال رمز التحقق...";
 
     if (recaptchaVerifier) {
 
@@ -1476,7 +1408,8 @@ async function () {
         recaptchaVerifier.clear();
       } catch (e) {}
 
-      recaptchaVerifier = null;
+      recaptchaVerifier =
+        null;
     }
 
     recaptchaVerifier =
@@ -1484,7 +1417,8 @@ async function () {
         auth,
         "recaptcha-container",
         {
-          size: "invisible"
+          size:
+            "invisible"
         }
       );
 
@@ -1501,93 +1435,13 @@ async function () {
 
   } catch (error) {
 
-    console.error(
-      "PHONE AUTH ERROR:",
-      error
-    );
-
-    if (recaptchaVerifier) {
-
-      try {
-        recaptchaVerifier.clear();
-      } catch (e) {}
-
-      recaptchaVerifier = null;
-    }
-
-    if (
-      error.code ===
-      "auth/unauthorized-domain"
-    ) {
-
-      status.innerHTML =
-        "❌ نطاق الموقع غير مصرح به في Firebase.";
-
-      return;
-    }
-
-    if (
-      error.code ===
-      "auth/too-many-requests"
-    ) {
-
-      status.innerHTML =
-        "❌ تم إرسال محاولات كثيرة. حاول لاحقاً.";
-
-      return;
-    }
-
-    if (
-      error.code ===
-      "auth/quota-exceeded"
-    ) {
-
-      status.innerHTML =
-        "❌ تم الوصول إلى الحد المتاح لرسائل SMS.";
-
-      return;
-    }
-
-    if (
-      error.code ===
-      "auth/operation-not-allowed"
-    ) {
-
-      status.innerHTML =
-        "❌ تسجيل الدخول برقم الهاتف غير مفعل.";
-
-      return;
-    }
-
-    if (
-      error.code ===
-      "auth/invalid-phone-number"
-    ) {
-
-      status.innerHTML =
-        "❌ رقم الهاتف غير صحيح.";
-
-      return;
-    }
+    console.error(error);
 
     status.innerHTML =
-      "❌ " +
-      (
-        error.code ||
-        "UNKNOWN"
-      ) +
-      "<br><br>" +
-      (
-        error.message ||
-        "تعذر إرسال رمز التحقق."
-      );
+      "❌ تعذر إرسال رمز التحقق.";
   }
 };
 
-
-// =====================================
-// شاشة رمز SMS
-// =====================================
 
 function showCodeScreen(phone) {
 
@@ -1600,35 +1454,26 @@ function showCodeScreen(phone) {
     ">
 
       <h2 style="
-        text-align:center;
         color:#68e6b0;
+        text-align:center;
       ">
         رمز التحقق
       </h2>
 
       <p style="text-align:center;">
-        تم إرسال رمز SMS إلى
-        <br>
-        <b>
-          ${escapeHtml(phone)}
-        </b>
+        ${escapeHtml(phone)}
       </p>
 
       <input
         id="verificationCode"
-        inputmode="numeric"
         maxlength="6"
-        placeholder="أدخل الرمز"
+        inputmode="numeric"
         style="
           width:100%;
           box-sizing:border-box;
           padding:15px;
-          border-radius:10px;
-          border:1px solid #555;
-          margin:10px 0;
-          font-size:22px;
+          margin-bottom:10px;
           text-align:center;
-          direction:ltr;
         "
       >
 
@@ -1637,38 +1482,26 @@ function showCodeScreen(phone) {
         style="
           width:100%;
           padding:15px;
-          border:0;
-          border-radius:10px;
           background:#00643e;
           color:white;
-          font-size:18px;
+          border:0;
+          border-radius:10px;
         "
       >
         تأكيد الرمز
       </button>
 
-      <p
-        id="verifyStatus"
-        style="
-          text-align:center;
-          margin-top:15px;
-        "
-      ></p>
+      <p id="verifyStatus"></p>
 
     </div>
-
   `);
 }
 
 
-// =====================================
-// تأكيد رمز SMS
-// =====================================
-
 window.verifyPhoneCode =
 async function () {
 
-  const codeInput =
+  const code =
     document.getElementById(
       "verificationCode"
     );
@@ -1679,103 +1512,50 @@ async function () {
     );
 
   if (
-    !codeInput ||
-    !status
+    !code ||
+    !status ||
+    !confirmationResult
   ) {
-    return;
-  }
-
-  if (!confirmationResult) {
-
-    status.innerHTML =
-      "❌ أعد إرسال رمز التحقق.";
-
-    return;
-  }
-
-  const code =
-    codeInput.value.trim();
-
-  if (
-    code.length !== 6
-  ) {
-
-    status.innerHTML =
-      "❌ أدخل رمز التحقق المكون من 6 أرقام.";
-
     return;
   }
 
   try {
 
-    status.innerHTML =
-      "جاري التحقق...";
-
     const result =
       await confirmationResult
-        .confirm(code);
+        .confirm(
+          code.value.trim()
+        );
 
     await ensureUserProfile(
       result.user
     );
 
-    status.innerHTML =
-      "✅ تم تسجيل الدخول بنجاح";
-
-    setTimeout(
-      async () => {
-
-        await showAccount();
-
-      },
-      700
-    );
+    await showAccount();
 
   } catch (error) {
 
-    console.error(
-      "VERIFY CODE ERROR:",
-      error
-    );
+    console.error(error);
 
     status.innerHTML =
-      "❌ رمز التحقق غير صحيح أو انتهت صلاحيته.";
+      "❌ رمز التحقق غير صحيح.";
   }
 };
 
-
-// =====================================
-// تسجيل الخروج
-// =====================================
 
 window.logoutUser =
 async function () {
 
-  try {
+  await signOut(auth);
 
-    await signOut(auth);
+  window.closeModal();
 
-    window.closeModal();
-
-    alert(
-      "تم تسجيل الخروج."
-    );
-
-  } catch (error) {
-
-    console.error(
-      error
-    );
-
-    alert(
-      "تعذر تسجيل الخروج."
-    );
-  }
+  await loadMarket();
 };
 
 
 // =====================================
-// متابعة حالة المستخدم
+// متابعة تسجيل الدخول
 // =====================================
 
 onAuthStateChanged(
@@ -1807,12 +1587,14 @@ onAuthStateChanged(
           "تسجيل الدخول";
       }
     }
+
+    await loadMarket();
   }
 );
 
 
 // =====================================
-// إنشاء قسم Firebase
+// إنشاء قسم السوق
 // =====================================
 
 function createFirebaseArea() {
@@ -1846,7 +1628,6 @@ function createFirebaseArea() {
       <h2 style="
         text-align:center;
         color:#68e6b0;
-        font-size:30px;
       ">
         سوق الحلال المباشر
       </h2>
@@ -1857,9 +1638,7 @@ function createFirebaseArea() {
           text-align:center;
           color:#aaa;
         "
-      >
-        جاري الاتصال بقاعدة البيانات...
-      </p>
+      ></p>
 
       <h2 style="
         margin-top:40px;
@@ -1896,20 +1675,16 @@ function createFirebaseArea() {
       ></div>
 
     </div>
-
   `;
 
-  const target =
+  (
     document.querySelector(
       "main"
     ) ||
-    document.body;
-
-  target.appendChild(
+    document.body
+  ).appendChild(
     area
   );
-
-  return area;
 }
 
 
@@ -1945,7 +1720,7 @@ async function loadMarket() {
   }
 
   status.innerHTML =
-    "جاري تحديث بيانات السوق...";
+    "جاري تحديث السوق...";
 
   try {
 
@@ -1965,14 +1740,14 @@ async function loadMarket() {
         animals[
           animalDoc.id
         ] = {
-
           id:
             animalDoc.id,
-
           ...animalDoc.data()
         };
       }
     );
+
+    // البيع المباشر النشط فقط
 
     const directAnimals =
       Object.values(
@@ -1981,26 +1756,29 @@ async function loadMarket() {
       .filter(
         animal =>
           animal.saleType ===
-          "direct"
+            "direct" &&
+          (
+            !animal.status ||
+            animal.status ===
+              "active"
+          )
       );
 
     if (
       directAnimals.length === 0
     ) {
 
-      directContainer.innerHTML = `
-
-        <div style="
-          background:#222;
-          color:white;
-          padding:20px;
-          border-radius:15px;
-          text-align:center;
-        ">
-          لا توجد عروض بيع مباشر حالياً
-        </div>
-
-      `;
+      directContainer.innerHTML =
+        `
+          <div style="
+            background:#222;
+            color:white;
+            padding:20px;
+            border-radius:15px;
+          ">
+            لا توجد عروض بيع مباشر حالياً
+          </div>
+        `;
 
     } else {
 
@@ -2031,7 +1809,9 @@ async function loadMarket() {
                 ? `
                   <p>
                     السلالة:
-                    ${escapeHtml(animal.breed)}
+                    ${escapeHtml(
+                      animal.breed
+                    )}
                   </p>
                 `
                 : ""
@@ -2042,7 +1822,9 @@ async function loadMarket() {
                 ? `
                   <p>
                     العمر:
-                    ${escapeHtml(animal.age)}
+                    ${escapeHtml(
+                      animal.age
+                    )}
                   </p>
                 `
                 : ""
@@ -2058,11 +1840,13 @@ async function loadMarket() {
 
             <div style="
               font-size:25px;
-              font-weight:bold;
               color:#68e6b0;
+              font-weight:bold;
               margin:15px 0;
             ">
-              ${money(animal.price)}
+              ${money(
+                animal.price
+              )}
             </div>
 
             <button
@@ -2074,17 +1858,23 @@ async function loadMarket() {
                 border:0;
                 padding:14px;
                 border-radius:10px;
-                font-size:17px;
               "
             >
               طلب شراء
             </button>
+
+            ${ownerManagementButton(animal)}
 
           </div>
 
         `)
           .join("");
     }
+
+
+    // =====================================
+    // المزادات
+    // =====================================
 
     const auctionSnapshot =
       await getDocs(
@@ -2100,10 +1890,8 @@ async function loadMarket() {
       auctionDoc => {
 
         auctions.push({
-
           id:
             auctionDoc.id,
-
           ...auctionDoc.data()
         });
       }
@@ -2120,19 +1908,17 @@ async function loadMarket() {
       activeAuctions.length === 0
     ) {
 
-      auctionContainer.innerHTML = `
-
-        <div style="
-          background:#222;
-          color:white;
-          padding:20px;
-          border-radius:15px;
-          text-align:center;
-        ">
-          لا توجد مزادات حالياً
-        </div>
-
-      `;
+      auctionContainer.innerHTML =
+        `
+          <div style="
+            background:#222;
+            color:white;
+            padding:20px;
+            border-radius:15px;
+          ">
+            لا توجد مزادات حالياً
+          </div>
+        `;
 
     } else {
 
@@ -2173,11 +1959,6 @@ async function loadMarket() {
                 endMillis <=
                 Date.now();
 
-              const timerText =
-                getCountdownText(
-                  auction.endTime
-                );
-
               return `
 
                 <div style="
@@ -2214,33 +1995,11 @@ async function loadMarket() {
                     )}
                   </h3>
 
-                  ${
-                    animal.breed
-                      ? `
-                        <p>
-                          السلالة:
-                          ${escapeHtml(animal.breed)}
-                        </p>
-                      `
-                      : ""
-                  }
-
-                  ${
-                    animal.age
-                      ? `
-                        <p>
-                          العمر:
-                          ${escapeHtml(animal.age)}
-                        </p>
-                      `
-                      : ""
-                  }
-
                   <p>
                     📍
                     ${escapeHtml(
                       animal.location ||
-                      "الذيد - الشارقة"
+                      "الذيد"
                     )}
                   </p>
 
@@ -2268,14 +2027,11 @@ async function loadMarket() {
                     font-weight:bold;
                     margin:15px 0;
                   ">
-
                     السعر الحالي:
                     <br>
-
                     ${money(
                       currentPrice
                     )}
-
                   </div>
 
                   ${
@@ -2290,36 +2046,31 @@ async function loadMarket() {
                           </b>
                         </p>
                       `
-                      : `
-                        <p style="
-                          color:#ffb0b0;
-                          font-weight:bold;
-                        ">
-                          تم إغلاق استقبال المزايدات
-                        </p>
-                      `
+                      : ""
                   }
 
                   <div
                     data-auction-end="${endMillis}"
                     data-auction-id="${auction.id}"
                     style="
+                      color:#ffd66b;
                       font-size:20px;
                       font-weight:bold;
-                      margin:18px 0;
-                      color:${expired ? "#ff8d8d" : "#ffd66b"};
                       text-align:center;
+                      margin:18px 0;
                     "
                   >
                     ${
                       expired
                         ? "⛔ انتهى المزاد"
-                        : "⏱ " + timerText
+                        : "⏱ " +
+                          getCountdownText(
+                            auction.endTime
+                          )
                     }
                   </div>
 
                   <p style="
-                    font-size:14px;
                     color:#aaa;
                     text-align:center;
                   ">
@@ -2340,8 +2091,6 @@ async function loadMarket() {
                       border:0;
                       padding:16px;
                       border-radius:10px;
-                      font-size:19px;
-                      font-weight:bold;
                     "
                   >
                     ${
@@ -2351,8 +2100,9 @@ async function loadMarket() {
                     }
                   </button>
 
-                </div>
+                  ${ownerManagementButton(animal)}
 
+                </div>
               `;
             }
           )
@@ -2360,13 +2110,7 @@ async function loadMarket() {
     }
 
     status.innerHTML =
-      `✅ متصل بالسوق — الحيوانات: ${
-        Object.keys(
-          animals
-        ).length
-      } — المزادات: ${
-        auctions.length
-      }`;
+      "✅ متصل بالسوق";
 
     startAuctionTimers();
 
@@ -2378,9 +2122,804 @@ async function loadMarket() {
     );
 
     status.innerHTML =
-      "❌ حدث خطأ أثناء تحميل بيانات السوق";
+      "❌ حدث خطأ أثناء تحميل السوق";
   }
 }
+
+
+// =====================================
+// إدارة الإعلان
+// =====================================
+
+window.manageListing =
+async function (animalId) {
+
+  const user =
+    auth.currentUser;
+
+  if (!user) {
+
+    window.openLogin();
+
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const animalSnap =
+      await getDoc(
+        animalRef
+      );
+
+    if (!animalSnap.exists()) {
+
+      alert(
+        "لم يتم العثور على الإعلان."
+      );
+
+      return;
+    }
+
+    const animal = {
+      id:
+        animalSnap.id,
+      ...animalSnap.data()
+    };
+
+    if (
+      animal.sellerId !==
+      user.uid
+    ) {
+
+      alert(
+        "لا يمكنك إدارة إعلان مستخدم آخر."
+      );
+
+      return;
+    }
+
+    const images =
+      Array.isArray(
+        animal.images
+      )
+        ? animal.images
+        : [];
+
+    const imageHtml =
+      images.length > 0
+        ? images
+            .map(
+              (image, index) => {
+
+                const safe =
+                  safeImageData(
+                    image
+                  );
+
+                if (!safe) {
+                  return "";
+                }
+
+                return `
+
+                  <div style="
+                    position:relative;
+                    margin-bottom:12px;
+                  ">
+
+                    <img
+                      src="${safe}"
+                      style="
+                        width:100%;
+                        max-height:250px;
+                        object-fit:cover;
+                        border-radius:12px;
+                      "
+                    >
+
+                    <button
+                      onclick="removeAnimalImage('${animal.id}', ${index})"
+                      style="
+                        width:100%;
+                        padding:10px;
+                        margin-top:6px;
+                        border:0;
+                        border-radius:8px;
+                        background:#8b2929;
+                        color:white;
+                      "
+                    >
+                      ❌ حذف هذه الصورة
+                    </button>
+
+                  </div>
+                `;
+              }
+            )
+            .join("")
+        : `
+          <p style="
+            text-align:center;
+            color:#aaa;
+          ">
+            لا توجد صور حالياً
+          </p>
+        `;
+
+    showModal(`
+
+      <div style="
+        direction:rtl;
+        color:white;
+        padding:10px;
+      ">
+
+        <h2 style="
+          color:#68e6b0;
+          text-align:center;
+        ">
+          ⚙️ إدارة إعلاني
+        </h2>
+
+        <h3>
+          ${escapeHtml(
+            animal.type ||
+            animal.name ||
+            "الإعلان"
+          )}
+        </h3>
+
+        ${imageHtml}
+
+        <hr style="
+          border-color:#444;
+          margin:22px 0;
+        ">
+
+        <h3>
+          🖼️ استبدال الصور
+        </h3>
+
+        <input
+          id="manageImages"
+          type="file"
+          accept="image/*"
+          multiple
+          style="
+            width:100%;
+            margin-bottom:12px;
+          "
+        >
+
+        <button
+          onclick="replaceAnimalImages('${animal.id}')"
+          style="
+            width:100%;
+            background:#28566f;
+            color:white;
+            border:0;
+            padding:14px;
+            border-radius:10px;
+            margin-bottom:10px;
+          "
+        >
+          🖼️ حفظ الصور الجديدة
+        </button>
+
+        <button
+          onclick="removeAllAnimalImages('${animal.id}')"
+          style="
+            width:100%;
+            background:#555;
+            color:white;
+            border:0;
+            padding:14px;
+            border-radius:10px;
+            margin-bottom:20px;
+          "
+        >
+          🧹 حذف جميع الصور
+        </button>
+
+        <button
+          onclick="markListingSold('${animal.id}')"
+          style="
+            width:100%;
+            background:#00643e;
+            color:white;
+            border:0;
+            padding:16px;
+            border-radius:10px;
+            margin-bottom:10px;
+            font-size:18px;
+            font-weight:bold;
+          "
+        >
+          ✅ تم البيع
+        </button>
+
+        <button
+          onclick="deleteListing('${animal.id}')"
+          style="
+            width:100%;
+            background:#8b2929;
+            color:white;
+            border:0;
+            padding:16px;
+            border-radius:10px;
+            font-size:18px;
+          "
+        >
+          🗑️ حذف الإعلان نهائياً
+        </button>
+
+      </div>
+    `);
+
+  } catch (error) {
+
+    console.error(
+      "MANAGE LISTING ERROR:",
+      error
+    );
+
+    alert(
+      "تعذر فتح إدارة الإعلان."
+    );
+  }
+};
+
+
+// =====================================
+// حذف صورة واحدة
+// =====================================
+
+window.removeAnimalImage =
+async function (
+  animalId,
+  imageIndex
+) {
+
+  const user =
+    auth.currentUser;
+
+  if (!user) {
+    return;
+  }
+
+  const ok =
+    confirm(
+      "هل تريد حذف هذه الصورة؟"
+    );
+
+  if (!ok) {
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const snap =
+      await getDoc(
+        animalRef
+      );
+
+    if (!snap.exists()) {
+      return;
+    }
+
+    const animal =
+      snap.data();
+
+    if (
+      animal.sellerId !==
+      user.uid
+    ) {
+
+      alert(
+        "غير مصرح."
+      );
+
+      return;
+    }
+
+    const images =
+      Array.isArray(
+        animal.images
+      )
+        ? [...animal.images]
+        : [];
+
+    images.splice(
+      imageIndex,
+      1
+    );
+
+    await setDoc(
+      animalRef,
+      {
+        images:
+          images,
+
+        updatedAt:
+          serverTimestamp()
+      },
+      {
+        merge: true
+      }
+    );
+
+    alert(
+      "✅ تم حذف الصورة."
+    );
+
+    await loadMarket();
+
+    await window.manageListing(
+      animalId
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "❌ تعذر حذف الصورة."
+    );
+  }
+};
+
+
+// =====================================
+// حذف جميع الصور
+// =====================================
+
+window.removeAllAnimalImages =
+async function (animalId) {
+
+  const ok =
+    confirm(
+      "هل تريد حذف جميع صور الإعلان؟"
+    );
+
+  if (!ok) {
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const snap =
+      await getDoc(
+        animalRef
+      );
+
+    if (
+      !snap.exists() ||
+      snap.data().sellerId !==
+        auth.currentUser?.uid
+    ) {
+
+      alert(
+        "غير مصرح."
+      );
+
+      return;
+    }
+
+    await setDoc(
+      animalRef,
+      {
+        images:
+          [],
+
+        updatedAt:
+          serverTimestamp()
+      },
+      {
+        merge: true
+      }
+    );
+
+    alert(
+      "✅ تم حذف جميع الصور."
+    );
+
+    await loadMarket();
+
+    await window.manageListing(
+      animalId
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "❌ تعذر حذف الصور."
+    );
+  }
+};
+
+
+// =====================================
+// استبدال الصور
+// =====================================
+
+window.replaceAnimalImages =
+async function (animalId) {
+
+  const input =
+    document.getElementById(
+      "manageImages"
+    );
+
+  if (
+    !input ||
+    !input.files ||
+    input.files.length === 0
+  ) {
+
+    alert(
+      "اختر صورة واحدة على الأقل."
+    );
+
+    return;
+  }
+
+  if (
+    input.files.length > 5
+  ) {
+
+    alert(
+      "يمكن اختيار 5 صور كحد أقصى."
+    );
+
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const snap =
+      await getDoc(
+        animalRef
+      );
+
+    if (
+      !snap.exists() ||
+      snap.data().sellerId !==
+        auth.currentUser?.uid
+    ) {
+
+      alert(
+        "غير مصرح."
+      );
+
+      return;
+    }
+
+    const files =
+      Array.from(
+        input.files
+      );
+
+    const images = [];
+
+    let totalSize = 0;
+
+    for (
+      const file of files
+    ) {
+
+      const imageData =
+        await compressImageFile(
+          file
+        );
+
+      totalSize +=
+        imageData.length;
+
+      if (
+        totalSize > 650000
+      ) {
+
+        alert(
+          "حجم الصور كبير جداً."
+        );
+
+        return;
+      }
+
+      images.push(
+        imageData
+      );
+    }
+
+    await setDoc(
+      animalRef,
+      {
+        images:
+          images,
+
+        updatedAt:
+          serverTimestamp()
+      },
+      {
+        merge: true
+      }
+    );
+
+    alert(
+      "✅ تم استبدال الصور بنجاح."
+    );
+
+    await loadMarket();
+
+    await window.manageListing(
+      animalId
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    alert(
+      "❌ تعذر استبدال الصور."
+    );
+  }
+};
+
+
+// =====================================
+// تم البيع
+// =====================================
+
+window.markListingSold =
+async function (animalId) {
+
+  const ok =
+    confirm(
+      "هل تؤكد أن الحلال تم بيعه؟\n\nسيتم إخفاء الإعلان من السوق."
+    );
+
+  if (!ok) {
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const animalSnap =
+      await getDoc(
+        animalRef
+      );
+
+    if (!animalSnap.exists()) {
+
+      alert(
+        "الإعلان غير موجود."
+      );
+
+      return;
+    }
+
+    const animal =
+      animalSnap.data();
+
+    if (
+      animal.sellerId !==
+      auth.currentUser?.uid
+    ) {
+
+      alert(
+        "غير مصرح."
+      );
+
+      return;
+    }
+
+    const batch =
+      writeBatch(
+        db
+      );
+
+    batch.set(
+      animalRef,
+      {
+        status:
+          "sold",
+
+        soldAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp()
+      },
+      {
+        merge: true
+      }
+    );
+
+    if (
+      animal.saleType ===
+        "auction" &&
+      animal.auctionId
+    ) {
+
+      const auctionRef =
+        doc(
+          db,
+          "auctions",
+          animal.auctionId
+        );
+
+      batch.set(
+        auctionRef,
+        {
+          status:
+            "sold",
+
+          updatedAt:
+            serverTimestamp()
+        },
+        {
+          merge: true
+        }
+      );
+    }
+
+    await batch.commit();
+
+    window.closeModal();
+
+    alert(
+      "✅ تم تسجيل الحلال كمباع وإزالته من السوق النشط."
+    );
+
+    await loadMarket();
+
+  } catch (error) {
+
+    console.error(
+      "MARK SOLD ERROR:",
+      error
+    );
+
+    alert(
+      "❌ تعذر تسجيل البيع."
+    );
+  }
+};
+
+
+// =====================================
+// حذف الإعلان نهائياً
+// =====================================
+
+window.deleteListing =
+async function (animalId) {
+
+  const ok =
+    confirm(
+      "⚠️ هل أنت متأكد من حذف الإعلان نهائياً؟\n\nلا يمكن التراجع عن الحذف."
+    );
+
+  if (!ok) {
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const animalSnap =
+      await getDoc(
+        animalRef
+      );
+
+    if (!animalSnap.exists()) {
+
+      return;
+    }
+
+    const animal =
+      animalSnap.data();
+
+    if (
+      animal.sellerId !==
+      auth.currentUser?.uid
+    ) {
+
+      alert(
+        "غير مصرح."
+      );
+
+      return;
+    }
+
+    const batch =
+      writeBatch(
+        db
+      );
+
+    batch.delete(
+      animalRef
+    );
+
+    if (
+      animal.saleType ===
+        "auction" &&
+      animal.auctionId
+    ) {
+
+      batch.delete(
+        doc(
+          db,
+          "auctions",
+          animal.auctionId
+        )
+      );
+    }
+
+    await batch.commit();
+
+    window.closeModal();
+
+    alert(
+      "✅ تم حذف الإعلان نهائياً."
+    );
+
+    await loadMarket();
+
+  } catch (error) {
+
+    console.error(
+      "DELETE LISTING ERROR:",
+      error
+    );
+
+    alert(
+      "❌ تعذر حذف الإعلان."
+    );
+  }
+};
 
 
 // =====================================
@@ -2447,9 +2986,7 @@ async function (auctionId) {
             auctionRef
           );
 
-        if (
-          !auctionSnap.exists()
-        ) {
+        if (!auctionSnap.exists()) {
 
           throw new Error(
             "AUCTION_NOT_FOUND"
@@ -2476,7 +3013,8 @@ async function (auctionId) {
 
         if (
           !endMillis ||
-          Date.now() >= endMillis
+          Date.now() >=
+            endMillis
         ) {
 
           throw new Error(
@@ -2550,9 +3088,7 @@ async function (auctionId) {
             auctionRef
           );
 
-        if (
-          !auctionSnap.exists()
-        ) {
+        if (!auctionSnap.exists()) {
 
           throw new Error(
             "AUCTION_NOT_FOUND"
@@ -2579,7 +3115,8 @@ async function (auctionId) {
 
         if (
           !endMillis ||
-          Date.now() >= endMillis
+          Date.now() >=
+            endMillis
         ) {
 
           throw new Error(
@@ -2667,9 +3204,7 @@ async function (auctionId) {
       alert(
         "❌ تم تسجيل مزايدة أعلى قبلك.\n\n" +
         "الحد الأدنى الجديد: " +
-        money(
-          required
-        )
+        money(required)
       );
 
       await loadMarket();
@@ -2683,34 +3218,10 @@ async function (auctionId) {
     ) {
 
       alert(
-        "⛔ انتهى وقت المزاد ولا يمكن تسجيل مزايدات جديدة."
+        "⛔ انتهى وقت المزاد."
       );
 
       await loadMarket();
-
-      return;
-    }
-
-    if (
-      error.message ===
-      "AUCTION_NOT_ACTIVE"
-    ) {
-
-      alert(
-        "هذا المزاد غير نشط حالياً."
-      );
-
-      return;
-    }
-
-    if (
-      error.message ===
-      "AUCTION_NOT_FOUND"
-    ) {
-
-      alert(
-        "لم يتم العثور على المزاد."
-      );
 
       return;
     }
@@ -2724,7 +3235,6 @@ async function (auctionId) {
 
 // =====================================
 // إضافة حلال جديد
-// بيع مباشر أو مزاد إلكتروني
 // =====================================
 
 window.saveListing =
@@ -2751,25 +3261,19 @@ async function (event) {
     const profile =
       await getUserProfile();
 
-    if (!profile) {
-
-      alert(
-        "تعذر قراءة بيانات الحساب."
-      );
-
-      return;
-    }
-
     if (
-      profile.accountType !== "seller" &&
-      profile.accountType !== "both"
+      !profile ||
+      (
+        profile.accountType !==
+          "seller" &&
+        profile.accountType !==
+          "both"
+      )
     ) {
 
       alert(
-        "لإضافة الحلال يجب تغيير استخدام الحساب إلى بائع أو بائع ومشتري من صفحة حسابي."
+        "يجب أن يكون الحساب بائع أو بائع ومشتري."
       );
-
-      await showAccount();
 
       return;
     }
@@ -2835,55 +3339,18 @@ async function (event) {
         .trim() ||
       "";
 
-    const allowedTypes = [
-      "ناقة",
-      "غنم",
-      "ماعز",
-      "بقر",
-      "دجاج",
-      "صقور",
-      "غزال",
-      "نعام",
-      "حمام"
-    ];
-
     if (
       !type ||
-      !allowedTypes.includes(
-        type
-      )
-    ) {
-
-      alert(
-        "يرجى اختيار نوع الحيوان."
-      );
-
-      return;
-    }
-
-    if (
-      !Number.isFinite(
-        price
-      ) ||
+      !Number.isFinite(price) ||
       price <= 0
     ) {
 
       alert(
-        method ===
-          "مزاد إلكتروني"
-          ?
-          "يرجى إدخال سعر بداية صحيح للمزاد."
-          :
-          "يرجى إدخال سعر بيع صحيح."
+        "تأكد من نوع الحيوان والسعر."
       );
 
       return;
     }
-
-
-    // =====================================
-    // تجهيز الصور
-    // =====================================
 
     let images = [];
 
@@ -2892,119 +3359,77 @@ async function (event) {
       images =
         await getListingImages();
 
-    } catch (imageError) {
-
-      if (
-        imageError.message ===
-        "TOO_MANY_IMAGES"
-      ) {
-
-        alert(
-          "❌ يمكن اختيار 5 صور كحد أقصى."
-        );
-
-        return;
-      }
-
-      if (
-        imageError.message ===
-        "IMAGES_TOO_LARGE"
-      ) {
-
-        alert(
-          "❌ حجم الصور كبير جداً.\n\nجرّب اختيار صور أقل أو صور أصغر."
-        );
-
-        return;
-      }
+    } catch (error) {
 
       alert(
-        "❌ تعذر تجهيز الصور. جرّب صورة أخرى."
+        "تعذر تجهيز الصور أو حجم الصور كبير."
       );
 
       return;
     }
-
-
-    // =====================================
-    // البيع المباشر
-    // =====================================
 
     if (
       method ===
       "بيع مباشر"
     ) {
 
-      const animalData = {
+      await addDoc(
+        collection(
+          db,
+          "animals"
+        ),
+        {
+          name:
+            type,
 
-        name:
-          type,
+          type:
+            type,
 
-        type:
-          type,
+          breed:
+            breed,
 
-        breed:
-          breed,
+          age:
+            age,
 
-        age:
-          age,
+          location:
+            location,
 
-        location:
-          location,
+          saleType:
+            "direct",
 
-        saleType:
-          "direct",
+          price:
+            price,
 
-        price:
-          price,
+          description:
+            description,
 
-        description:
-          description,
+          images:
+            images,
 
-        images:
-          images,
+          sellerId:
+            user.uid,
 
-        sellerId:
-          user.uid,
+          sellerName:
+            profile.displayName ||
+            "",
 
-        sellerName:
-          profile.displayName ||
-          "",
+          sellerPhone:
+            user.phoneNumber ||
+            "",
 
-        sellerPhone:
-          user.phoneNumber ||
-          "",
+          status:
+            "active",
 
-        status:
-          "active",
+          createdAt:
+            serverTimestamp(),
 
-        createdAt:
-          serverTimestamp(),
-
-        updatedAt:
-          serverTimestamp()
-      };
-
-      const animalRef =
-        await addDoc(
-          collection(
-            db,
-            "animals"
-          ),
-          animalData
-        );
+          updatedAt:
+            serverTimestamp()
+        }
+      );
 
       alert(
-        "✅ تم إضافة الحلال بنجاح\n\n" +
-        "طريقة البيع: بيع مباشر\n\n" +
-        "نوع الحيوان: " +
-        type +
-        "\n\nالسعر: " +
-        money(price) +
-        "\n\nعدد الصور: " +
-        images.length +
-        "\n\nرقم العرض:\n" +
-        animalRef.id
+        "✅ تم إضافة الحلال بنجاح."
       );
 
       resetListingForm(
@@ -3017,11 +3442,6 @@ async function (event) {
 
       return;
     }
-
-
-    // =====================================
-    // المزاد الإلكتروني
-    // =====================================
 
     if (
       method ===
@@ -3045,54 +3465,26 @@ async function (event) {
           ?.value ||
         "";
 
-      if (
-        !Number.isFinite(
-          increment
-        ) ||
-        increment <= 0
-      ) {
-
-        alert(
-          "يرجى إدخال أقل زيادة صحيحة للمزايدة."
-        );
-
-        return;
-      }
-
-      if (!endTimeValue) {
-
-        alert(
-          "يرجى تحديد تاريخ ووقت انتهاء المزاد."
-        );
-
-        return;
-      }
-
       const endTime =
         new Date(
           endTimeValue
         );
 
       if (
+        !Number.isFinite(
+          increment
+        ) ||
+        increment <= 0 ||
+        !endTimeValue ||
         Number.isNaN(
           endTime.getTime()
-        )
-      ) {
-
-        alert(
-          "تاريخ انتهاء المزاد غير صحيح."
-        );
-
-        return;
-      }
-
-      if (
+        ) ||
         endTime.getTime() <=
-        Date.now()
+          Date.now()
       ) {
 
         alert(
-          "يجب أن يكون وقت انتهاء المزاد في المستقبل."
+          "تحقق من بيانات المزاد."
         );
 
         return;
@@ -3114,97 +3506,6 @@ async function (event) {
           )
         );
 
-      const animalData = {
-
-        name:
-          type,
-
-        type:
-          type,
-
-        breed:
-          breed,
-
-        age:
-          age,
-
-        location:
-          location,
-
-        saleType:
-          "auction",
-
-        price:
-          price,
-
-        description:
-          description,
-
-        images:
-          images,
-
-        sellerId:
-          user.uid,
-
-        sellerName:
-          profile.displayName ||
-          "",
-
-        sellerPhone:
-          user.phoneNumber ||
-          "",
-
-        status:
-          "active",
-
-        auctionId:
-          auctionRef.id,
-
-        createdAt:
-          serverTimestamp(),
-
-        updatedAt:
-          serverTimestamp()
-      };
-
-      const auctionData = {
-
-        animalId:
-          animalRef.id,
-
-        sellerId:
-          user.uid,
-
-        sellerName:
-          profile.displayName ||
-          "",
-
-        sellerPhone:
-          user.phoneNumber ||
-          "",
-
-        startPrice:
-          price,
-
-        currentPrice:
-          price,
-
-        minIncrement:
-          increment,
-
-        endTime:
-          endTime,
-
-        status:
-          "active",
-
-        createdAt:
-          serverTimestamp(),
-
-        updatedAt:
-          serverTimestamp()
-      };
-
       const batch =
         writeBatch(
           db
@@ -3212,32 +3513,103 @@ async function (event) {
 
       batch.set(
         animalRef,
-        animalData
+        {
+          name:
+            type,
+
+          type:
+            type,
+
+          breed:
+            breed,
+
+          age:
+            age,
+
+          location:
+            location,
+
+          saleType:
+            "auction",
+
+          price:
+            price,
+
+          description:
+            description,
+
+          images:
+            images,
+
+          sellerId:
+            user.uid,
+
+          sellerName:
+            profile.displayName ||
+            "",
+
+          sellerPhone:
+            user.phoneNumber ||
+            "",
+
+          status:
+            "active",
+
+          auctionId:
+            auctionRef.id,
+
+          createdAt:
+            serverTimestamp(),
+
+          updatedAt:
+            serverTimestamp()
+        }
       );
 
       batch.set(
         auctionRef,
-        auctionData
+        {
+          animalId:
+            animalRef.id,
+
+          sellerId:
+            user.uid,
+
+          sellerName:
+            profile.displayName ||
+            "",
+
+          sellerPhone:
+            user.phoneNumber ||
+            "",
+
+          startPrice:
+            price,
+
+          currentPrice:
+            price,
+
+          minIncrement:
+            increment,
+
+          endTime:
+            endTime,
+
+          status:
+            "active",
+
+          createdAt:
+            serverTimestamp(),
+
+          updatedAt:
+            serverTimestamp()
+        }
       );
 
       await batch.commit();
 
       alert(
-        "✅ تم إنشاء المزاد الإلكتروني بنجاح\n\n" +
-        "نوع الحيوان: " +
-        type +
-        "\n\nسعر البداية: " +
-        money(price) +
-        "\n\nأقل زيادة: " +
-        money(increment) +
-        "\n\nعدد الصور: " +
-        images.length +
-        "\n\nينتهي: " +
-        endTime.toLocaleString(
-          "ar-AE"
-        ) +
-        "\n\nرقم المزاد:\n" +
-        auctionRef.id
+        "✅ تم إنشاء المزاد الإلكتروني بنجاح."
       );
 
       resetListingForm(
@@ -3251,10 +3623,6 @@ async function (event) {
       return;
     }
 
-    alert(
-      "يرجى اختيار طريقة البيع."
-    );
-
   } catch (error) {
 
     console.error(
@@ -3262,38 +3630,20 @@ async function (event) {
       error
     );
 
-    if (
-      error.code ===
-      "permission-denied"
-    ) {
-
-      alert(
-        "❌ Firebase رفض إنشاء العرض.\n\n" +
-        "تحقق من صلاحيات الحساب وقواعد Firestore."
-      );
-
-      return;
-    }
-
     alert(
-      "❌ تعذر إضافة الحلال.\n\n" +
-      (
-        error.message ||
-        "حدث خطأ غير معروف."
-      )
+      "❌ تعذر إضافة الحلال."
     );
   }
 };
 
 
 // =====================================
-// تنظيف نموذج إضافة الحلال
+// تنظيف النموذج
 // =====================================
 
 function resetListingForm(form) {
 
   if (form) {
-
     form.reset();
   }
 
@@ -3306,14 +3656,13 @@ function resetListingForm(form) {
     preview.innerHTML = "";
   }
 
-  const locationInput =
+  const location =
     document.getElementById(
       "animalLocation"
     );
 
-  if (locationInput) {
-
-    locationInput.value =
+  if (location) {
+    location.value =
       "الذيد";
   }
 
@@ -3327,44 +3676,11 @@ function resetListingForm(form) {
     auctionFields.style.display =
       "none";
   }
-
-  const priceInput =
-    document.getElementById(
-      "animalPrice"
-    );
-
-  if (priceInput) {
-
-    priceInput.placeholder =
-      "السعر بالدرهم";
-  }
-
-  const incrementInput =
-    document.getElementById(
-      "auctionIncrement"
-    );
-
-  if (incrementInput) {
-
-    incrementInput.required =
-      false;
-  }
-
-  const endTimeInput =
-    document.getElementById(
-      "auctionEndTime"
-    );
-
-  if (endTimeInput) {
-
-    endTimeInput.required =
-      false;
-  }
 }
 
 
 // =====================================
-// الانتقال إلى السوق
+// الانتقال للسوق
 // =====================================
 
 function scrollToMarket() {
@@ -3385,14 +3701,14 @@ function scrollToMarket() {
 
 
 // =====================================
-// أزرار النسخة القديمة
+// أزرار قديمة
 // =====================================
 
 window.bid =
 function () {
 
   alert(
-    "استخدم المزاد الحقيقي الموجود في قسم سوق الحلال المباشر."
+    "استخدم المزاد الحقيقي في سوق الحلال."
   );
 };
 
