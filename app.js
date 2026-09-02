@@ -218,6 +218,7 @@ window.openLogin = function () {
           text-align:center;
           margin-top:15px;
           color:#ddd;
+          word-break:break-word;
         "
       ></p>
 
@@ -234,7 +235,7 @@ window.sendPhoneCode = async function () {
   const status =
     document.getElementById("loginStatus");
 
-  if (!input) return;
+  if (!input || !status) return;
 
 
   let phone =
@@ -248,6 +249,7 @@ window.sendPhoneCode = async function () {
     phone = "+971" + phone.substring(1);
   }
 
+  // تحويل 9715xxxxxxxx إلى +9715xxxxxxxx
   if (phone.startsWith("971")) {
     phone = "+" + phone;
   }
@@ -268,16 +270,20 @@ window.sendPhoneCode = async function () {
       "جاري إرسال رمز التحقق...";
 
 
+    // تنظيف reCAPTCHA السابق
     if (recaptchaVerifier) {
 
       try {
         recaptchaVerifier.clear();
-      } catch (e) {}
+      } catch (e) {
+        console.log("Recaptcha clear:", e);
+      }
 
       recaptchaVerifier = null;
     }
 
 
+    // إنشاء reCAPTCHA جديد
     recaptchaVerifier =
       new RecaptchaVerifier(
         auth,
@@ -288,6 +294,7 @@ window.sendPhoneCode = async function () {
       );
 
 
+    // إرسال رمز SMS
     confirmationResult =
       await signInWithPhoneNumber(
         auth,
@@ -302,37 +309,101 @@ window.sendPhoneCode = async function () {
 
   catch (error) {
 
-    console.error(error);
+    console.error("PHONE AUTH ERROR:", error);
+
+    // تنظيف reCAPTCHA بعد الخطأ
+    if (recaptchaVerifier) {
+
+      try {
+        recaptchaVerifier.clear();
+      } catch (e) {}
+
+      recaptchaVerifier = null;
+    }
+
 
     if (error.code === "auth/unauthorized-domain") {
 
       status.innerHTML =
-        "❌ يجب إضافة نطاق GitHub Pages إلى Authorized domains في Firebase.";
+        "❌ auth/unauthorized-domain<br>" +
+        "نطاق الموقع غير موجود ضمن Authorized domains في Firebase.";
 
       return;
     }
+
 
     if (error.code === "auth/too-many-requests") {
 
       status.innerHTML =
-        "❌ تم إرسال محاولات كثيرة. حاول لاحقاً.";
+        "❌ auth/too-many-requests<br>" +
+        "تم إرسال محاولات كثيرة. حاول لاحقاً.";
 
       return;
     }
+
 
     if (error.code === "auth/quota-exceeded") {
 
       status.innerHTML =
-        "❌ تم الوصول إلى الحد اليومي لرسائل SMS.";
+        "❌ auth/quota-exceeded<br>" +
+        "تم الوصول إلى الحد المتاح لرسائل SMS.";
 
       return;
     }
 
+
+    if (error.code === "auth/operation-not-allowed") {
+
+      status.innerHTML =
+        "❌ auth/operation-not-allowed<br>" +
+        "تسجيل الدخول برقم الهاتف غير مفعل في Firebase.";
+
+      return;
+    }
+
+
+    if (error.code === "auth/invalid-phone-number") {
+
+      status.innerHTML =
+        "❌ auth/invalid-phone-number<br>" +
+        "رقم الهاتف غير صحيح.";
+
+      return;
+    }
+
+
+    if (error.code === "auth/captcha-check-failed") {
+
+      status.innerHTML =
+        "❌ auth/captcha-check-failed<br>" +
+        "فشل التحقق من reCAPTCHA.";
+
+      return;
+    }
+
+
+    if (error.code === "auth/invalid-app-credential") {
+
+      status.innerHTML =
+        "❌ auth/invalid-app-credential<br>" +
+        "تعذر التحقق من بيانات التطبيق أو reCAPTCHA.";
+
+      return;
+    }
+
+
     status.innerHTML =
-      "❌ تعذر إرسال رمز التحقق.";
+      "❌ " +
+      (error.code || "UNKNOWN") +
+      "<br><br>" +
+      (error.message || "تعذر إرسال رمز التحقق.");
   }
 };
 
+
+// =====================================
+// شاشة إدخال رمز SMS
+// =====================================
 
 function showCodeScreen(phone) {
 
@@ -394,6 +465,7 @@ function showCodeScreen(phone) {
         style="
           text-align:center;
           margin-top:15px;
+          word-break:break-word;
         "
       ></p>
 
@@ -402,6 +474,10 @@ function showCodeScreen(phone) {
 }
 
 
+// =====================================
+// التحقق من رمز SMS
+// =====================================
+
 window.verifyPhoneCode = async function () {
 
   const codeInput =
@@ -409,6 +485,11 @@ window.verifyPhoneCode = async function () {
 
   const status =
     document.getElementById("verifyStatus");
+
+
+  if (!codeInput || !status) {
+    return;
+  }
 
 
   if (!confirmationResult) {
@@ -424,7 +505,7 @@ window.verifyPhoneCode = async function () {
     codeInput.value.trim();
 
 
-  if (code.length < 6) {
+  if (code.length !== 6) {
 
     status.innerHTML =
       "❌ أدخل رمز التحقق المكون من 6 أرقام.";
@@ -456,21 +537,41 @@ window.verifyPhoneCode = async function () {
 
   catch (error) {
 
-    console.error(error);
+    console.error("VERIFY CODE ERROR:", error);
+
 
     status.innerHTML =
-      "❌ رمز التحقق غير صحيح أو انتهت صلاحيته.";
+      "❌ " +
+      (error.code || "") +
+      "<br>" +
+      (error.message ||
+        "رمز التحقق غير صحيح أو انتهت صلاحيته.");
   }
 };
 
 
+// =====================================
+// تسجيل الخروج
+// =====================================
+
 window.logoutUser = async function () {
 
-  await signOut(auth);
+  try {
 
-  window.closeModal();
+    await signOut(auth);
 
-  alert("تم تسجيل الخروج.");
+    window.closeModal();
+
+    alert("تم تسجيل الخروج.");
+
+  }
+
+  catch (error) {
+
+    console.error(error);
+
+    alert("تعذر تسجيل الخروج.");
+  }
 };
 
 
@@ -1175,12 +1276,15 @@ async function (auctionId) {
 // =====================================
 
 window.bid = function () {
+
   alert(
     "استخدم المزاد الحقيقي الموجود في قسم سوق الحلال المباشر."
   );
 };
 
+
 window.details = function (name, price) {
+
   alert(
     name +
     "\nالسعر: " +
@@ -1188,6 +1292,7 @@ window.details = function (name, price) {
     " AED"
   );
 };
+
 
 window.saveListing = function (event) {
 
