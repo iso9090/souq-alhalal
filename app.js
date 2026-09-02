@@ -3116,6 +3116,59 @@ async function loadMarket() {
                 endMillis <=
                 Date.now();
 
+              const isOwner =
+                !!auth.currentUser &&
+                auction.sellerId ===
+                  auth.currentUser.uid;
+
+              let bidButtonHtml = "";
+
+              if (isOwner) {
+
+                bidButtonHtml = `
+
+                  <div
+                    style="
+                      width:100%;
+                      box-sizing:border-box;
+                      background:#302a16;
+                      color:#ffd66b;
+                      padding:14px;
+                      border-radius:10px;
+                      text-align:center;
+                      font-weight:bold;
+                    "
+                  >
+                    🔒 هذا مزادك — لا يمكنك المزايدة عليه
+                  </div>
+                `;
+
+              } else {
+
+                bidButtonHtml = `
+
+                  <button
+                    id="bid-button-${auction.id}"
+                    onclick="placeBid('${auction.id}')"
+                    ${expired ? "disabled" : ""}
+                    style="
+                      width:100%;
+                      background:${expired ? "#555" : "#984d00"};
+                      color:white;
+                      border:0;
+                      padding:16px;
+                      border-radius:10px;
+                    "
+                  >
+                    ${
+                      expired
+                        ? "انتهى المزاد"
+                        : "زايد الآن"
+                    }
+                  </button>
+                `;
+              }
+
               return `
 
                 <div style="
@@ -3263,25 +3316,7 @@ async function loadMarket() {
                     )}
                   </p>
 
-                  <button
-                    id="bid-button-${auction.id}"
-                    onclick="placeBid('${auction.id}')"
-                    ${expired ? "disabled" : ""}
-                    style="
-                      width:100%;
-                      background:${expired ? "#555" : "#984d00"};
-                      color:white;
-                      border:0;
-                      padding:16px;
-                      border-radius:10px;
-                    "
-                  >
-                    ${
-                      expired
-                        ? "انتهى المزاد"
-                        : "زايد الآن"
-                    }
-                  </button>
+                  ${bidButtonHtml}
 
                   ${ownerManagementButton(animal)}
 
@@ -4637,6 +4672,22 @@ async function (auctionId) {
         const auction =
           auctionSnap.data();
 
+
+        // =====================================
+        // منع صاحب المزاد من المزايدة
+        // =====================================
+
+        if (
+          auction.sellerId ===
+          auth.currentUser.uid
+        ) {
+
+          throw new Error(
+            "OWNER_CANNOT_BID"
+          );
+        }
+
+
         if (
           auction.status !==
           "active"
@@ -4739,6 +4790,22 @@ async function (auctionId) {
         const auction =
           auctionSnap.data();
 
+
+        // =====================================
+        // حماية ثانية لمنع صاحب المزاد
+        // =====================================
+
+        if (
+          auction.sellerId ===
+          auth.currentUser.uid
+        ) {
+
+          throw new Error(
+            "OWNER_CANNOT_BID"
+          );
+        }
+
+
         if (
           auction.status !==
           "active"
@@ -4829,6 +4896,20 @@ async function (auctionId) {
       "BID ERROR:",
       error
     );
+
+
+    if (
+      error.message ===
+      "OWNER_CANNOT_BID"
+    ) {
+
+      alert(
+        "⛔ لا يمكنك المزايدة على مزادك الخاص."
+      );
+
+      return;
+    }
+
 
     if (
       error.message &&
