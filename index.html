@@ -353,6 +353,7 @@
 
 
   <form
+    id="listingForm"
     onsubmit="saveListing(event)">
 
 
@@ -450,14 +451,16 @@
 
       <!-- طريقة البيع -->
 
-      <select id="method">
+      <select
+        id="method"
+        onchange="toggleAuctionFields()">
 
         <option value="بيع مباشر">
-          بيع مباشر
+          🛒 بيع مباشر
         </option>
 
         <option value="مزاد إلكتروني">
-          مزاد إلكتروني
+          🔨 مزاد إلكتروني
         </option>
 
       </select>
@@ -470,7 +473,71 @@
         required
         type="number"
         min="1"
-        placeholder="السعر / سعر البداية بالدرهم">
+        placeholder="السعر بالدرهم">
+
+
+      <!-- حقول المزاد -->
+
+      <div
+        id="auctionFields"
+        style="
+          display:none;
+          width:100%;
+        ">
+
+
+        <div
+          style="
+            background:#10271c;
+            border:1px solid #1d6044;
+            border-radius:12px;
+            padding:14px;
+            margin-bottom:14px;
+            color:#68e6b0;
+            text-align:center;
+          ">
+          🔨 بيانات المزاد الإلكتروني
+        </div>
+
+
+        <label
+          style="
+            display:block;
+            margin-bottom:7px;
+          ">
+          أقل زيادة للمزايدة
+        </label>
+
+        <input
+          id="auctionIncrement"
+          type="number"
+          min="1"
+          placeholder="مثال: 200"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            margin-bottom:14px;
+          ">
+
+
+        <label
+          style="
+            display:block;
+            margin-bottom:7px;
+          ">
+          تاريخ ووقت انتهاء المزاد
+        </label>
+
+        <input
+          id="auctionEndTime"
+          type="datetime-local"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            margin-bottom:14px;
+          ">
+
+      </div>
 
 
       <!-- الوصف -->
@@ -580,10 +647,85 @@
 
 
 <!-- ===================================== -->
-<!-- JavaScript -->
+<!-- إظهار وإخفاء حقول المزاد -->
 <!-- ===================================== -->
 
-<script type="module" src="app.js?v=13"></script>
+<script>
+
+function toggleAuctionFields() {
+
+  const method =
+    document.getElementById("method");
+
+  const auctionFields =
+    document.getElementById("auctionFields");
+
+  const price =
+    document.getElementById("animalPrice");
+
+  const increment =
+    document.getElementById("auctionIncrement");
+
+  const endTime =
+    document.getElementById("auctionEndTime");
+
+
+  if (!method || !auctionFields || !price) {
+    return;
+  }
+
+
+  if (method.value === "مزاد إلكتروني") {
+
+    auctionFields.style.display = "block";
+
+    price.placeholder =
+      "سعر بداية المزاد بالدرهم";
+
+    if (increment) {
+      increment.required = true;
+    }
+
+    if (endTime) {
+      endTime.required = true;
+    }
+
+  } else {
+
+    auctionFields.style.display = "none";
+
+    price.placeholder =
+      "سعر البيع بالدرهم";
+
+    if (increment) {
+      increment.required = false;
+    }
+
+    if (endTime) {
+      endTime.required = false;
+    }
+  }
+}
+
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
+    toggleAuctionFields();
+  }
+);
+
+</script>
+
+
+<!-- ===================================== -->
+<!-- JavaScript Firebase -->
+<!-- ===================================== -->
+
+<script
+  type="module"
+  src="app.js?v=14">
+</script>
 
 </body>
 
