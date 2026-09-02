@@ -183,8 +183,7 @@ async function loadMarket() {
 
     const directAnimals =
       Object.values(animals).filter(animal =>
-        animal.saleType === "direct" &&
-        animal.status === "available"
+        animal.saleType === "direct"
       );
 
 
@@ -423,7 +422,7 @@ window.requestPurchase = function(animalId) {
   alert(
     "تم اختيار الحيوان: " +
     animalId +
-    "\\nسيتم تفعيل طلب الشراء بعد ربط حساب المستخدم."
+    "\nسيتم تفعيل طلب الشراء بعد ربط حساب المستخدم."
   );
 
 };
@@ -442,9 +441,9 @@ window.placeBid = function(
   alert(
     "المزاد: " +
     auctionId +
-    "\\nالحد الأدنى للمزايدة القادمة: " +
+    "\nالحد الأدنى للمزايدة القادمة: " +
     money(minimum) +
-    "\\nسنفعّل المزايدة الحقيقية في المرحلة التالية."
+    "\nسنفعّل المزايدة الحقيقية في المرحلة التالية."
   );
 
 };
