@@ -1,0 +1,5 @@
+function bid(id,current){let v=prompt("أدخل قيمة المزايدة بالدرهم الإماراتي");if(v&&Number(v)>current){document.getElementById(id).textContent=Number(v).toLocaleString()+" AED";alert("تم تسجيل المزايدة التجريبية");}else if(v)alert("يجب أن تكون المزايدة أعلى من السعر الحالي");}
+function details(name,price){show("<h2>"+name+"</h2><p>السعر: <b>"+price+" AED</b></p><p>الموقع: الذيد – إمارة الشارقة</p><p>يمكن في النسخة التشغيلية إضافة الصور، الفيديو، بيانات التحصين، التقرير البيطري، التواصل والدفع.</p><button onclick=\"closeModal()\">إغلاق</button>");}
+function openLogin(){show("<h2>تسجيل الدخول</h2><input placeholder='رقم الهاتف أو البريد'><input type='password' placeholder='كلمة المرور'><button onclick=\"alert('تسجيل دخول تجريبي')\">دخول</button>");}
+function show(h){document.getElementById("modalContent").innerHTML=h;document.getElementById("modal").classList.add("show")}function closeModal(){document.getElementById("modal").classList.remove("show")}
+function saveListing(e){e.preventDefault();alert("تم حفظ العرض في النموذج التجريبي. ربط قاعدة البيانات يحتاج نسخة تشغيلية.");e.target.reset();}
