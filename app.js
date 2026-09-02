@@ -402,6 +402,46 @@ function accountTypeText(type) {
 
 
 // =====================================
+// فحص اشتراك البائع
+// =====================================
+
+function hasActiveSellerSubscription(profile) {
+
+  if (!profile) {
+    return false;
+  }
+
+  if (
+    profile.accountType !== "seller" &&
+    profile.accountType !== "both"
+  ) {
+    return false;
+  }
+
+  if (
+    profile.subscriptionStatus !==
+    "active"
+  ) {
+    return false;
+  }
+
+  const endDate =
+    timestampToDate(
+      profile.subscriptionEnd
+    );
+
+  if (!endDate) {
+    return false;
+  }
+
+  return (
+    endDate.getTime() >
+    Date.now()
+  );
+}
+
+
+// =====================================
 // ضغط الصور
 // =====================================
 
@@ -1119,6 +1159,85 @@ async function showAccount() {
       `
       : "";
 
+  let subscriptionHtml = "";
+
+  if (
+    accountType === "seller" ||
+    accountType === "both"
+  ) {
+
+    const subscriptionActive =
+      hasActiveSellerSubscription(
+        profile
+      );
+
+    const subscriptionEnd =
+      timestampToDate(
+        profile?.subscriptionEnd
+      );
+
+    if (subscriptionActive) {
+
+      subscriptionHtml = `
+
+        <div style="
+          background:#123c2c;
+          color:#68e6b0;
+          padding:14px;
+          border-radius:10px;
+          margin-bottom:15px;
+          text-align:center;
+          font-weight:bold;
+        ">
+
+          ✅ اشتراك البائع فعال
+
+          ${
+            subscriptionEnd
+              ? `
+                <br>
+                <span style="
+                  color:white;
+                  font-size:14px;
+                ">
+                  ينتهي:
+                  ${formatDate(
+                    profile.subscriptionEnd
+                  )}
+                </span>
+              `
+              : ""
+          }
+
+        </div>
+      `;
+
+    } else {
+
+      subscriptionHtml = `
+
+        <div style="
+          background:#421d1d;
+          color:#ff8d8d;
+          padding:14px;
+          border-radius:10px;
+          margin-bottom:15px;
+          text-align:center;
+          font-weight:bold;
+        ">
+          ⛔ اشتراك البائع غير فعال
+          <br>
+          <span style="
+            color:white;
+            font-size:14px;
+          ">
+            يجب تجديد الاشتراك حتى تتمكن من إضافة إعلان أو مزاد.
+          </span>
+        </div>
+      `;
+    }
+  }
+
   showModal(`
 
     <div style="
@@ -1166,12 +1285,14 @@ async function showAccount() {
       <input
         value="${escapeHtml(phone)}"
         disabled
+        dir="ltr"
         style="
           width:100%;
           box-sizing:border-box;
           padding:14px;
           margin:8px 0 16px;
           border-radius:10px;
+          text-align:left;
         "
       >
 
@@ -1217,6 +1338,8 @@ async function showAccount() {
           ${accountTypeText(accountType)}
         </b>
       </p>
+
+      ${subscriptionHtml}
 
       <p id="profileStatus"></p>
 
@@ -1550,7 +1673,7 @@ async function () {
                       ? `
                         <p>
                           📱 رقم البائع:
-                          <b>
+                          <b dir="ltr">
                             ${escapeHtml(
                               request.sellerPhone
                             )}
@@ -1564,7 +1687,7 @@ async function () {
                     color:#aaa;
                     font-size:14px;
                   ">
-                    يمكنك التواصل مع البائع لإكمال إجراءات البيع والاستلام.
+                    يمكنك التواصل مع البائع لإكمال إجراءات البيع والاستلام والدفع شخصياً.
                   </p>
 
                 </div>
@@ -2032,7 +2155,7 @@ async function () {
 
                 <p>
                   📱 رقم المشتري:
-                  <b>
+                  <b dir="ltr">
                     ${escapeHtml(
                       request.buyerPhone ||
                       "غير متوفر"
@@ -2490,11 +2613,14 @@ function showCodeScreen(phone) {
         تم إرسال الرمز إلى
       </p>
 
-      <p style="
-        text-align:center;
-        color:#68e6b0;
-        font-weight:bold;
-      ">
+      <p
+        dir="ltr"
+        style="
+          text-align:center;
+          color:#68e6b0;
+          font-weight:bold;
+        "
+      >
         ${escapeHtml(phone)}
       </p>
 
@@ -4312,6 +4438,59 @@ async function (animalId) {
     const profile =
       await getUserProfile();
 
+    const existingQuery =
+      query(
+        collection(
+          db,
+          "purchaseRequests"
+        ),
+        where(
+          "buyerId",
+          "==",
+          user.uid
+        )
+      );
+
+    const existingSnapshot =
+      await getDocs(
+        existingQuery
+      );
+
+    let duplicateRequest =
+      false;
+
+    existingSnapshot.forEach(
+      requestDoc => {
+
+        const request =
+          requestDoc.data();
+
+        if (
+          request.animalId ===
+            animalId &&
+          (
+            request.status ===
+              "pending" ||
+            request.status ===
+              "accepted"
+          )
+        ) {
+
+          duplicateRequest =
+            true;
+        }
+      }
+    );
+
+    if (duplicateRequest) {
+
+      alert(
+        "⚠️ لديك طلب شراء سابق لهذا الإعلان."
+      );
+
+      return;
+    }
+
     const ok =
       confirm(
         "هل تريد إرسال طلب شراء؟\n\n" +
@@ -4323,7 +4502,8 @@ async function (animalId) {
         "\nالسعر: " +
         money(
           animal.price
-        )
+        ) +
+        "\n\nالدفع والاستلام يتمان مباشرة بينك وبين البائع."
       );
 
     if (!ok) {
@@ -4737,6 +4917,60 @@ async function (event) {
 
       return;
     }
+
+
+    // =====================================
+    // التحقق من الاشتراك الشهري للبائع
+    // =====================================
+
+    if (
+      !hasActiveSellerSubscription(
+        profile
+      )
+    ) {
+
+      const endDate =
+        timestampToDate(
+          profile.subscriptionEnd
+        );
+
+      let message =
+        "⛔ لا يمكنك نشر إعلان أو إنشاء مزاد حالياً.\n\n";
+
+      if (
+        profile.subscriptionStatus !==
+        "active"
+      ) {
+
+        message +=
+          "اشتراك البائع غير فعال.";
+
+      } else if (
+        endDate &&
+        endDate.getTime() <=
+          Date.now()
+      ) {
+
+        message +=
+          "انتهى اشتراك البائع بتاريخ:\n" +
+          formatDate(
+            profile.subscriptionEnd
+          );
+
+      } else {
+
+        message +=
+          "لا يوجد اشتراك بائع فعال.";
+      }
+
+      message +=
+        "\n\nيرجى تجديد الاشتراك الشهري للمتابعة.";
+
+      alert(message);
+
+      return;
+    }
+
 
     const type =
       document.getElementById(
