@@ -51,12 +51,8 @@ let auctionTimerInterval = null;
 // =====================================
 
 function money(value) {
-
-  return Number(value || 0)
-    .toLocaleString("en-US") +
-    " AED";
+  return Number(value || 0).toLocaleString("en-US") + " AED";
 }
-
 
 function animalIcon(type = "") {
 
@@ -64,54 +60,35 @@ function animalIcon(type = "") {
     type.includes("ناقة") ||
     type.includes("جمل") ||
     type.includes("إبل")
-  ) {
-    return "🐫";
-  }
+  ) return "🐫";
 
   if (
     type.includes("خروف") ||
     type.includes("غنم")
-  ) {
-    return "🐑";
-  }
+  ) return "🐑";
 
-  if (type.includes("ماعز")) {
-    return "🐐";
-  }
+  if (type.includes("ماعز")) return "🐐";
 
   if (
     type.includes("بقر") ||
     type.includes("بقرة") ||
     type.includes("أبقار")
-  ) {
-    return "🐄";
-  }
+  ) return "🐄";
 
-  if (type.includes("دجاج")) {
-    return "🐔";
-  }
+  if (type.includes("دجاج")) return "🐔";
 
   if (
     type.includes("صقر") ||
     type.includes("صقور")
-  ) {
-    return "🦅";
-  }
+  ) return "🦅";
 
   if (
     type.includes("غزال") ||
     type.includes("غزلان")
-  ) {
-    return "🦌";
-  }
+  ) return "🦌";
 
-  if (type.includes("نعام")) {
-    return "🐦";
-  }
-
-  if (type.includes("حمام")) {
-    return "🕊️";
-  }
+  if (type.includes("نعام")) return "🐦";
+  if (type.includes("حمام")) return "🕊️";
 
   return "🐾";
 }
@@ -123,9 +100,7 @@ function animalIcon(type = "") {
 
 function timestampToDate(timestamp) {
 
-  if (!timestamp) {
-    return null;
-  }
+  if (!timestamp) return null;
 
   if (timestamp.toDate) {
     return timestamp.toDate();
@@ -135,14 +110,9 @@ function timestampToDate(timestamp) {
     return timestamp;
   }
 
-  const date =
-    new Date(timestamp);
+  const date = new Date(timestamp);
 
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
+  if (Number.isNaN(date.getTime())) {
     return null;
   }
 
@@ -152,12 +122,9 @@ function timestampToDate(timestamp) {
 
 function timestampToMillis(timestamp) {
 
-  const date =
-    timestampToDate(timestamp);
+  const date = timestampToDate(timestamp);
 
-  if (!date) {
-    return 0;
-  }
+  if (!date) return 0;
 
   return date.getTime();
 }
@@ -165,12 +132,9 @@ function timestampToMillis(timestamp) {
 
 function formatDate(timestamp) {
 
-  const date =
-    timestampToDate(timestamp);
+  const date = timestampToDate(timestamp);
 
-  if (!date) {
-    return "غير محدد";
-  }
+  if (!date) return "غير محدد";
 
   return date.toLocaleString(
     "ar-AE",
@@ -188,59 +152,36 @@ function formatDate(timestamp) {
 
 function getCountdownText(endTime) {
 
-  const end =
-    timestampToMillis(endTime);
+  const end = timestampToMillis(endTime);
 
-  if (!end) {
-    return "غير محدد";
-  }
+  if (!end) return "غير محدد";
 
-  const difference =
-    end - Date.now();
+  const difference = end - Date.now();
 
   if (difference <= 0) {
     return "انتهى المزاد";
   }
 
   const totalSeconds =
-    Math.floor(
-      difference / 1000
-    );
+    Math.floor(difference / 1000);
 
   const days =
-    Math.floor(
-      totalSeconds / 86400
-    );
+    Math.floor(totalSeconds / 86400);
 
   const hours =
-    Math.floor(
-      (totalSeconds % 86400) /
-      3600
-    );
+    Math.floor((totalSeconds % 86400) / 3600);
 
   const minutes =
-    Math.floor(
-      (totalSeconds % 3600) /
-      60
-    );
+    Math.floor((totalSeconds % 3600) / 60);
 
   const seconds =
     totalSeconds % 60;
 
-  const hh =
-    String(hours)
-      .padStart(2, "0");
-
-  const mm =
-    String(minutes)
-      .padStart(2, "0");
-
-  const ss =
-    String(seconds)
-      .padStart(2, "0");
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
 
   if (days > 0) {
-
     return (
       "متبقي " +
       days +
@@ -271,14 +212,9 @@ function getCountdownText(endTime) {
 function startAuctionTimers() {
 
   if (auctionTimerInterval) {
-
-    clearInterval(
-      auctionTimerInterval
-    );
-
+    clearInterval(auctionTimerInterval);
     auctionTimerInterval = null;
   }
-
 
   function updateTimers() {
 
@@ -287,129 +223,102 @@ function startAuctionTimers() {
         "[data-auction-end]"
       );
 
-    timers.forEach(
-      timer => {
+    timers.forEach(timer => {
 
-        const end =
-          Number(
-            timer.dataset.auctionEnd ||
-            0
-          );
+      const end =
+        Number(
+          timer.dataset.auctionEnd || 0
+        );
 
-        const auctionId =
-          timer.dataset.auctionId;
+      const auctionId =
+        timer.dataset.auctionId;
 
-        const button =
-          document.getElementById(
-            "bid-button-" +
-            auctionId
-          );
+      const button =
+        document.getElementById(
+          "bid-button-" + auctionId
+        );
 
-        const tag =
-          document.getElementById(
-            "auction-tag-" +
-            auctionId
-          );
+      const tag =
+        document.getElementById(
+          "auction-tag-" + auctionId
+        );
 
-        const difference =
-          end - Date.now();
+      const difference =
+        end - Date.now();
 
-        if (
-          !end ||
-          difference <= 0
-        ) {
+      if (!end || difference <= 0) {
 
-          timer.innerHTML =
-            "⛔ انتهى المزاد";
+        timer.innerHTML =
+          "⛔ انتهى المزاد";
 
-          timer.style.color =
-            "#ff8d8d";
+        timer.style.color =
+          "#ff8d8d";
 
-          if (button) {
-
-            button.disabled =
-              true;
-
-            button.textContent =
-              "انتهى المزاد";
-
-            button.style.background =
-              "#555";
-          }
-
-          if (tag) {
-
-            tag.textContent =
-              "مزاد منتهي";
-
-            tag.style.background =
-              "#6d2929";
-          }
-
-          return;
+        if (button) {
+          button.disabled = true;
+          button.textContent = "انتهى المزاد";
+          button.style.background = "#555";
         }
 
-        const totalSeconds =
-          Math.floor(
-            difference / 1000
-          );
-
-        const days =
-          Math.floor(
-            totalSeconds / 86400
-          );
-
-        const hours =
-          Math.floor(
-            (totalSeconds % 86400) /
-            3600
-          );
-
-        const minutes =
-          Math.floor(
-            (totalSeconds % 3600) /
-            60
-          );
-
-        const seconds =
-          totalSeconds % 60;
-
-        const hh =
-          String(hours)
-            .padStart(2, "0");
-
-        const mm =
-          String(minutes)
-            .padStart(2, "0");
-
-        const ss =
-          String(seconds)
-            .padStart(2, "0");
-
-        if (days > 0) {
-
-          timer.innerHTML =
-            "⏱ متبقي: " +
-            days +
-            " يوم و " +
-            hh +
-            ":" +
-            mm +
-            ":" +
-            ss;
-
-        } else {
-
-          timer.innerHTML =
-            "⏱ متبقي: " +
-            hh +
-            ":" +
-            mm +
-            ":" +
-            ss;
+        if (tag) {
+          tag.textContent = "مزاد منتهي";
+          tag.style.background = "#6d2929";
         }
+
+        return;
       }
-    );
+
+      const totalSeconds =
+        Math.floor(difference / 1000);
+
+      const days =
+        Math.floor(totalSeconds / 86400);
+
+      const hours =
+        Math.floor(
+          (totalSeconds % 86400) / 3600
+        );
+
+      const minutes =
+        Math.floor(
+          (totalSeconds % 3600) / 60
+        );
+
+      const seconds =
+        totalSeconds % 60;
+
+      const hh =
+        String(hours).padStart(2, "0");
+
+      const mm =
+        String(minutes).padStart(2, "0");
+
+      const ss =
+        String(seconds).padStart(2, "0");
+
+      if (days > 0) {
+
+        timer.innerHTML =
+          "⏱ متبقي: " +
+          days +
+          " يوم و " +
+          hh +
+          ":" +
+          mm +
+          ":" +
+          ss;
+
+      } else {
+
+        timer.innerHTML =
+          "⏱ متبقي: " +
+          hh +
+          ":" +
+          mm +
+          ":" +
+          ss;
+      }
+    });
   }
 
   updateTimers();
@@ -463,15 +372,11 @@ function compressImageFile(file) {
       if (
         !file ||
         !file.type ||
-        !file.type.startsWith(
-          "image/"
-        )
+        !file.type.startsWith("image/")
       ) {
 
         reject(
-          new Error(
-            "INVALID_IMAGE"
-          )
+          new Error("INVALID_IMAGE")
         );
 
         return;
@@ -482,11 +387,8 @@ function compressImageFile(file) {
 
       reader.onerror =
         function () {
-
           reject(
-            new Error(
-              "IMAGE_READ_ERROR"
-            )
+            new Error("IMAGE_READ_ERROR")
           );
         };
 
@@ -498,25 +400,18 @@ function compressImageFile(file) {
 
           img.onerror =
             function () {
-
               reject(
-                new Error(
-                  "IMAGE_LOAD_ERROR"
-                )
+                new Error("IMAGE_LOAD_ERROR")
               );
             };
 
           img.onload =
             function () {
 
-              const maxSize =
-                640;
+              const maxSize = 640;
 
-              let width =
-                img.width;
-
-              let height =
-                img.height;
+              let width = img.width;
+              let height = img.height;
 
               if (
                 width > maxSize ||
@@ -545,23 +440,16 @@ function compressImageFile(file) {
                   "canvas"
                 );
 
-              canvas.width =
-                width;
-
-              canvas.height =
-                height;
+              canvas.width = width;
+              canvas.height = height;
 
               const ctx =
-                canvas.getContext(
-                  "2d"
-                );
+                canvas.getContext("2d");
 
               if (!ctx) {
 
                 reject(
-                  new Error(
-                    "CANVAS_ERROR"
-                  )
+                  new Error("CANVAS_ERROR")
                 );
 
                 return;
@@ -597,9 +485,7 @@ function compressImageFile(file) {
             event.target.result;
         };
 
-      reader.readAsDataURL(
-        file
-      );
+      reader.readAsDataURL(file);
     }
   );
 }
@@ -625,12 +511,9 @@ async function getListingImages() {
   }
 
   const files =
-    Array.from(
-      input.files
-    );
+    Array.from(input.files);
 
   if (files.length > 5) {
-
     throw new Error(
       "TOO_MANY_IMAGES"
     );
@@ -643,25 +526,19 @@ async function getListingImages() {
   for (const file of files) {
 
     const imageData =
-      await compressImageFile(
-        file
-      );
+      await compressImageFile(file);
 
     totalSize +=
       imageData.length;
 
-    if (
-      totalSize > 650000
-    ) {
+    if (totalSize > 650000) {
 
       throw new Error(
         "IMAGES_TOO_LARGE"
       );
     }
 
-    images.push(
-      imageData
-    );
+    images.push(imageData);
   }
 
   return images;
@@ -674,9 +551,7 @@ async function getListingImages() {
 
 function safeImageData(value) {
 
-  if (
-    typeof value !== "string"
-  ) {
+  if (typeof value !== "string") {
     return "";
   }
 
@@ -701,16 +576,12 @@ function animalPhotoHtml(
 ) {
 
   const images =
-    Array.isArray(
-      animal.images
-    )
+    Array.isArray(animal.images)
       ? animal.images
       : [];
 
   const firstImage =
-    safeImageData(
-      images[0]
-    );
+    safeImageData(images[0]);
 
   if (firstImage) {
 
@@ -768,9 +639,7 @@ function animalPhotoHtml(
       border-radius:14px;
       padding:20px;
     ">
-      ${animalIcon(
-        animal.type || ""
-      )}
+      ${animalIcon(animal.type || "")}
     </div>
 
   `;
@@ -781,9 +650,7 @@ function animalPhotoHtml(
 // زر إدارة الإعلان
 // =====================================
 
-function ownerManagementButton(
-  animal
-) {
+function ownerManagementButton(animal) {
 
   const user =
     auth.currentUser;
@@ -791,8 +658,7 @@ function ownerManagementButton(
   if (
     !user ||
     !animal ||
-    animal.sellerId !==
-      user.uid
+    animal.sellerId !== user.uid
   ) {
     return "";
   }
@@ -826,9 +692,7 @@ function ownerManagementButton(
 
 async function ensureUserProfile(user) {
 
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   try {
 
@@ -840,9 +704,7 @@ async function ensureUserProfile(user) {
       );
 
     const userSnap =
-      await getDoc(
-        userRef
-      );
+      await getDoc(userRef);
 
     if (!userSnap.exists()) {
 
@@ -853,8 +715,7 @@ async function ensureUserProfile(user) {
             user.uid,
 
           phoneNumber:
-            user.phoneNumber ||
-            "",
+            user.phoneNumber || "",
 
           displayName:
             "",
@@ -879,8 +740,7 @@ async function ensureUserProfile(user) {
         userRef,
         {
           phoneNumber:
-            user.phoneNumber ||
-            "",
+            user.phoneNumber || "",
 
           lastLoginAt:
             serverTimestamp()
@@ -906,9 +766,7 @@ async function getUserProfile() {
   const user =
     auth.currentUser;
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   try {
 
@@ -926,8 +784,7 @@ async function getUserProfile() {
     }
 
     return {
-      id:
-        userSnap.id,
+      id: userSnap.id,
       ...userSnap.data()
     };
 
@@ -944,7 +801,7 @@ async function getUserProfile() {
 
 
 // =====================================
-// Modal
+// Modal - نسخة محسنة للجوال
 // =====================================
 
 function showModal(html) {
@@ -959,18 +816,102 @@ function showModal(html) {
       "modalContent"
     );
 
-  if (
-    !modal ||
-    !content
-  ) {
+  if (!modal || !content) {
     return;
   }
 
-  content.innerHTML =
-    html;
+  content.innerHTML = html;
 
   modal.style.display =
     "flex";
+
+  modal.style.alignItems =
+    "flex-start";
+
+  modal.style.justifyContent =
+    "center";
+
+  modal.style.overflowY =
+    "auto";
+
+  modal.style.overflowX =
+    "hidden";
+
+  modal.style.paddingTop =
+    "20px";
+
+  modal.style.paddingBottom =
+    "30px";
+
+  modal.style.boxSizing =
+    "border-box";
+
+  // إعادة النافذة إلى الأعلى عند فتحها
+  modal.scrollTop = 0;
+
+  content.scrollTop = 0;
+
+  // تثبيت زر الإغلاق
+  const closeButton =
+    modal.querySelector(
+      ".close"
+    );
+
+  if (closeButton) {
+
+    closeButton.style.position =
+      "fixed";
+
+    closeButton.style.top =
+      "18px";
+
+    closeButton.style.left =
+      "18px";
+
+    closeButton.style.zIndex =
+      "999999";
+
+    closeButton.style.width =
+      "42px";
+
+    closeButton.style.height =
+      "42px";
+
+    closeButton.style.display =
+      "flex";
+
+    closeButton.style.alignItems =
+      "center";
+
+    closeButton.style.justifyContent =
+      "center";
+
+    closeButton.style.background =
+      "#8b2929";
+
+    closeButton.style.color =
+      "#ffffff";
+
+    closeButton.style.borderRadius =
+      "50%";
+
+    closeButton.style.fontSize =
+      "26px";
+
+    closeButton.style.cursor =
+      "pointer";
+
+    closeButton.style.boxShadow =
+      "0 3px 12px rgba(0,0,0,.45)";
+  }
+
+  setTimeout(
+    () => {
+      modal.scrollTop = 0;
+      content.scrollTop = 0;
+    },
+    0
+  );
 }
 
 
@@ -983,7 +924,6 @@ function () {
     );
 
   if (modal) {
-
     modal.style.display =
       "none";
   }
@@ -999,9 +939,7 @@ async function showAccount() {
   const user =
     auth.currentUser;
 
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   showModal(`
     <div style="
@@ -1013,29 +951,27 @@ async function showAccount() {
       <div style="font-size:55px;">
         👤
       </div>
+
       <h2 style="color:#68e6b0;">
         حسابي
       </h2>
+
       <p style="color:#aaa;">
         جاري تحميل البيانات...
       </p>
     </div>
   `);
 
-  await ensureUserProfile(
-    user
-  );
+  await ensureUserProfile(user);
 
   const profile =
     await getUserProfile();
 
   const displayName =
-    profile?.displayName ||
-    "";
+    profile?.displayName || "";
 
   const accountType =
-    profile?.accountType ||
-    "buyer";
+    profile?.accountType || "buyer";
 
   const phone =
     user.phoneNumber ||
@@ -1053,6 +989,7 @@ async function showAccount() {
       <div style="
         text-align:center;
       ">
+
         <div style="font-size:55px;">
           👤
         </div>
@@ -1060,6 +997,7 @@ async function showAccount() {
         <h2 style="color:#68e6b0;">
           حسابي
         </h2>
+
       </div>
 
       <label>
@@ -1181,9 +1119,7 @@ async function () {
   const user =
     auth.currentUser;
 
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   const nameInput =
     document.getElementById(
@@ -1214,9 +1150,7 @@ async function () {
   const accountType =
     typeInput.value;
 
-  if (
-    displayName.length < 2
-  ) {
+  if (displayName.length < 2) {
 
     status.innerHTML =
       "❌ أدخل الاسم.";
@@ -1233,15 +1167,11 @@ async function () {
         user.uid
       ),
       {
-        displayName:
-          displayName,
-
-        accountType:
-          accountType,
+        displayName,
+        accountType,
 
         phoneNumber:
-          user.phoneNumber ||
-          "",
+          user.phoneNumber || "",
 
         updatedAt:
           serverTimestamp()
@@ -1346,10 +1276,7 @@ async function () {
       "loginStatus"
     );
 
-  if (
-    !input ||
-    !status
-  ) {
+  if (!input || !status) {
     return;
   }
 
@@ -1358,27 +1285,20 @@ async function () {
       .replace(/\s+/g, "")
       .replace(/-/g, "");
 
-  if (
-    phone.startsWith("05")
-  ) {
+  if (phone.startsWith("05")) {
 
     phone =
       "+971" +
       phone.substring(1);
   }
 
-  if (
-    phone.startsWith("971")
-  ) {
+  if (phone.startsWith("971")) {
 
     phone =
-      "+" +
-      phone;
+      "+" + phone;
   }
 
-  if (
-    !phone.startsWith("+9715")
-  ) {
+  if (!phone.startsWith("+9715")) {
 
     status.innerHTML =
       "❌ رقم الهاتف غير صحيح.";
@@ -1394,8 +1314,7 @@ async function () {
         recaptchaVerifier.clear();
       } catch (e) {}
 
-      recaptchaVerifier =
-        null;
+      recaptchaVerifier = null;
     }
 
     recaptchaVerifier =
@@ -1403,8 +1322,7 @@ async function () {
         auth,
         "recaptcha-container",
         {
-          size:
-            "invisible"
+          size: "invisible"
         }
       );
 
@@ -1415,9 +1333,7 @@ async function () {
         recaptchaVerifier
       );
 
-    showCodeScreen(
-      phone
-    );
+    showCodeScreen(phone);
 
   } catch (error) {
 
@@ -1508,10 +1424,9 @@ async function () {
   try {
 
     const result =
-      await confirmationResult
-        .confirm(
-          code.value.trim()
-        );
+      await confirmationResult.confirm(
+        code.value.trim()
+      );
 
     await ensureUserProfile(
       result.user
@@ -1555,12 +1470,9 @@ onAuthStateChanged(
 
     if (user) {
 
-      await ensureUserProfile(
-        user
-      );
+      await ensureUserProfile(user);
 
       if (loginButton) {
-
         loginButton.textContent =
           "✅ حسابي";
       }
@@ -1568,7 +1480,6 @@ onAuthStateChanged(
     } else {
 
       if (loginButton) {
-
         loginButton.textContent =
           "تسجيل الدخول";
       }
@@ -1664,13 +1575,9 @@ function createFirebaseArea() {
   `;
 
   (
-    document.querySelector(
-      "main"
-    ) ||
+    document.querySelector("main") ||
     document.body
-  ).appendChild(
-    area
-  );
+  ).appendChild(area);
 }
 
 
@@ -1723,46 +1630,38 @@ async function loadMarket() {
     animalSnapshot.forEach(
       animalDoc => {
 
-        animals[
-          animalDoc.id
-        ] = {
-          id:
-            animalDoc.id,
+        animals[animalDoc.id] = {
+          id: animalDoc.id,
           ...animalDoc.data()
         };
       }
     );
 
     const directAnimals =
-      Object.values(
-        animals
-      )
-      .filter(
-        animal =>
-          animal.saleType ===
-            "direct" &&
-          (
-            !animal.status ||
-            animal.status ===
-              "active"
-          )
-      );
+      Object.values(animals)
+        .filter(
+          animal =>
+            animal.saleType ===
+              "direct" &&
+            (
+              !animal.status ||
+              animal.status ===
+                "active"
+            )
+        );
 
-    if (
-      directAnimals.length === 0
-    ) {
+    if (directAnimals.length === 0) {
 
-      directContainer.innerHTML =
-        `
-          <div style="
-            background:#222;
-            color:white;
-            padding:20px;
-            border-radius:15px;
-          ">
-            لا توجد عروض بيع مباشر حالياً
-          </div>
-        `;
+      directContainer.innerHTML = `
+        <div style="
+          background:#222;
+          color:white;
+          padding:20px;
+          border-radius:15px;
+        ">
+          لا توجد عروض بيع مباشر حالياً
+        </div>
+      `;
 
     } else {
 
@@ -1793,9 +1692,7 @@ async function loadMarket() {
                 ? `
                   <p>
                     السلالة:
-                    ${escapeHtml(
-                      animal.breed
-                    )}
+                    ${escapeHtml(animal.breed)}
                   </p>
                 `
                 : ""
@@ -1806,9 +1703,7 @@ async function loadMarket() {
                 ? `
                   <p>
                     العمر:
-                    ${escapeHtml(
-                      animal.age
-                    )}
+                    ${escapeHtml(animal.age)}
                   </p>
                 `
                 : ""
@@ -1828,9 +1723,7 @@ async function loadMarket() {
               font-weight:bold;
               margin:15px 0;
             ">
-              ${money(
-                animal.price
-              )}
+              ${money(animal.price)}
             </div>
 
             <button
@@ -1874,8 +1767,7 @@ async function loadMarket() {
       auctionDoc => {
 
         auctions.push({
-          id:
-            auctionDoc.id,
+          id: auctionDoc.id,
           ...auctionDoc.data()
         });
       }
@@ -1888,21 +1780,18 @@ async function loadMarket() {
           "active"
       );
 
-    if (
-      activeAuctions.length === 0
-    ) {
+    if (activeAuctions.length === 0) {
 
-      auctionContainer.innerHTML =
-        `
-          <div style="
-            background:#222;
-            color:white;
-            padding:20px;
-            border-radius:15px;
-          ">
-            لا توجد مزادات حالياً
-          </div>
-        `;
+      auctionContainer.innerHTML = `
+        <div style="
+          background:#222;
+          color:white;
+          padding:20px;
+          border-radius:15px;
+        ">
+          لا توجد مزادات حالياً
+        </div>
+      `;
 
     } else {
 
@@ -1940,8 +1829,7 @@ async function loadMarket() {
 
               const expired =
                 !endMillis ||
-                endMillis <=
-                Date.now();
+                endMillis <= Date.now();
 
               return `
 
@@ -1984,9 +1872,7 @@ async function loadMarket() {
                       ? `
                         <p>
                           السلالة:
-                          ${escapeHtml(
-                            animal.breed
-                          )}
+                          ${escapeHtml(animal.breed)}
                         </p>
                       `
                       : ""
@@ -1997,9 +1883,7 @@ async function loadMarket() {
                       ? `
                         <p>
                           العمر:
-                          ${escapeHtml(
-                            animal.age
-                          )}
+                          ${escapeHtml(animal.age)}
                         </p>
                       `
                       : ""
@@ -2025,9 +1909,7 @@ async function loadMarket() {
                   <p>
                     أقل زيادة:
                     <b>
-                      ${money(
-                        increment
-                      )}
+                      ${money(increment)}
                     </b>
                   </p>
 
@@ -2039,9 +1921,7 @@ async function loadMarket() {
                   ">
                     السعر الحالي:
                     <br>
-                    ${money(
-                      currentPrice
-                    )}
+                    ${money(currentPrice)}
                   </div>
 
                   ${
@@ -2050,9 +1930,7 @@ async function loadMarket() {
                         <p>
                           الحد الأدنى للمزايدة القادمة:
                           <b>
-                            ${money(
-                              minimumNextBid
-                            )}
+                            ${money(minimumNextBid)}
                           </b>
                         </p>
                       `
@@ -2164,9 +2042,7 @@ async function (animalId) {
       );
 
     const animalSnap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
     if (!animalSnap.exists()) {
 
@@ -2178,14 +2054,12 @@ async function (animalId) {
     }
 
     const animal = {
-      id:
-        animalSnap.id,
+      id: animalSnap.id,
       ...animalSnap.data()
     };
 
     if (
-      animal.sellerId !==
-      user.uid
+      animal.sellerId !== user.uid
     ) {
 
       alert(
@@ -2196,9 +2070,7 @@ async function (animalId) {
     }
 
     const images =
-      Array.isArray(
-        animal.images
-      )
+      Array.isArray(animal.images)
         ? animal.images
         : [];
 
@@ -2209,13 +2081,9 @@ async function (animalId) {
               (image, index) => {
 
                 const safe =
-                  safeImageData(
-                    image
-                  );
+                  safeImageData(image);
 
-                if (!safe) {
-                  return "";
-                }
+                if (!safe) return "";
 
                 return `
 
@@ -2264,8 +2132,7 @@ async function (animalId) {
         `;
 
     const directPriceField =
-      animal.saleType ===
-      "direct"
+      animal.saleType === "direct"
         ? `
           <label style="
             display:block;
@@ -2308,15 +2175,16 @@ async function (animalId) {
         direction:rtl;
         color:white;
         padding:10px;
+        padding-top:15px;
       ">
 
         <h2 style="
           color:#68e6b0;
           text-align:center;
+          margin-top:0;
         ">
           ⚙️ إدارة إعلاني
         </h2>
-
 
         <h3 style="
           color:#68e6b0;
@@ -2324,7 +2192,6 @@ async function (animalId) {
         ">
           ✏️ تعديل بيانات الإعلان
         </h3>
-
 
         <label style="
           display:block;
@@ -2344,44 +2211,17 @@ async function (animalId) {
           "
         >
 
-          <option value="ناقة" ${animal.type === "ناقة" ? "selected" : ""}>
-            ناقة
-          </option>
-
-          <option value="غنم" ${animal.type === "غنم" ? "selected" : ""}>
-            غنم
-          </option>
-
-          <option value="ماعز" ${animal.type === "ماعز" ? "selected" : ""}>
-            ماعز
-          </option>
-
-          <option value="بقر" ${animal.type === "بقر" ? "selected" : ""}>
-            بقر
-          </option>
-
-          <option value="دجاج" ${animal.type === "دجاج" ? "selected" : ""}>
-            دجاج
-          </option>
-
-          <option value="صقور" ${animal.type === "صقور" ? "selected" : ""}>
-            صقور
-          </option>
-
-          <option value="غزال" ${animal.type === "غزال" ? "selected" : ""}>
-            غزال
-          </option>
-
-          <option value="نعام" ${animal.type === "نعام" ? "selected" : ""}>
-            نعام
-          </option>
-
-          <option value="حمام" ${animal.type === "حمام" ? "selected" : ""}>
-            حمام
-          </option>
+          <option value="ناقة" ${animal.type === "ناقة" ? "selected" : ""}>ناقة</option>
+          <option value="غنم" ${animal.type === "غنم" ? "selected" : ""}>غنم</option>
+          <option value="ماعز" ${animal.type === "ماعز" ? "selected" : ""}>ماعز</option>
+          <option value="بقر" ${animal.type === "بقر" ? "selected" : ""}>بقر</option>
+          <option value="دجاج" ${animal.type === "دجاج" ? "selected" : ""}>دجاج</option>
+          <option value="صقور" ${animal.type === "صقور" ? "selected" : ""}>صقور</option>
+          <option value="غزال" ${animal.type === "غزال" ? "selected" : ""}>غزال</option>
+          <option value="نعام" ${animal.type === "نعام" ? "selected" : ""}>نعام</option>
+          <option value="حمام" ${animal.type === "حمام" ? "selected" : ""}>حمام</option>
 
         </select>
-
 
         <label style="
           display:block;
@@ -2406,7 +2246,6 @@ async function (animalId) {
           "
         >
 
-
         <label style="
           display:block;
           margin-bottom:6px;
@@ -2430,7 +2269,6 @@ async function (animalId) {
           "
         >
 
-
         <label style="
           display:block;
           margin-bottom:6px;
@@ -2443,7 +2281,8 @@ async function (animalId) {
           type="text"
           maxlength="80"
           value="${escapeHtml(
-            animal.location || "الذيد"
+            animal.location ||
+            "الذيد"
           )}"
           style="
             width:100%;
@@ -2454,9 +2293,7 @@ async function (animalId) {
           "
         >
 
-
         ${directPriceField}
-
 
         <label style="
           display:block;
@@ -2480,7 +2317,6 @@ async function (animalId) {
           animal.description || ""
         )}</textarea>
 
-
         <button
           onclick="saveListingEdits('${animal.id}')"
           style="
@@ -2498,12 +2334,10 @@ async function (animalId) {
           💾 حفظ التعديلات
         </button>
 
-
         <hr style="
           border-color:#444;
           margin:22px 0;
         ">
-
 
         <h3 style="
           color:#68e6b0;
@@ -2513,12 +2347,10 @@ async function (animalId) {
 
         ${imageHtml}
 
-
         <hr style="
           border-color:#444;
           margin:22px 0;
         ">
-
 
         <h3>
           🖼️ استبدال الصور
@@ -2597,6 +2429,8 @@ async function (animalId) {
           🗑️ حذف الإعلان نهائياً
         </button>
 
+        <div style="height:40px;"></div>
+
       </div>
     `);
 
@@ -2643,9 +2477,7 @@ async function (animalId) {
       );
 
     const animalSnap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
     if (!animalSnap.exists()) {
 
@@ -2660,8 +2492,7 @@ async function (animalId) {
       animalSnap.data();
 
     if (
-      animal.sellerId !==
-      user.uid
+      animal.sellerId !== user.uid
     ) {
 
       alert(
@@ -2671,14 +2502,12 @@ async function (animalId) {
       return;
     }
 
-
     const type =
       document
         .getElementById(
           "editAnimalType"
         )
-        ?.value ||
-      "";
+        ?.value || "";
 
     const breed =
       document
@@ -2686,8 +2515,7 @@ async function (animalId) {
           "editAnimalBreed"
         )
         ?.value
-        .trim() ||
-      "";
+        .trim() || "";
 
     const age =
       document
@@ -2695,8 +2523,7 @@ async function (animalId) {
           "editAnimalAge"
         )
         ?.value
-        .trim() ||
-      "";
+        .trim() || "";
 
     const location =
       document
@@ -2704,8 +2531,7 @@ async function (animalId) {
           "editAnimalLocation"
         )
         ?.value
-        .trim() ||
-      "";
+        .trim() || "";
 
     const description =
       document
@@ -2713,9 +2539,7 @@ async function (animalId) {
           "editAnimalDescription"
         )
         ?.value
-        .trim() ||
-      "";
-
+        .trim() || "";
 
     const allowedTypes = [
       "ناقة",
@@ -2729,11 +2553,8 @@ async function (animalId) {
       "حمام"
     ];
 
-
     if (
-      !allowedTypes.includes(
-        type
-      )
+      !allowedTypes.includes(type)
     ) {
 
       alert(
@@ -2742,7 +2563,6 @@ async function (animalId) {
 
       return;
     }
-
 
     if (!location) {
 
@@ -2753,33 +2573,18 @@ async function (animalId) {
       return;
     }
 
-
     const updateData = {
 
-      name:
-        type,
-
-      type:
-        type,
-
-      breed:
-        breed,
-
-      age:
-        age,
-
-      location:
-        location,
-
-      description:
-        description,
+      name: type,
+      type,
+      breed,
+      age,
+      location,
+      description,
 
       updatedAt:
         serverTimestamp()
     };
-
-
-    // تعديل السعر في البيع المباشر فقط
 
     if (
       animal.saleType ===
@@ -2796,9 +2601,7 @@ async function (animalId) {
         );
 
       if (
-        !Number.isFinite(
-          price
-        ) ||
+        !Number.isFinite(price) ||
         price <= 0
       ) {
 
@@ -2809,10 +2612,8 @@ async function (animalId) {
         return;
       }
 
-      updateData.price =
-        price;
+      updateData.price = price;
     }
-
 
     await setDoc(
       animalRef,
@@ -2821,7 +2622,6 @@ async function (animalId) {
         merge: true
       }
     );
-
 
     alert(
       "✅ تم حفظ تعديلات الإعلان بنجاح."
@@ -2872,18 +2672,14 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
-    return;
-  }
+  if (!user) return;
 
   const ok =
     confirm(
       "هل تريد حذف هذه الصورة؟"
     );
 
-  if (!ok) {
-    return;
-  }
+  if (!ok) return;
 
   try {
 
@@ -2895,33 +2691,24 @@ async function (
       );
 
     const snap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
-    if (!snap.exists()) {
-      return;
-    }
+    if (!snap.exists()) return;
 
     const animal =
       snap.data();
 
     if (
-      animal.sellerId !==
-      user.uid
+      animal.sellerId !== user.uid
     ) {
 
-      alert(
-        "غير مصرح."
-      );
+      alert("غير مصرح.");
 
       return;
     }
 
     const images =
-      Array.isArray(
-        animal.images
-      )
+      Array.isArray(animal.images)
         ? [...animal.images]
         : [];
 
@@ -2933,8 +2720,7 @@ async function (
     await setDoc(
       animalRef,
       {
-        images:
-          images,
+        images,
 
         updatedAt:
           serverTimestamp()
@@ -2977,9 +2763,7 @@ async function (animalId) {
       "هل تريد حذف جميع صور الإعلان؟"
     );
 
-  if (!ok) {
-    return;
-  }
+  if (!ok) return;
 
   try {
 
@@ -2991,9 +2775,7 @@ async function (animalId) {
       );
 
     const snap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
     if (
       !snap.exists() ||
@@ -3001,9 +2783,7 @@ async function (animalId) {
         auth.currentUser?.uid
     ) {
 
-      alert(
-        "غير مصرح."
-      );
+      alert("غير مصرح.");
 
       return;
     }
@@ -3011,8 +2791,7 @@ async function (animalId) {
     await setDoc(
       animalRef,
       {
-        images:
-          [],
+        images: [],
 
         updatedAt:
           serverTimestamp()
@@ -3068,9 +2847,7 @@ async function (animalId) {
     return;
   }
 
-  if (
-    input.files.length > 5
-  ) {
+  if (input.files.length > 5) {
 
     alert(
       "يمكن اختيار 5 صور كحد أقصى."
@@ -3089,9 +2866,7 @@ async function (animalId) {
       );
 
     const snap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
     if (
       !snap.exists() ||
@@ -3099,37 +2874,27 @@ async function (animalId) {
         auth.currentUser?.uid
     ) {
 
-      alert(
-        "غير مصرح."
-      );
+      alert("غير مصرح.");
 
       return;
     }
 
     const files =
-      Array.from(
-        input.files
-      );
+      Array.from(input.files);
 
     const images = [];
 
     let totalSize = 0;
 
-    for (
-      const file of files
-    ) {
+    for (const file of files) {
 
       const imageData =
-        await compressImageFile(
-          file
-        );
+        await compressImageFile(file);
 
       totalSize +=
         imageData.length;
 
-      if (
-        totalSize > 650000
-      ) {
+      if (totalSize > 650000) {
 
         alert(
           "حجم الصور كبير جداً."
@@ -3138,16 +2903,13 @@ async function (animalId) {
         return;
       }
 
-      images.push(
-        imageData
-      );
+      images.push(imageData);
     }
 
     await setDoc(
       animalRef,
       {
-        images:
-          images,
+        images,
 
         updatedAt:
           serverTimestamp()
@@ -3190,9 +2952,7 @@ async function (animalId) {
       "هل تؤكد أن الحلال تم بيعه؟\n\nسيتم إخفاء الإعلان من السوق."
     );
 
-  if (!ok) {
-    return;
-  }
+  if (!ok) return;
 
   try {
 
@@ -3204,9 +2964,7 @@ async function (animalId) {
       );
 
     const animalSnap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
     if (!animalSnap.exists()) {
 
@@ -3222,20 +2980,16 @@ async function (animalId) {
 
     if (
       animal.sellerId !==
-      auth.currentUser?.uid
+        auth.currentUser?.uid
     ) {
 
-      alert(
-        "غير مصرح."
-      );
+      alert("غير مصرح.");
 
       return;
     }
 
     const batch =
-      writeBatch(
-        db
-      );
+      writeBatch(db);
 
     batch.set(
       animalRef,
@@ -3304,7 +3058,7 @@ async function (animalId) {
 
 
 // =====================================
-// حذف الإعلان
+// حذف الإعلان نهائياً
 // =====================================
 
 window.deleteListing =
@@ -3315,9 +3069,7 @@ async function (animalId) {
       "⚠️ هل أنت متأكد من حذف الإعلان نهائياً؟\n\nلا يمكن التراجع عن الحذف."
     );
 
-  if (!ok) {
-    return;
-  }
+  if (!ok) return;
 
   try {
 
@@ -3329,9 +3081,7 @@ async function (animalId) {
       );
 
     const animalSnap =
-      await getDoc(
-        animalRef
-      );
+      await getDoc(animalRef);
 
     if (!animalSnap.exists()) {
       return;
@@ -3342,24 +3092,18 @@ async function (animalId) {
 
     if (
       animal.sellerId !==
-      auth.currentUser?.uid
+        auth.currentUser?.uid
     ) {
 
-      alert(
-        "غير مصرح."
-      );
+      alert("غير مصرح.");
 
       return;
     }
 
     const batch =
-      writeBatch(
-        db
-      );
+      writeBatch(db);
 
-    batch.delete(
-      animalRef
-    );
+    batch.delete(animalRef);
 
     if (
       animal.saleType ===
@@ -3491,8 +3235,7 @@ async function (auctionId) {
 
         if (
           !endMillis ||
-          Date.now() >=
-            endMillis
+          Date.now() >= endMillis
         ) {
 
           throw new Error(
@@ -3528,25 +3271,19 @@ async function (auctionId) {
         minimumBid
       );
 
-    if (
-      enteredValue === null
-    ) {
+    if (enteredValue === null) {
       return;
     }
 
     const bidAmount =
       Number(
-        String(
-          enteredValue
-        )
+        String(enteredValue)
           .replace(/,/g, "")
           .trim()
       );
 
     if (
-      !Number.isFinite(
-        bidAmount
-      ) ||
+      !Number.isFinite(bidAmount) ||
       bidAmount <= 0
     ) {
 
@@ -3593,8 +3330,7 @@ async function (auctionId) {
 
         if (
           !endMillis ||
-          Date.now() >=
-            endMillis
+          Date.now() >= endMillis
         ) {
 
           throw new Error(
@@ -3644,8 +3380,7 @@ async function (auctionId) {
 
             lastBidderPhone:
               auth.currentUser
-                .phoneNumber ||
-              ""
+                .phoneNumber || ""
           }
         );
       }
@@ -3654,9 +3389,7 @@ async function (auctionId) {
     alert(
       "✅ تمت المزايدة بنجاح\n\n" +
       "السعر الجديد: " +
-      money(
-        bidAmount
-      )
+      money(bidAmount)
     );
 
     await loadMarket();
@@ -3773,8 +3506,7 @@ async function (event) {
         .getElementById(
           "animalType"
         )
-        ?.value ||
-      "";
+        ?.value || "";
 
     const breed =
       document
@@ -3782,8 +3514,7 @@ async function (event) {
           "animalBreed"
         )
         ?.value
-        .trim() ||
-      "";
+        .trim() || "";
 
     const age =
       document
@@ -3791,8 +3522,7 @@ async function (event) {
           "animalAge"
         )
         ?.value
-        .trim() ||
-      "";
+        .trim() || "";
 
     const location =
       document
@@ -3800,16 +3530,14 @@ async function (event) {
           "animalLocation"
         )
         ?.value
-        .trim() ||
-      "الذيد";
+        .trim() || "الذيد";
 
     const method =
       document
         .getElementById(
           "method"
         )
-        ?.value ||
-      "";
+        ?.value || "";
 
     const price =
       Number(
@@ -3826,8 +3554,7 @@ async function (event) {
           "animalDescription"
         )
         ?.value
-        .trim() ||
-      "";
+        .trim() || "";
 
     if (
       !type ||
@@ -3869,43 +3596,27 @@ async function (event) {
           "animals"
         ),
         {
-          name:
-            type,
-
-          type:
-            type,
-
-          breed:
-            breed,
-
-          age:
-            age,
-
-          location:
-            location,
+          name: type,
+          type,
+          breed,
+          age,
+          location,
 
           saleType:
             "direct",
 
-          price:
-            price,
-
-          description:
-            description,
-
-          images:
-            images,
+          price,
+          description,
+          images,
 
           sellerId:
             user.uid,
 
           sellerName:
-            profile.displayName ||
-            "",
+            profile.displayName || "",
 
           sellerPhone:
-            user.phoneNumber ||
-            "",
+            user.phoneNumber || "",
 
           status:
             "active",
@@ -3952,18 +3663,13 @@ async function (event) {
           .getElementById(
             "auctionEndTime"
           )
-          ?.value ||
-        "";
+          ?.value || "";
 
       const endTime =
-        new Date(
-          endTimeValue
-        );
+        new Date(endTimeValue);
 
       if (
-        !Number.isFinite(
-          increment
-        ) ||
+        !Number.isFinite(increment) ||
         increment <= 0 ||
         !endTimeValue ||
         Number.isNaN(
@@ -3997,50 +3703,32 @@ async function (event) {
         );
 
       const batch =
-        writeBatch(
-          db
-        );
+        writeBatch(db);
 
       batch.set(
         animalRef,
         {
-          name:
-            type,
-
-          type:
-            type,
-
-          breed:
-            breed,
-
-          age:
-            age,
-
-          location:
-            location,
+          name: type,
+          type,
+          breed,
+          age,
+          location,
 
           saleType:
             "auction",
 
-          price:
-            price,
-
-          description:
-            description,
-
-          images:
-            images,
+          price,
+          description,
+          images,
 
           sellerId:
             user.uid,
 
           sellerName:
-            profile.displayName ||
-            "",
+            profile.displayName || "",
 
           sellerPhone:
-            user.phoneNumber ||
-            "",
+            user.phoneNumber || "",
 
           status:
             "active",
@@ -4066,12 +3754,10 @@ async function (event) {
             user.uid,
 
           sellerName:
-            profile.displayName ||
-            "",
+            profile.displayName || "",
 
           sellerPhone:
-            user.phoneNumber ||
-            "",
+            user.phoneNumber || "",
 
           startPrice:
             price,
@@ -4082,8 +3768,7 @@ async function (event) {
           minIncrement:
             increment,
 
-          endTime:
-            endTime,
+          endTime,
 
           status:
             "active",
@@ -4166,7 +3851,6 @@ function resetListingForm(form) {
     );
 
   if (auctionFields) {
-
     auctionFields.style.display =
       "none";
   }
@@ -4187,8 +3871,7 @@ function scrollToMarket() {
   if (market) {
 
     market.scrollIntoView({
-      behavior:
-        "smooth"
+      behavior: "smooth"
     });
   }
 }
