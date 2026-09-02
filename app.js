@@ -1997,7 +1997,12 @@ async function () {
     );
 
     status.innerHTML =
-      "❌ تعذر إرسال رمز التحقق.";
+      "❌ تعذر إرسال رمز التحقق.<br><br>" +
+      "رمز الخطأ: " +
+      escapeHtml(error.code || "غير معروف") +
+      "<br><br>" +
+      "التفاصيل: " +
+      escapeHtml(error.message || "");
   }
 };
 
