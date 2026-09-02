@@ -8,7 +8,6 @@ import {
   getDoc,
   setDoc,
   addDoc,
-  deleteDoc,
   writeBatch,
   runTransaction,
   serverTimestamp
@@ -586,14 +585,11 @@ function compressImageFile(file) {
                 height
               );
 
-              const compressed =
+              resolve(
                 canvas.toDataURL(
                   "image/jpeg",
                   0.48
-                );
-
-              resolve(
-                compressed
+                )
               );
             };
 
@@ -610,7 +606,7 @@ function compressImageFile(file) {
 
 
 // =====================================
-// صور نموذج إضافة الحلال
+// قراءة صور الإضافة
 // =====================================
 
 async function getListingImages() {
@@ -644,9 +640,7 @@ async function getListingImages() {
 
   let totalSize = 0;
 
-  for (
-    const file of files
-  ) {
+  for (const file of files) {
 
     const imageData =
       await compressImageFile(
@@ -827,7 +821,7 @@ function ownerManagementButton(
 
 
 // =====================================
-// إنشاء حساب المستخدم
+// حساب المستخدم
 // =====================================
 
 async function ensureUserProfile(user) {
@@ -906,10 +900,6 @@ async function ensureUserProfile(user) {
   }
 }
 
-
-// =====================================
-// جلب الحساب
-// =====================================
 
 async function getUserProfile() {
 
@@ -1184,10 +1174,6 @@ async function showAccount() {
   `);
 }
 
-
-// =====================================
-// حفظ الحساب
-// =====================================
 
 window.saveProfile =
 async function () {
@@ -1747,8 +1733,6 @@ async function loadMarket() {
       }
     );
 
-    // البيع المباشر النشط فقط
-
     const directAnimals =
       Object.values(
         animals
@@ -1994,6 +1978,32 @@ async function loadMarket() {
                       "مزاد حلال"
                     )}
                   </h3>
+
+                  ${
+                    animal.breed
+                      ? `
+                        <p>
+                          السلالة:
+                          ${escapeHtml(
+                            animal.breed
+                          )}
+                        </p>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    animal.age
+                      ? `
+                        <p>
+                          العمر:
+                          ${escapeHtml(
+                            animal.age
+                          )}
+                        </p>
+                      `
+                      : ""
+                  }
 
                   <p>
                     📍
@@ -2253,6 +2263,45 @@ async function (animalId) {
           </p>
         `;
 
+    const directPriceField =
+      animal.saleType ===
+      "direct"
+        ? `
+          <label style="
+            display:block;
+            margin-bottom:6px;
+          ">
+            السعر بالدرهم
+          </label>
+
+          <input
+            id="editAnimalPrice"
+            type="number"
+            min="1"
+            value="${Number(
+              animal.price || 0
+            )}"
+            style="
+              width:100%;
+              box-sizing:border-box;
+              padding:13px;
+              margin-bottom:14px;
+              border-radius:9px;
+            "
+          >
+        `
+        : `
+          <div style="
+            background:#302a16;
+            color:#ffd66b;
+            padding:12px;
+            border-radius:10px;
+            margin-bottom:15px;
+          ">
+            🔨 بيانات سعر المزاد ومدة المزاد لا يتم تعديلها بعد بدء المزاد.
+          </div>
+        `;
+
     showModal(`
 
       <div style="
@@ -2268,20 +2317,208 @@ async function (animalId) {
           ⚙️ إدارة إعلاني
         </h2>
 
-        <h3>
-          ${escapeHtml(
-            animal.type ||
-            animal.name ||
-            "الإعلان"
-          )}
+
+        <h3 style="
+          color:#68e6b0;
+          margin-top:25px;
+        ">
+          ✏️ تعديل بيانات الإعلان
         </h3>
 
-        ${imageHtml}
+
+        <label style="
+          display:block;
+          margin-bottom:6px;
+        ">
+          نوع الحيوان
+        </label>
+
+        <select
+          id="editAnimalType"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:13px;
+            margin-bottom:14px;
+            border-radius:9px;
+          "
+        >
+
+          <option value="ناقة" ${animal.type === "ناقة" ? "selected" : ""}>
+            ناقة
+          </option>
+
+          <option value="غنم" ${animal.type === "غنم" ? "selected" : ""}>
+            غنم
+          </option>
+
+          <option value="ماعز" ${animal.type === "ماعز" ? "selected" : ""}>
+            ماعز
+          </option>
+
+          <option value="بقر" ${animal.type === "بقر" ? "selected" : ""}>
+            بقر
+          </option>
+
+          <option value="دجاج" ${animal.type === "دجاج" ? "selected" : ""}>
+            دجاج
+          </option>
+
+          <option value="صقور" ${animal.type === "صقور" ? "selected" : ""}>
+            صقور
+          </option>
+
+          <option value="غزال" ${animal.type === "غزال" ? "selected" : ""}>
+            غزال
+          </option>
+
+          <option value="نعام" ${animal.type === "نعام" ? "selected" : ""}>
+            نعام
+          </option>
+
+          <option value="حمام" ${animal.type === "حمام" ? "selected" : ""}>
+            حمام
+          </option>
+
+        </select>
+
+
+        <label style="
+          display:block;
+          margin-bottom:6px;
+        ">
+          السلالة
+        </label>
+
+        <input
+          id="editAnimalBreed"
+          type="text"
+          maxlength="80"
+          value="${escapeHtml(
+            animal.breed || ""
+          )}"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:13px;
+            margin-bottom:14px;
+            border-radius:9px;
+          "
+        >
+
+
+        <label style="
+          display:block;
+          margin-bottom:6px;
+        ">
+          العمر
+        </label>
+
+        <input
+          id="editAnimalAge"
+          type="text"
+          maxlength="50"
+          value="${escapeHtml(
+            animal.age || ""
+          )}"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:13px;
+            margin-bottom:14px;
+            border-radius:9px;
+          "
+        >
+
+
+        <label style="
+          display:block;
+          margin-bottom:6px;
+        ">
+          الموقع
+        </label>
+
+        <input
+          id="editAnimalLocation"
+          type="text"
+          maxlength="80"
+          value="${escapeHtml(
+            animal.location || "الذيد"
+          )}"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:13px;
+            margin-bottom:14px;
+            border-radius:9px;
+          "
+        >
+
+
+        ${directPriceField}
+
+
+        <label style="
+          display:block;
+          margin-bottom:6px;
+        ">
+          الوصف
+        </label>
+
+        <textarea
+          id="editAnimalDescription"
+          rows="4"
+          maxlength="500"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:13px;
+            margin-bottom:14px;
+            border-radius:9px;
+          "
+        >${escapeHtml(
+          animal.description || ""
+        )}</textarea>
+
+
+        <button
+          onclick="saveListingEdits('${animal.id}')"
+          style="
+            width:100%;
+            background:#00643e;
+            color:white;
+            border:0;
+            padding:15px;
+            border-radius:10px;
+            margin-bottom:22px;
+            font-size:17px;
+            font-weight:bold;
+          "
+        >
+          💾 حفظ التعديلات
+        </button>
+
 
         <hr style="
           border-color:#444;
           margin:22px 0;
         ">
+
+
+        <h3 style="
+          color:#68e6b0;
+        ">
+          📷 صور الإعلان
+        </h3>
+
+        ${imageHtml}
+
+
+        <hr style="
+          border-color:#444;
+          margin:22px 0;
+        ">
+
 
         <h3>
           🖼️ استبدال الصور
@@ -2372,6 +2609,251 @@ async function (animalId) {
 
     alert(
       "تعذر فتح إدارة الإعلان."
+    );
+  }
+};
+
+
+// =====================================
+// حفظ تعديل بيانات الإعلان
+// =====================================
+
+window.saveListingEdits =
+async function (animalId) {
+
+  const user =
+    auth.currentUser;
+
+  if (!user) {
+
+    alert(
+      "يجب تسجيل الدخول أولاً."
+    );
+
+    return;
+  }
+
+  try {
+
+    const animalRef =
+      doc(
+        db,
+        "animals",
+        animalId
+      );
+
+    const animalSnap =
+      await getDoc(
+        animalRef
+      );
+
+    if (!animalSnap.exists()) {
+
+      alert(
+        "الإعلان غير موجود."
+      );
+
+      return;
+    }
+
+    const animal =
+      animalSnap.data();
+
+    if (
+      animal.sellerId !==
+      user.uid
+    ) {
+
+      alert(
+        "غير مصرح لك بتعديل هذا الإعلان."
+      );
+
+      return;
+    }
+
+
+    const type =
+      document
+        .getElementById(
+          "editAnimalType"
+        )
+        ?.value ||
+      "";
+
+    const breed =
+      document
+        .getElementById(
+          "editAnimalBreed"
+        )
+        ?.value
+        .trim() ||
+      "";
+
+    const age =
+      document
+        .getElementById(
+          "editAnimalAge"
+        )
+        ?.value
+        .trim() ||
+      "";
+
+    const location =
+      document
+        .getElementById(
+          "editAnimalLocation"
+        )
+        ?.value
+        .trim() ||
+      "";
+
+    const description =
+      document
+        .getElementById(
+          "editAnimalDescription"
+        )
+        ?.value
+        .trim() ||
+      "";
+
+
+    const allowedTypes = [
+      "ناقة",
+      "غنم",
+      "ماعز",
+      "بقر",
+      "دجاج",
+      "صقور",
+      "غزال",
+      "نعام",
+      "حمام"
+    ];
+
+
+    if (
+      !allowedTypes.includes(
+        type
+      )
+    ) {
+
+      alert(
+        "اختر نوع الحيوان بشكل صحيح."
+      );
+
+      return;
+    }
+
+
+    if (!location) {
+
+      alert(
+        "أدخل الموقع."
+      );
+
+      return;
+    }
+
+
+    const updateData = {
+
+      name:
+        type,
+
+      type:
+        type,
+
+      breed:
+        breed,
+
+      age:
+        age,
+
+      location:
+        location,
+
+      description:
+        description,
+
+      updatedAt:
+        serverTimestamp()
+    };
+
+
+    // تعديل السعر في البيع المباشر فقط
+
+    if (
+      animal.saleType ===
+      "direct"
+    ) {
+
+      const price =
+        Number(
+          document
+            .getElementById(
+              "editAnimalPrice"
+            )
+            ?.value
+        );
+
+      if (
+        !Number.isFinite(
+          price
+        ) ||
+        price <= 0
+      ) {
+
+        alert(
+          "أدخل سعر بيع صحيح."
+        );
+
+        return;
+      }
+
+      updateData.price =
+        price;
+    }
+
+
+    await setDoc(
+      animalRef,
+      updateData,
+      {
+        merge: true
+      }
+    );
+
+
+    alert(
+      "✅ تم حفظ تعديلات الإعلان بنجاح."
+    );
+
+    await loadMarket();
+
+    await window.manageListing(
+      animalId
+    );
+
+  } catch (error) {
+
+    console.error(
+      "SAVE LISTING EDIT ERROR:",
+      error
+    );
+
+    if (
+      error.code ===
+      "permission-denied"
+    ) {
+
+      alert(
+        "❌ Firebase رفض تعديل الإعلان."
+      );
+
+      return;
+    }
+
+    alert(
+      "❌ تعذر حفظ التعديلات."
     );
   }
 };
@@ -2778,15 +3260,12 @@ async function (animalId) {
       animal.auctionId
     ) {
 
-      const auctionRef =
+      batch.set(
         doc(
           db,
           "auctions",
           animal.auctionId
-        );
-
-      batch.set(
-        auctionRef,
+        ),
         {
           status:
             "sold",
@@ -2825,7 +3304,7 @@ async function (animalId) {
 
 
 // =====================================
-// حذف الإعلان نهائياً
+// حذف الإعلان
 // =====================================
 
 window.deleteListing =
@@ -2855,7 +3334,6 @@ async function (animalId) {
       );
 
     if (!animalSnap.exists()) {
-
       return;
     }
 
@@ -3222,6 +3700,18 @@ async function (auctionId) {
       );
 
       await loadMarket();
+
+      return;
+    }
+
+    if (
+      error.message ===
+      "AUCTION_NOT_ACTIVE"
+    ) {
+
+      alert(
+        "هذا المزاد غير نشط حالياً."
+      );
 
       return;
     }
@@ -3622,6 +4112,10 @@ async function (event) {
 
       return;
     }
+
+    alert(
+      "يرجى اختيار طريقة البيع."
+    );
 
   } catch (error) {
 
