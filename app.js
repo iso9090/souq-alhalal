@@ -8,6 +8,7 @@ import {
   getDoc,
   setDoc,
   addDoc,
+  writeBatch,
   runTransaction,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
@@ -114,16 +115,34 @@ function animalIcon(type = "") {
 
 function formatDate(timestamp) {
 
-  if (!timestamp || !timestamp.toDate) {
+  if (!timestamp) {
     return "غير محدد";
   }
 
-  return timestamp
-    .toDate()
-    .toLocaleString("ar-AE", {
+  let date = null;
+
+  if (timestamp.toDate) {
+    date = timestamp.toDate();
+  } else if (timestamp instanceof Date) {
+    date = timestamp;
+  } else {
+    date = new Date(timestamp);
+  }
+
+  if (
+    !date ||
+    Number.isNaN(date.getTime())
+  ) {
+    return "غير محدد";
+  }
+
+  return date.toLocaleString(
+    "ar-AE",
+    {
       dateStyle: "medium",
       timeStyle: "short"
-    });
+    }
+  );
 }
 
 
@@ -295,7 +314,8 @@ function showModal(html) {
 }
 
 
-window.closeModal = function () {
+window.closeModal =
+function () {
 
   const modal =
     document.getElementById("modal");
@@ -1319,9 +1339,11 @@ async function loadMarket() {
     );
 
 
-  if (!status ||
-      !directContainer ||
-      !auctionContainer) {
+  if (
+    !status ||
+    !directContainer ||
+    !auctionContainer
+  ) {
     return;
   }
 
@@ -1585,9 +1607,32 @@ async function loadMarket() {
                   <h3>
                     ${escapeHtml(
                       animal.name ||
+                      animal.type ||
                       "مزاد حلال"
                     )}
                   </h3>
+
+                  ${
+                    animal.breed
+                      ? `
+                        <p>
+                          السلالة:
+                          ${escapeHtml(animal.breed)}
+                        </p>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    animal.age
+                      ? `
+                        <p>
+                          العمر:
+                          ${escapeHtml(animal.age)}
+                        </p>
+                      `
+                      : ""
+                  }
 
                   <p>
                     📍
@@ -1995,6 +2040,7 @@ async function (auctionId) {
 
 // =====================================
 // إضافة حلال جديد
+// بيع مباشر أو مزاد إلكتروني
 // =====================================
 
 window.saveListing =
@@ -2052,7 +2098,9 @@ async function (event) {
     }
 
 
-    // قراءة الحقول الجديدة بالـ ID
+    // =====================================
+    // قراءة بيانات الحيوان
+    // =====================================
 
     const type =
       document
@@ -2102,7 +2150,9 @@ async function (event) {
         .trim() || "";
 
 
-    // التحقق من نوع الحيوان
+    // =====================================
+    // أنواع الحيوانات المسموح بها
+    // =====================================
 
     const allowedTypes = [
       "ناقة",
@@ -2130,7 +2180,9 @@ async function (event) {
     }
 
 
+    // =====================================
     // التحقق من السعر
+    // =====================================
 
     if (
       !Number.isFinite(price) ||
@@ -2138,135 +2190,350 @@ async function (event) {
     ) {
 
       alert(
-        "يرجى إدخال سعر صحيح."
+        method === "مزاد إلكتروني"
+          ? "يرجى إدخال سعر بداية صحيح للمزاد."
+          : "يرجى إدخال سعر بيع صحيح."
       );
 
       return;
     }
 
 
-    // المزاد سيتم ربط إنشائه لاحقاً
+    // =====================================
+    // البيع المباشر
+    // =====================================
 
-    if (
-      method === "مزاد إلكتروني"
-    ) {
+    if (method === "بيع مباشر") {
+
+      const animalData = {
+
+        name:
+          type,
+
+        type:
+          type,
+
+        breed:
+          breed,
+
+        age:
+          age,
+
+        location:
+          location,
+
+        saleType:
+          "direct",
+
+        price:
+          price,
+
+        description:
+          description,
+
+        sellerId:
+          user.uid,
+
+        sellerName:
+          profile.displayName || "",
+
+        sellerPhone:
+          user.phoneNumber || "",
+
+        status:
+          "active",
+
+        createdAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp()
+      };
+
+
+      const animalRef =
+        await addDoc(
+          collection(
+            db,
+            "animals"
+          ),
+          animalData
+        );
+
 
       alert(
-        "سيتم تفعيل إنشاء المزاد الإلكتروني في الخطوة التالية.\n\n" +
-        "اختر البيع المباشر الآن لاختبار إضافة الحلال."
+        "✅ تم إضافة الحلال بنجاح\n\n" +
+        "طريقة البيع: بيع مباشر\n\n" +
+        "نوع الحيوان: " +
+        type +
+        "\n\nالسعر: " +
+        money(price) +
+        "\n\nرقم العرض:\n" +
+        animalRef.id
       );
+
+
+      resetListingForm(event.target);
+
+      await loadMarket();
+
+      scrollToMarket();
 
       return;
     }
 
 
-    // البيانات التي سيتم حفظها
+    // =====================================
+    // المزاد الإلكتروني
+    // =====================================
 
-    const animalData = {
+    if (method === "مزاد إلكتروني") {
 
-      name:
-        type,
-
-      type:
-        type,
-
-      breed:
-        breed,
-
-      age:
-        age,
-
-      location:
-        location,
-
-      saleType:
-        "direct",
-
-      price:
-        price,
-
-      description:
-        description,
-
-      sellerId:
-        user.uid,
-
-      sellerName:
-        profile.displayName || "",
-
-      sellerPhone:
-        user.phoneNumber || "",
-
-      status:
-        "active",
-
-      createdAt:
-        serverTimestamp(),
-
-      updatedAt:
-        serverTimestamp()
-    };
+      const increment =
+        Number(
+          document
+            .getElementById(
+              "auctionIncrement"
+            )
+            ?.value
+        );
 
 
-    // حفظ الحيوان في Firestore
+      const endTimeValue =
+        document
+          .getElementById(
+            "auctionEndTime"
+          )
+          ?.value || "";
 
-    const animalRef =
-      await addDoc(
-        collection(
-          db,
-          "animals"
-        ),
+
+      // التحقق من أقل زيادة
+
+      if (
+        !Number.isFinite(increment) ||
+        increment <= 0
+      ) {
+
+        alert(
+          "يرجى إدخال أقل زيادة صحيحة للمزايدة."
+        );
+
+        return;
+      }
+
+
+      // التحقق من وقت نهاية المزاد
+
+      if (!endTimeValue) {
+
+        alert(
+          "يرجى تحديد تاريخ ووقت انتهاء المزاد."
+        );
+
+        return;
+      }
+
+
+      const endTime =
+        new Date(endTimeValue);
+
+
+      if (
+        Number.isNaN(
+          endTime.getTime()
+        )
+      ) {
+
+        alert(
+          "تاريخ انتهاء المزاد غير صحيح."
+        );
+
+        return;
+      }
+
+
+      if (
+        endTime.getTime() <=
+        Date.now()
+      ) {
+
+        alert(
+          "يجب أن يكون وقت انتهاء المزاد في المستقبل."
+        );
+
+        return;
+      }
+
+
+      // =====================================
+      // إنشاء أرقام المستندات قبل الحفظ
+      // =====================================
+
+      const animalRef =
+        doc(
+          collection(
+            db,
+            "animals"
+          )
+        );
+
+
+      const auctionRef =
+        doc(
+          collection(
+            db,
+            "auctions"
+          )
+        );
+
+
+      // =====================================
+      // بيانات الحيوان
+      // =====================================
+
+      const animalData = {
+
+        name:
+          type,
+
+        type:
+          type,
+
+        breed:
+          breed,
+
+        age:
+          age,
+
+        location:
+          location,
+
+        saleType:
+          "auction",
+
+        price:
+          price,
+
+        description:
+          description,
+
+        sellerId:
+          user.uid,
+
+        sellerName:
+          profile.displayName || "",
+
+        sellerPhone:
+          user.phoneNumber || "",
+
+        status:
+          "active",
+
+        auctionId:
+          auctionRef.id,
+
+        createdAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp()
+      };
+
+
+      // =====================================
+      // بيانات المزاد
+      // =====================================
+
+      const auctionData = {
+
+        animalId:
+          animalRef.id,
+
+        sellerId:
+          user.uid,
+
+        sellerName:
+          profile.displayName || "",
+
+        sellerPhone:
+          user.phoneNumber || "",
+
+        startPrice:
+          price,
+
+        currentPrice:
+          price,
+
+        minIncrement:
+          increment,
+
+        endTime:
+          endTime,
+
+        status:
+          "active",
+
+        createdAt:
+          serverTimestamp(),
+
+        updatedAt:
+          serverTimestamp()
+      };
+
+
+      // =====================================
+      // حفظ الحيوان والمزاد معاً
+      // =====================================
+
+      const batch =
+        writeBatch(db);
+
+
+      batch.set(
+        animalRef,
         animalData
       );
 
 
+      batch.set(
+        auctionRef,
+        auctionData
+      );
+
+
+      await batch.commit();
+
+
+      alert(
+        "✅ تم إنشاء المزاد الإلكتروني بنجاح\n\n" +
+        "نوع الحيوان: " +
+        type +
+        "\n\nسعر البداية: " +
+        money(price) +
+        "\n\nأقل زيادة: " +
+        money(increment) +
+        "\n\nينتهي: " +
+        endTime.toLocaleString(
+          "ar-AE"
+        ) +
+        "\n\nرقم المزاد:\n" +
+        auctionRef.id
+      );
+
+
+      resetListingForm(event.target);
+
+      await loadMarket();
+
+      scrollToMarket();
+
+      return;
+    }
+
+
     alert(
-      "✅ تم إضافة الحلال بنجاح\n\n" +
-      "نوع الحيوان: " +
-      type +
-      "\n\nالسعر: " +
-      money(price) +
-      "\n\nرقم العرض:\n" +
-      animalRef.id
+      "يرجى اختيار طريقة البيع."
     );
-
-
-    // تنظيف النموذج
-
-    event.target.reset();
-
-
-    const locationInput =
-      document.getElementById(
-        "animalLocation"
-      );
-
-
-    if (locationInput) {
-      locationInput.value =
-        "الذيد";
-    }
-
-
-    // تحديث السوق وإظهار الحيوان الجديد
-
-    await loadMarket();
-
-
-    // الانتقال إلى السوق
-
-    const market =
-      document.getElementById(
-        "firebase-market"
-      );
-
-
-    if (market) {
-
-      market.scrollIntoView({
-        behavior: "smooth"
-      });
-    }
 
   } catch (error) {
 
@@ -2282,8 +2549,8 @@ async function (event) {
     ) {
 
       alert(
-        "❌ Firebase رفض إضافة الحلال.\n\n" +
-        "تحقق من صلاحيات الحساب وقواعد Firestore."
+        "❌ Firebase رفض إنشاء العرض.\n\n" +
+        "سنقوم الآن بتحديث قواعد Firestore للسماح للبائع بإنشاء المزاد."
       );
 
       return;
@@ -2299,6 +2566,99 @@ async function (event) {
     );
   }
 };
+
+
+// =====================================
+// تنظيف نموذج إضافة الحلال
+// =====================================
+
+function resetListingForm(form) {
+
+  if (form) {
+    form.reset();
+  }
+
+
+  const locationInput =
+    document.getElementById(
+      "animalLocation"
+    );
+
+
+  if (locationInput) {
+    locationInput.value =
+      "الذيد";
+  }
+
+
+  const auctionFields =
+    document.getElementById(
+      "auctionFields"
+    );
+
+
+  if (auctionFields) {
+    auctionFields.style.display =
+      "none";
+  }
+
+
+  const priceInput =
+    document.getElementById(
+      "animalPrice"
+    );
+
+
+  if (priceInput) {
+    priceInput.placeholder =
+      "السعر بالدرهم";
+  }
+
+
+  const incrementInput =
+    document.getElementById(
+      "auctionIncrement"
+    );
+
+
+  if (incrementInput) {
+    incrementInput.required =
+      false;
+  }
+
+
+  const endTimeInput =
+    document.getElementById(
+      "auctionEndTime"
+    );
+
+
+  if (endTimeInput) {
+    endTimeInput.required =
+      false;
+  }
+}
+
+
+// =====================================
+// الانتقال إلى السوق
+// =====================================
+
+function scrollToMarket() {
+
+  const market =
+    document.getElementById(
+      "firebase-market"
+    );
+
+
+  if (market) {
+
+    market.scrollIntoView({
+      behavior: "smooth"
+    });
+  }
+}
 
 
 // =====================================
