@@ -86,7 +86,7 @@
     🐫
     <br>
     <span>
-      🐑 🐐 🐄
+      🐑 🐐 🐄 🐔 🦅 🦌 🕊️
     </span>
   </div>
 
@@ -373,49 +373,115 @@
 
     <div class="fields">
 
-      <input
-        required
-        placeholder="نوع الحيوان">
+
+      <!-- نوع الحيوان -->
+
+      <select
+        id="animalType"
+        required>
+
+        <option
+          value=""
+          selected
+          disabled>
+          اختر نوع الحيوان
+        </option>
+
+        <option value="ناقة">
+          🐫 ناقة
+        </option>
+
+        <option value="غنم">
+          🐑 غنم
+        </option>
+
+        <option value="ماعز">
+          🐐 ماعز
+        </option>
+
+        <option value="بقر">
+          🐄 بقر
+        </option>
+
+        <option value="دجاج">
+          🐔 دجاج
+        </option>
+
+        <option value="صقور">
+          🦅 صقور
+        </option>
+
+        <option value="غزال">
+          🦌 غزال
+        </option>
+
+        <option value="نعام">
+          🐦 نعام
+        </option>
+
+        <option value="حمام">
+          🕊️ حمام
+        </option>
+
+      </select>
 
 
+      <!-- السلالة -->
+
       <input
+        id="animalBreed"
         placeholder="السلالة">
 
 
+      <!-- العمر -->
+
       <input
+        id="animalAge"
         placeholder="العمر">
 
 
+      <!-- الموقع -->
+
       <input
+        id="animalLocation"
         value="الذيد"
         placeholder="الموقع">
 
 
+      <!-- طريقة البيع -->
+
       <select id="method">
 
-        <option>
+        <option value="بيع مباشر">
           بيع مباشر
         </option>
 
-        <option>
+        <option value="مزاد إلكتروني">
           مزاد إلكتروني
         </option>
 
       </select>
 
 
+      <!-- السعر -->
+
       <input
+        id="animalPrice"
         required
         type="number"
+        min="1"
         placeholder="السعر / سعر البداية بالدرهم">
 
 
+      <!-- الوصف -->
+
       <textarea
+        id="animalDescription"
         placeholder="الوصف والحالة الصحية"></textarea>
 
 
-      <button>
-        حفظ العرض التجريبي
+      <button type="submit">
+        حفظ العرض
       </button>
 
     </div>
@@ -514,9 +580,13 @@
 
 
 <!-- ===================================== -->
-<!-- JavaScript - نسخة جديدة لمنع الكاش -->
+<!-- JavaScript -->
 <!-- ===================================== -->
-<script type="module" src="app.js?v=11"></script>
+
+<script
+  type="module"
+  src="app.js?v=12">
+</script>
 
 </body>
 
