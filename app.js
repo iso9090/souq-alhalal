@@ -1069,6 +1069,31 @@ async function showAccount() {
     profile?.phoneNumber ||
     "";
 
+  const buyerButtons =
+    (
+      accountType === "buyer" ||
+      accountType === "both"
+    )
+      ? `
+        <button
+          onclick="showMyPurchaseRequests()"
+          style="
+            width:100%;
+            padding:15px;
+            background:#28566f;
+            color:white;
+            border:0;
+            border-radius:10px;
+            margin-bottom:10px;
+            font-size:17px;
+            font-weight:bold;
+          "
+        >
+          📋 طلباتي
+        </button>
+      `
+      : "";
+
   const sellerButtons =
     (
       accountType === "seller" ||
@@ -1210,6 +1235,8 @@ async function showAccount() {
         💾 حفظ بيانات الحساب
       </button>
 
+      ${buyerButtons}
+
       ${sellerButtons}
 
       <button
@@ -1321,6 +1348,427 @@ async function () {
 
     status.innerHTML =
       "❌ تعذر الحفظ";
+  }
+};
+
+
+// =====================================
+// طلباتي - للمشتري
+// =====================================
+
+window.showMyPurchaseRequests =
+async function () {
+
+  const user =
+    auth.currentUser;
+
+  if (!user) {
+
+    window.openLogin();
+
+    return;
+  }
+
+  showModal(`
+
+    <div style="
+      direction:rtl;
+      color:white;
+      padding:12px;
+      text-align:center;
+    ">
+
+      <h2 style="
+        color:#68e6b0;
+      ">
+        📋 طلباتي
+      </h2>
+
+      <p style="color:#aaa;">
+        جاري تحميل طلباتك...
+      </p>
+
+    </div>
+  `);
+
+  try {
+
+    const requestsQuery =
+      query(
+        collection(
+          db,
+          "purchaseRequests"
+        ),
+        where(
+          "buyerId",
+          "==",
+          user.uid
+        )
+      );
+
+    const snapshot =
+      await getDocs(
+        requestsQuery
+      );
+
+    const requests = [];
+
+    snapshot.forEach(
+      requestDoc => {
+
+        requests.push({
+          id:
+            requestDoc.id,
+          ...requestDoc.data()
+        });
+      }
+    );
+
+    requests.sort(
+      (a, b) =>
+        timestampToMillis(
+          b.createdAt
+        ) -
+        timestampToMillis(
+          a.createdAt
+        )
+    );
+
+    if (
+      requests.length === 0
+    ) {
+
+      showModal(`
+
+        <div style="
+          direction:rtl;
+          color:white;
+          padding:15px;
+          text-align:center;
+        ">
+
+          <h2 style="
+            color:#68e6b0;
+          ">
+            📋 طلباتي
+          </h2>
+
+          <div style="
+            background:#222;
+            padding:22px;
+            border-radius:14px;
+            margin:20px 0;
+          ">
+            لم ترسل أي طلب شراء حتى الآن.
+          </div>
+
+          <button
+            onclick="openLogin()"
+            style="
+              width:100%;
+              padding:14px;
+              background:#28566f;
+              color:white;
+              border:0;
+              border-radius:10px;
+            "
+          >
+            الرجوع إلى حسابي
+          </button>
+
+        </div>
+      `);
+
+      return;
+    }
+
+    const cards =
+      requests
+        .map(
+          request => {
+
+            let statusText =
+              "⏳ بانتظار رد البائع";
+
+            let statusColor =
+              "#ffd66b";
+
+            let statusBackground =
+              "#302a16";
+
+            let acceptedDetails =
+              "";
+
+            if (
+              request.status ===
+              "accepted"
+            ) {
+
+              statusText =
+                "✅ وافق البائع على طلبك";
+
+              statusColor =
+                "#68e6b0";
+
+              statusBackground =
+                "#123c2c";
+
+              acceptedDetails = `
+
+                <div style="
+                  background:#10271c;
+                  padding:15px;
+                  border-radius:10px;
+                  margin-top:15px;
+                ">
+
+                  <div style="
+                    color:#68e6b0;
+                    font-weight:bold;
+                    margin-bottom:10px;
+                  ">
+                    🎉 تم قبول طلب الشراء
+                  </div>
+
+                  ${
+                    request.sellerName
+                      ? `
+                        <p>
+                          👤 البائع:
+                          <b>
+                            ${escapeHtml(
+                              request.sellerName
+                            )}
+                          </b>
+                        </p>
+                      `
+                      : ""
+                  }
+
+                  ${
+                    request.sellerPhone
+                      ? `
+                        <p>
+                          📱 رقم البائع:
+                          <b>
+                            ${escapeHtml(
+                              request.sellerPhone
+                            )}
+                          </b>
+                        </p>
+                      `
+                      : ""
+                  }
+
+                  <p style="
+                    color:#aaa;
+                    font-size:14px;
+                  ">
+                    يمكنك التواصل مع البائع لإكمال إجراءات البيع والاستلام.
+                  </p>
+
+                </div>
+              `;
+            }
+
+            if (
+              request.status ===
+              "rejected"
+            ) {
+
+              statusText =
+                "❌ لم يوافق البائع على الطلب";
+
+              statusColor =
+                "#ff8d8d";
+
+              statusBackground =
+                "#421d1d";
+            }
+
+            return `
+
+              <div style="
+                background:#222;
+                padding:18px;
+                border-radius:15px;
+                margin-bottom:15px;
+                text-align:right;
+              ">
+
+                <h3 style="
+                  color:#68e6b0;
+                  margin-top:0;
+                  font-size:22px;
+                ">
+                  ${animalIcon(
+                    request.animalType || ""
+                  )}
+                  ${escapeHtml(
+                    request.animalType ||
+                    "حلال"
+                  )}
+                </h3>
+
+                ${
+                  request.animalBreed
+                    ? `
+                      <p>
+                        السلالة:
+                        <b>
+                          ${escapeHtml(
+                            request.animalBreed
+                          )}
+                        </b>
+                      </p>
+                    `
+                    : ""
+                }
+
+                <p>
+                  💰 السعر:
+                  <b>
+                    ${money(
+                      request.price
+                    )}
+                  </b>
+                </p>
+
+                ${
+                  request.sellerName
+                    ? `
+                      <p>
+                        👤 البائع:
+                        <b>
+                          ${escapeHtml(
+                            request.sellerName
+                          )}
+                        </b>
+                      </p>
+                    `
+                    : ""
+                }
+
+                <p>
+                  🕒 تاريخ إرسال الطلب:
+                  <b>
+                    ${formatDate(
+                      request.createdAt
+                    )}
+                  </b>
+                </p>
+
+                <div style="
+                  background:${statusBackground};
+                  color:${statusColor};
+                  padding:14px;
+                  border-radius:10px;
+                  font-size:18px;
+                  font-weight:bold;
+                  text-align:center;
+                  margin-top:14px;
+                ">
+                  ${statusText}
+                </div>
+
+                ${acceptedDetails}
+
+              </div>
+
+            `;
+          }
+        )
+        .join("");
+
+    showModal(`
+
+      <div style="
+        direction:rtl;
+        color:white;
+        padding:12px;
+      ">
+
+        <h2 style="
+          color:#68e6b0;
+          text-align:center;
+        ">
+          📋 طلباتي
+        </h2>
+
+        <p style="
+          color:#aaa;
+          text-align:center;
+          margin-bottom:20px;
+        ">
+          متابعة طلبات الشراء التي أرسلتها
+        </p>
+
+        ${cards}
+
+        <button
+          onclick="openLogin()"
+          style="
+            width:100%;
+            padding:14px;
+            background:#28566f;
+            color:white;
+            border:0;
+            border-radius:10px;
+            margin-top:10px;
+          "
+        >
+          الرجوع إلى حسابي
+        </button>
+
+        <div style="height:30px;"></div>
+
+      </div>
+    `);
+
+  } catch (error) {
+
+    console.error(
+      "LOAD MY PURCHASE REQUESTS ERROR:",
+      error
+    );
+
+    showModal(`
+
+      <div style="
+        direction:rtl;
+        color:white;
+        padding:15px;
+        text-align:center;
+      ">
+
+        <h2 style="
+          color:#68e6b0;
+        ">
+          📋 طلباتي
+        </h2>
+
+        <p style="
+          color:#ff8d8d;
+        ">
+          ❌ تعذر تحميل طلباتك.
+        </p>
+
+        <button
+          onclick="openLogin()"
+          style="
+            width:100%;
+            padding:14px;
+            background:#28566f;
+            color:white;
+            border:0;
+            border-radius:10px;
+          "
+        >
+          الرجوع إلى حسابي
+        </button>
+
+      </div>
+    `);
   }
 };
 
@@ -1764,6 +2212,20 @@ async function (
       alert(
         "غير مصرح لك بتعديل هذا الطلب."
       );
+
+      return;
+    }
+
+    if (
+      requestData.status !==
+      "pending"
+    ) {
+
+      alert(
+        "تم التعامل مع هذا الطلب مسبقاً."
+      );
+
+      await window.showPurchaseRequests();
 
       return;
     }
@@ -2911,10 +3373,7 @@ async function (animalId) {
           ✏️ تعديل بيانات الإعلان
         </h3>
 
-        <label style="
-          display:block;
-          margin-bottom:6px;
-        ">
+        <label>
           نوع الحيوان
         </label>
 
@@ -2928,7 +3387,6 @@ async function (animalId) {
             border-radius:9px;
           "
         >
-
           <option value="ناقة" ${animal.type === "ناقة" ? "selected" : ""}>ناقة</option>
           <option value="غنم" ${animal.type === "غنم" ? "selected" : ""}>غنم</option>
           <option value="ماعز" ${animal.type === "ماعز" ? "selected" : ""}>ماعز</option>
@@ -2938,7 +3396,6 @@ async function (animalId) {
           <option value="غزال" ${animal.type === "غزال" ? "selected" : ""}>غزال</option>
           <option value="نعام" ${animal.type === "نعام" ? "selected" : ""}>نعام</option>
           <option value="حمام" ${animal.type === "حمام" ? "selected" : ""}>حمام</option>
-
         </select>
 
         <label>
@@ -2949,9 +3406,7 @@ async function (animalId) {
           id="editAnimalBreed"
           type="text"
           maxlength="80"
-          value="${escapeHtml(
-            animal.breed || ""
-          )}"
+          value="${escapeHtml(animal.breed || "")}"
           style="
             width:100%;
             box-sizing:border-box;
@@ -2969,9 +3424,7 @@ async function (animalId) {
           id="editAnimalAge"
           type="text"
           maxlength="50"
-          value="${escapeHtml(
-            animal.age || ""
-          )}"
+          value="${escapeHtml(animal.age || "")}"
           style="
             width:100%;
             box-sizing:border-box;
@@ -2989,10 +3442,7 @@ async function (animalId) {
           id="editAnimalLocation"
           type="text"
           maxlength="80"
-          value="${escapeHtml(
-            animal.location ||
-            "الذيد"
-          )}"
+          value="${escapeHtml(animal.location || "الذيد")}"
           style="
             width:100%;
             box-sizing:border-box;
@@ -3019,9 +3469,7 @@ async function (animalId) {
             margin-bottom:14px;
             border-radius:9px;
           "
-        >${escapeHtml(
-          animal.description || ""
-        )}</textarea>
+        >${escapeHtml(animal.description || "")}</textarea>
 
         <button
           onclick="saveListingEdits('${animal.id}')"
@@ -3042,9 +3490,7 @@ async function (animalId) {
 
         <hr>
 
-        <h3 style="
-          color:#68e6b0;
-        ">
+        <h3 style="color:#68e6b0;">
           📷 صور الإعلان
         </h3>
 
@@ -3213,8 +3659,7 @@ async function (animalId) {
       )?.value.trim() || "";
 
     const updateData = {
-      name:
-        type,
+      name: type,
       type,
       breed,
       age,
@@ -3634,8 +4079,10 @@ async function (animalId) {
       {
         status:
           "sold",
+
         soldAt:
           serverTimestamp(),
+
         updatedAt:
           serverTimestamp()
       },
@@ -3659,6 +4106,7 @@ async function (animalId) {
         {
           status:
             "sold",
+
           updatedAt:
             serverTimestamp()
         },
