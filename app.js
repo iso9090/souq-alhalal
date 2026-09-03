@@ -52,11 +52,91 @@ const handledExpiredAuctions =
 
 
 // =====================================
+// مناطق الإمارات - فلترة السوق
+// =====================================
+
+const MARKET_EMIRATE_LOCATIONS = {
+
+  "الشارقة": [
+    "الذيد",
+    "مدينة الشارقة",
+    "مليحة",
+    "البطائح",
+    "المدام",
+    "الحمرية",
+    "خورفكان",
+    "كلباء",
+    "دبا الحصن"
+  ],
+
+  "دبي": [
+    "دبي",
+    "حتا",
+    "الخوانيج",
+    "العوير",
+    "الليسيلي",
+    "مرغم",
+    "لهباب"
+  ],
+
+  "أبوظبي": [
+    "أبوظبي",
+    "العين",
+    "مدينة زايد",
+    "ليوا",
+    "غياثي",
+    "المرفأ",
+    "الرويس",
+    "السلع",
+    "جزيرة دلما"
+  ],
+
+  "عجمان": [
+    "عجمان",
+    "مصفوت",
+    "المنامة"
+  ],
+
+  "رأس الخيمة": [
+    "رأس الخيمة",
+    "الرمس",
+    "شعم",
+    "غليلة",
+    "الجزيرة الحمراء",
+    "خت"
+  ],
+
+  "أم القيوين": [
+    "أم القيوين",
+    "فلج المعلا"
+  ],
+
+  "الفجيرة": [
+    "الفجيرة",
+    "دبا الفجيرة",
+    "مسافي",
+    "مربح",
+    "قدفع",
+    "البدية",
+    "الطويين"
+  ]
+};
+
+
+// =====================================
 // أدوات مساعدة
 // =====================================
 
 function money(value) {
-  return Number(value || 0).toLocaleString("en-US") + " AED";
+
+  return (
+    Number(
+      value || 0
+    ).toLocaleString(
+      "en-US"
+    ) +
+    " AED"
+  );
 }
 
 
@@ -66,36 +146,62 @@ function animalIcon(type = "") {
     type.includes("ناقة") ||
     type.includes("جمل") ||
     type.includes("إبل")
-  ) return "🐫";
+  ) {
+    return "🐫";
+  }
 
   if (
     type.includes("خروف") ||
     type.includes("غنم")
-  ) return "🐑";
+  ) {
+    return "🐑";
+  }
 
-  if (type.includes("ماعز")) return "🐐";
+  if (
+    type.includes("ماعز")
+  ) {
+    return "🐐";
+  }
 
   if (
     type.includes("بقر") ||
     type.includes("بقرة") ||
     type.includes("أبقار")
-  ) return "🐄";
+  ) {
+    return "🐄";
+  }
 
-  if (type.includes("دجاج")) return "🐔";
+  if (
+    type.includes("دجاج")
+  ) {
+    return "🐔";
+  }
 
   if (
     type.includes("صقر") ||
     type.includes("صقور")
-  ) return "🦅";
+  ) {
+    return "🦅";
+  }
 
   if (
     type.includes("غزال") ||
     type.includes("غزلان")
-  ) return "🦌";
+  ) {
+    return "🦌";
+  }
 
-  if (type.includes("نعام")) return "🐦";
+  if (
+    type.includes("نعام")
+  ) {
+    return "🐦";
+  }
 
-  if (type.includes("حمام")) return "🕊️";
+  if (
+    type.includes("حمام")
+  ) {
+    return "🕊️";
+  }
 
   return "🐾";
 }
@@ -105,20 +211,30 @@ function animalIcon(type = "") {
 // التاريخ
 // =====================================
 
-function timestampToDate(timestamp) {
+function timestampToDate(
+  timestamp
+) {
 
-  if (!timestamp) return null;
+  if (!timestamp) {
+    return null;
+  }
 
-  if (timestamp.toDate) {
+  if (
+    timestamp.toDate
+  ) {
     return timestamp.toDate();
   }
 
-  if (timestamp instanceof Date) {
+  if (
+    timestamp instanceof Date
+  ) {
     return timestamp;
   }
 
   const date =
-    new Date(timestamp);
+    new Date(
+      timestamp
+    );
 
   if (
     Number.isNaN(
@@ -132,21 +248,31 @@ function timestampToDate(timestamp) {
 }
 
 
-function timestampToMillis(timestamp) {
+function timestampToMillis(
+  timestamp
+) {
 
   const date =
-    timestampToDate(timestamp);
+    timestampToDate(
+      timestamp
+    );
 
-  if (!date) return 0;
+  if (!date) {
+    return 0;
+  }
 
   return date.getTime();
 }
 
 
-function formatDate(timestamp) {
+function formatDate(
+  timestamp
+) {
 
   const date =
-    timestampToDate(timestamp);
+    timestampToDate(
+      timestamp
+    );
 
   if (!date) {
     return "غير محدد";
@@ -155,8 +281,11 @@ function formatDate(timestamp) {
   return date.toLocaleString(
     "ar-AE",
     {
-      dateStyle: "medium",
-      timeStyle: "short"
+      dateStyle:
+        "medium",
+
+      timeStyle:
+        "short"
     }
   );
 }
@@ -166,30 +295,39 @@ function formatDate(timestamp) {
 // العد التنازلي
 // =====================================
 
-function getCountdownText(endTime) {
+function getCountdownText(
+  endTime
+) {
 
   const end =
-    timestampToMillis(endTime);
+    timestampToMillis(
+      endTime
+    );
 
   if (!end) {
     return "غير محدد";
   }
 
   const difference =
-    end - Date.now();
+    end -
+    Date.now();
 
-  if (difference <= 0) {
+  if (
+    difference <= 0
+  ) {
     return "انتهى المزاد";
   }
 
   const totalSeconds =
     Math.floor(
-      difference / 1000
+      difference /
+      1000
     );
 
   const days =
     Math.floor(
-      totalSeconds / 86400
+      totalSeconds /
+      86400
     );
 
   const hours =
@@ -197,7 +335,8 @@ function getCountdownText(endTime) {
       (
         totalSeconds %
         86400
-      ) / 3600
+      ) /
+      3600
     );
 
   const minutes =
@@ -205,25 +344,41 @@ function getCountdownText(endTime) {
       (
         totalSeconds %
         3600
-      ) / 60
+      ) /
+      60
     );
 
   const seconds =
-    totalSeconds % 60;
+    totalSeconds %
+    60;
 
   const hh =
-    String(hours)
-      .padStart(2, "0");
+    String(
+      hours
+    ).padStart(
+      2,
+      "0"
+    );
 
   const mm =
-    String(minutes)
-      .padStart(2, "0");
+    String(
+      minutes
+    ).padStart(
+      2,
+      "0"
+    );
 
   const ss =
-    String(seconds)
-      .padStart(2, "0");
+    String(
+      seconds
+    ).padStart(
+      2,
+      "0"
+    );
 
-  if (days > 0) {
+  if (
+    days > 0
+  ) {
 
     return (
       "متبقي " +
@@ -254,7 +409,9 @@ function getCountdownText(endTime) {
 
 function startAuctionTimers() {
 
-  if (auctionTimerInterval) {
+  if (
+    auctionTimerInterval
+  ) {
 
     clearInterval(
       auctionTimerInterval
@@ -276,12 +433,14 @@ function startAuctionTimers() {
 
         const end =
           Number(
-            timer.dataset.auctionEnd ||
+            timer.dataset
+              .auctionEnd ||
             0
           );
 
         const auctionId =
-          timer.dataset.auctionId;
+          timer.dataset
+            .auctionId;
 
         const button =
           document.getElementById(
@@ -296,7 +455,8 @@ function startAuctionTimers() {
           );
 
         const difference =
-          end - Date.now();
+          end -
+          Date.now();
 
         if (
           !end ||
@@ -309,7 +469,9 @@ function startAuctionTimers() {
           timer.style.color =
             "#ff8d8d";
 
-          if (button) {
+          if (
+            button
+          ) {
 
             button.disabled =
               true;
@@ -321,7 +483,9 @@ function startAuctionTimers() {
               "#555";
           }
 
-          if (tag) {
+          if (
+            tag
+          ) {
 
             tag.textContent =
               "مزاد منتهي";
@@ -333,15 +497,21 @@ function startAuctionTimers() {
           if (
             auctionId &&
             !handledExpiredAuctions
-              .has(auctionId)
+              .has(
+                auctionId
+              )
           ) {
 
             handledExpiredAuctions
-              .add(auctionId);
+              .add(
+                auctionId
+              );
 
             setTimeout(
               () => {
+
                 loadMarket();
+
               },
               500
             );
@@ -367,7 +537,8 @@ function startAuctionTimers() {
             (
               totalSeconds %
               86400
-            ) / 3600
+            ) /
+            3600
           );
 
         const minutes =
@@ -375,7 +546,8 @@ function startAuctionTimers() {
             (
               totalSeconds %
               3600
-            ) / 60
+            ) /
+            60
           );
 
         const seconds =
@@ -383,18 +555,32 @@ function startAuctionTimers() {
           60;
 
         const hh =
-          String(hours)
-            .padStart(2, "0");
+          String(
+            hours
+          ).padStart(
+            2,
+            "0"
+          );
 
         const mm =
-          String(minutes)
-            .padStart(2, "0");
+          String(
+            minutes
+          ).padStart(
+            2,
+            "0"
+          );
 
         const ss =
-          String(seconds)
-            .padStart(2, "0");
+          String(
+            seconds
+          ).padStart(
+            2,
+            "0"
+          );
 
-        if (days > 0) {
+        if (
+          days > 0
+        ) {
 
           timer.innerHTML =
             "⏱ متبقي: " +
@@ -434,24 +620,51 @@ function startAuctionTimers() {
 // حماية النصوص
 // =====================================
 
-function escapeHtml(value = "") {
+function escapeHtml(
+  value = ""
+) {
 
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  return String(
+    value
+  )
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
 }
 
 
-function accountTypeText(type) {
+function accountTypeText(
+  type
+) {
 
-  if (type === "seller") {
+  if (
+    type ===
+    "seller"
+  ) {
     return "بائع";
   }
 
-  if (type === "both") {
+  if (
+    type ===
+    "both"
+  ) {
     return "بائع ومشتري";
   }
 
@@ -467,7 +680,9 @@ function hasActiveSellerSubscription(
   profile
 ) {
 
-  if (!profile) {
+  if (
+    !profile
+  ) {
     return false;
   }
 
@@ -489,10 +704,13 @@ function hasActiveSellerSubscription(
 
   const endDate =
     timestampToDate(
-      profile.subscriptionEnd
+      profile
+        .subscriptionEnd
     );
 
-  if (!endDate) {
+  if (
+    !endDate
+  ) {
     return false;
   }
 
@@ -504,10 +722,345 @@ function hasActiveSellerSubscription(
 
 
 // =====================================
+// قراءة موقع الإعلان للفلترة
+// =====================================
+
+function getAnimalLocationInfo(
+  location = ""
+) {
+
+  const cleanLocation =
+    String(
+      location || ""
+    ).trim();
+
+  let city =
+    cleanLocation;
+
+  let emirate =
+    "";
+
+  if (
+    cleanLocation.includes(
+      " - "
+    )
+  ) {
+
+    const parts =
+      cleanLocation
+        .split(" - ");
+
+    city =
+      (
+        parts[0] ||
+        ""
+      ).trim();
+
+    emirate =
+      (
+        parts[1] ||
+        ""
+      ).trim();
+  }
+
+  if (
+    !emirate
+  ) {
+
+    for (
+      const [
+        emirateName,
+        cities
+      ]
+      of Object.entries(
+        MARKET_EMIRATE_LOCATIONS
+      )
+    ) {
+
+      if (
+        cities.includes(
+          city
+        )
+      ) {
+
+        emirate =
+          emirateName;
+
+        break;
+      }
+    }
+  }
+
+  return {
+    city,
+    emirate
+  };
+}
+
+
+// =====================================
+// قراءة الفلاتر
+// =====================================
+
+function getMarketFilters() {
+
+  const emirate =
+    document.getElementById(
+      "marketEmirateFilter"
+    )?.value ||
+    "all";
+
+  const city =
+    document.getElementById(
+      "marketCityFilter"
+    )?.value ||
+    "all";
+
+  const animalType =
+    document.getElementById(
+      "marketAnimalFilter"
+    )?.value ||
+    "all";
+
+  const saleType =
+    document.getElementById(
+      "marketSaleTypeFilter"
+    )?.value ||
+    "all";
+
+  return {
+    emirate,
+    city,
+    animalType,
+    saleType
+  };
+}
+
+
+// =====================================
+// هل الإعلان مطابق للفلاتر؟
+// =====================================
+
+function animalMatchesMarketFilters(
+  animal,
+  forcedSaleType = ""
+) {
+
+  if (
+    !animal
+  ) {
+    return false;
+  }
+
+  const filters =
+    getMarketFilters();
+
+  const locationInfo =
+    getAnimalLocationInfo(
+      animal.location ||
+      ""
+    );
+
+  if (
+    filters.emirate !==
+      "all" &&
+    locationInfo.emirate !==
+      filters.emirate
+  ) {
+
+    return false;
+  }
+
+  if (
+    filters.city !==
+      "all" &&
+    locationInfo.city !==
+      filters.city
+  ) {
+
+    return false;
+  }
+
+  if (
+    filters.animalType !==
+      "all" &&
+    animal.type !==
+      filters.animalType
+  ) {
+
+    return false;
+  }
+
+  const actualSaleType =
+    forcedSaleType ||
+    animal.saleType ||
+    "";
+
+  if (
+    filters.saleType !==
+      "all" &&
+    actualSaleType !==
+      filters.saleType
+  ) {
+
+    return false;
+  }
+
+  return true;
+}
+
+
+// =====================================
+// تحديث قائمة المدن داخل فلتر السوق
+// =====================================
+
+window.updateMarketCityFilter =
+function () {
+
+  const emirateSelect =
+    document.getElementById(
+      "marketEmirateFilter"
+    );
+
+  const citySelect =
+    document.getElementById(
+      "marketCityFilter"
+    );
+
+  if (
+    !emirateSelect ||
+    !citySelect
+  ) {
+    return;
+  }
+
+  const emirate =
+    emirateSelect.value;
+
+  citySelect.innerHTML = `
+
+    <option value="all">
+      جميع المدن والمناطق
+    </option>
+  `;
+
+  if (
+    emirate !==
+    "all"
+  ) {
+
+    const locations =
+      MARKET_EMIRATE_LOCATIONS[
+        emirate
+      ] || [];
+
+    locations.forEach(
+      locationName => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+        option.value =
+          locationName;
+
+        option.textContent =
+          locationName;
+
+        citySelect.appendChild(
+          option
+        );
+      }
+    );
+  }
+
+  loadMarket();
+};
+
+
+// =====================================
+// تطبيق الفلاتر
+// =====================================
+
+window.applyMarketFilters =
+function () {
+
+  loadMarket();
+};
+
+
+// =====================================
+// إعادة ضبط الفلاتر
+// =====================================
+
+window.resetMarketFilters =
+function () {
+
+  const emirate =
+    document.getElementById(
+      "marketEmirateFilter"
+    );
+
+  const city =
+    document.getElementById(
+      "marketCityFilter"
+    );
+
+  const animal =
+    document.getElementById(
+      "marketAnimalFilter"
+    );
+
+  const saleType =
+    document.getElementById(
+      "marketSaleTypeFilter"
+    );
+
+  if (
+    emirate
+  ) {
+    emirate.value =
+      "all";
+  }
+
+  if (
+    city
+  ) {
+
+    city.innerHTML = `
+
+      <option value="all">
+        جميع المدن والمناطق
+      </option>
+    `;
+  }
+
+  if (
+    animal
+  ) {
+    animal.value =
+      "all";
+  }
+
+  if (
+    saleType
+  ) {
+    saleType.value =
+      "all";
+  }
+
+  loadMarket();
+};
+
+
+// =====================================
 // ضغط الصور
 // =====================================
 
-function compressImageFile(file) {
+function compressImageFile(
+  file
+) {
 
   return new Promise(
     (
@@ -518,9 +1071,10 @@ function compressImageFile(file) {
       if (
         !file ||
         !file.type ||
-        !file.type.startsWith(
-          "image/"
-        )
+        !file.type
+          .startsWith(
+            "image/"
+          )
       ) {
 
         reject(
@@ -546,7 +1100,9 @@ function compressImageFile(file) {
         };
 
       reader.onload =
-        function (event) {
+        function (
+          event
+        ) {
 
           const img =
             new Image();
@@ -574,8 +1130,10 @@ function compressImageFile(file) {
                 img.height;
 
               if (
-                width > maxSize ||
-                height > maxSize
+                width >
+                  maxSize ||
+                height >
+                  maxSize
               ) {
 
                 const ratio =
@@ -615,7 +1173,9 @@ function compressImageFile(file) {
                   "2d"
                 );
 
-              if (!ctx) {
+              if (
+                !ctx
+              ) {
 
                 reject(
                   new Error(
@@ -653,7 +1213,8 @@ function compressImageFile(file) {
             };
 
           img.src =
-            event.target.result;
+            event.target
+              .result;
         };
 
       reader.readAsDataURL(
@@ -678,8 +1239,10 @@ async function getListingImages() {
   if (
     !input ||
     !input.files ||
-    input.files.length === 0
+    input.files.length ===
+      0
   ) {
+
     return [];
   }
 
@@ -689,7 +1252,8 @@ async function getListingImages() {
     );
 
   if (
-    files.length > 5
+    files.length >
+    5
   ) {
 
     throw new Error(
@@ -697,12 +1261,15 @@ async function getListingImages() {
     );
   }
 
-  const images = [];
+  const images =
+    [];
 
-  let totalSize = 0;
+  let totalSize =
+    0;
 
   for (
-    const file of files
+    const file
+    of files
   ) {
 
     const imageData =
@@ -736,12 +1303,15 @@ async function getListingImages() {
 // صورة آمنة
 // =====================================
 
-function safeImageData(value) {
+function safeImageData(
+  value
+) {
 
   if (
     typeof value !==
     "string"
   ) {
+
     return "";
   }
 
@@ -750,6 +1320,7 @@ function safeImageData(value) {
       "data:image/jpeg;base64,"
     )
   ) {
+
     return "";
   }
 
@@ -769,15 +1340,19 @@ function animalPhotoHtml(
     Array.isArray(
       animal.images
     )
-      ? animal.images
-      : [];
+      ?
+      animal.images
+      :
+      [];
 
   const firstImage =
     safeImageData(
       images[0]
     );
 
-  if (firstImage) {
+  if (
+    firstImage
+  ) {
 
     return `
 
@@ -802,8 +1377,10 @@ function animalPhotoHtml(
         >
 
         ${
-          images.length > 1
-            ? `
+          images.length >
+          1
+            ?
+            `
               <div style="
                 position:absolute;
                 bottom:10px;
@@ -816,11 +1393,11 @@ function animalPhotoHtml(
                 📷 ${images.length} صور
               </div>
             `
-            : ""
+            :
+            ""
         }
 
       </div>
-
     `;
   }
 
@@ -833,11 +1410,13 @@ function animalPhotoHtml(
       border-radius:14px;
       padding:20px;
     ">
-      ${animalIcon(
-        animal.type || ""
-      )}
-    </div>
 
+      ${animalIcon(
+        animal.type ||
+        ""
+      )}
+
+    </div>
   `;
 }
 
@@ -859,6 +1438,7 @@ function ownerManagementButton(
     animal.sellerId !==
       user.uid
   ) {
+
     return "";
   }
 
@@ -880,7 +1460,6 @@ function ownerManagementButton(
     >
       ⚙️ إدارة إعلاني
     </button>
-
   `;
 }
 
@@ -893,7 +1472,9 @@ async function ensureUserProfile(
   user
 ) {
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return;
   }
 
@@ -955,12 +1536,15 @@ async function ensureUserProfile(
             serverTimestamp()
         },
         {
-          merge: true
+          merge:
+            true
         }
       );
     }
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "USER PROFILE ERROR:",
@@ -975,7 +1559,9 @@ async function getUserProfile() {
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return null;
   }
 
@@ -999,10 +1585,13 @@ async function getUserProfile() {
     return {
       id:
         userSnap.id,
+
       ...userSnap.data()
     };
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "GET PROFILE ERROR:",
@@ -1018,7 +1607,9 @@ async function getUserProfile() {
 // Modal
 // =====================================
 
-function showModal(html) {
+function showModal(
+  html
+) {
 
   const modal =
     document.getElementById(
@@ -1064,15 +1655,20 @@ function showModal(html) {
   modal.style.boxSizing =
     "border-box";
 
-  modal.scrollTop = 0;
-  content.scrollTop = 0;
+  modal.scrollTop =
+    0;
+
+  content.scrollTop =
+    0;
 
   const closeButton =
     modal.querySelector(
       ".close"
     );
 
-  if (closeButton) {
+  if (
+    closeButton
+  ) {
 
     closeButton.style.position =
       "fixed";
@@ -1123,8 +1719,11 @@ function showModal(html) {
   setTimeout(
     () => {
 
-      modal.scrollTop = 0;
-      content.scrollTop = 0;
+      modal.scrollTop =
+        0;
+
+      content.scrollTop =
+        0;
 
     },
     0
@@ -1140,7 +1739,9 @@ function () {
       "modal"
     );
 
-  if (modal) {
+  if (
+    modal
+  ) {
 
     modal.style.display =
       "none";
@@ -1157,7 +1758,9 @@ async function showAccount() {
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return;
   }
 
@@ -1170,15 +1773,21 @@ async function showAccount() {
       padding:20px;
     ">
 
-      <div style="font-size:55px;">
+      <div style="
+        font-size:55px;
+      ">
         👤
       </div>
 
-      <h2 style="color:#68e6b0;">
+      <h2 style="
+        color:#68e6b0;
+      ">
         حسابي
       </h2>
 
-      <p style="color:#aaa;">
+      <p style="
+        color:#aaa;
+      ">
         جاري تحميل البيانات...
       </p>
 
@@ -1212,7 +1821,8 @@ async function showAccount() {
       accountType ===
         "both"
     )
-      ? `
+      ?
+      `
         <button
           onclick="showMyPurchaseRequests()"
           style="
@@ -1230,7 +1840,8 @@ async function showAccount() {
           📋 طلباتي
         </button>
       `
-      : "";
+      :
+      "";
 
   const sellerButtons =
     (
@@ -1239,7 +1850,8 @@ async function showAccount() {
       accountType ===
         "both"
     )
-      ? `
+      ?
+      `
         <button
           onclick="showPurchaseRequests()"
           style="
@@ -1257,7 +1869,8 @@ async function showAccount() {
           📩 طلبات الشراء
         </button>
       `
-      : "";
+      :
+      "";
 
   let subscriptionHtml =
     "";
@@ -1300,8 +1913,10 @@ async function showAccount() {
 
           ${
             subscriptionEnd
-              ? `
+              ?
+              `
                 <br>
+
                 <span style="
                   color:white;
                   font-size:14px;
@@ -1312,7 +1927,8 @@ async function showAccount() {
                   )}
                 </span>
               `
-              : ""
+              :
+              ""
           }
 
         </div>
@@ -1331,14 +1947,18 @@ async function showAccount() {
           text-align:center;
           font-weight:bold;
         ">
+
           ⛔ اشتراك البائع غير فعال
+
           <br>
+
           <span style="
             color:white;
             font-size:14px;
           ">
             يجب تجديد الاشتراك حتى تتمكن من إضافة إعلان أو مزاد.
           </span>
+
         </div>
       `;
     }
@@ -1378,7 +1998,9 @@ async function showAccount() {
         id="profileName"
         type="text"
         maxlength="50"
-        value="${escapeHtml(displayName)}"
+        value="${escapeHtml(
+          displayName
+        )}"
         style="
           width:100%;
           box-sizing:border-box;
@@ -1393,7 +2015,9 @@ async function showAccount() {
       </label>
 
       <input
-        value="${escapeHtml(phone)}"
+        value="${escapeHtml(
+          phone
+        )}"
         disabled
         dir="ltr"
         style="
@@ -1421,21 +2045,42 @@ async function showAccount() {
 
         <option
           value="buyer"
-          ${accountType === "buyer" ? "selected" : ""}
+          ${
+            accountType ===
+            "buyer"
+              ?
+              "selected"
+              :
+              ""
+          }
         >
           مشتري
         </option>
 
         <option
           value="seller"
-          ${accountType === "seller" ? "selected" : ""}
+          ${
+            accountType ===
+            "seller"
+              ?
+              "selected"
+              :
+              ""
+          }
         >
           بائع
         </option>
 
         <option
           value="both"
-          ${accountType === "both" ? "selected" : ""}
+          ${
+            accountType ===
+            "both"
+              ?
+              "selected"
+              :
+              ""
+          }
         >
           بائع ومشتري
         </option>
@@ -1444,6 +2089,7 @@ async function showAccount() {
 
       <p>
         نوع الحساب:
+
         <b style="
           color:#68e6b0;
         ">
@@ -1501,7 +2147,9 @@ async function () {
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return;
   }
 
@@ -1529,13 +2177,15 @@ async function () {
   }
 
   const displayName =
-    nameInput.value.trim();
+    nameInput.value
+      .trim();
 
   const accountType =
     typeInput.value;
 
   if (
-    displayName.length < 2
+    displayName.length <
+    2
   ) {
 
     status.innerHTML =
@@ -1554,6 +2204,7 @@ async function () {
       ),
       {
         displayName,
+
         accountType,
 
         phoneNumber:
@@ -1564,7 +2215,8 @@ async function () {
           serverTimestamp()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
@@ -1575,12 +2227,16 @@ async function () {
 
     setTimeout(
       () => {
+
         showAccount();
+
       },
       300
     );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       error
@@ -1602,7 +2258,9 @@ async function () {
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
 
     window.openLogin();
 
@@ -1653,7 +2311,8 @@ async function () {
         requestsQuery
       );
 
-    const requests = [];
+    const requests =
+      [];
 
     snapshot.forEach(
       requestDoc => {
@@ -1661,23 +2320,30 @@ async function () {
         requests.push({
           id:
             requestDoc.id,
+
           ...requestDoc.data()
         });
       }
     );
 
     requests.sort(
-      (a, b) =>
+      (
+        a,
+        b
+      ) =>
+
         timestampToMillis(
           b.createdAt
         ) -
+
         timestampToMillis(
           a.createdAt
         )
     );
 
     if (
-      requests.length === 0
+      requests.length ===
+      0
     ) {
 
       showModal(`
@@ -1774,9 +2440,11 @@ async function () {
 
                   ${
                     request.sellerName
-                      ? `
+                      ?
+                      `
                         <p>
                           👤 البائع:
+
                           <b>
                             ${escapeHtml(
                               request.sellerName
@@ -1784,14 +2452,17 @@ async function () {
                           </b>
                         </p>
                       `
-                      : ""
+                      :
+                      ""
                   }
 
                   ${
                     request.sellerPhone
-                      ? `
+                      ?
+                      `
                         <p>
                           📱 رقم البائع:
+
                           <b dir="ltr">
                             ${escapeHtml(
                               request.sellerPhone
@@ -1799,7 +2470,8 @@ async function () {
                           </b>
                         </p>
                       `
-                      : ""
+                      :
+                      ""
                   }
 
                   <p style="
@@ -1843,6 +2515,7 @@ async function () {
                   margin-top:0;
                   font-size:22px;
                 ">
+
                   ${animalIcon(
                     request.animalType ||
                     ""
@@ -1852,13 +2525,16 @@ async function () {
                     request.animalType ||
                     "حلال"
                   )}
+
                 </h3>
 
                 ${
                   request.animalBreed
-                    ? `
+                    ?
+                    `
                       <p>
                         السلالة:
+
                         <b>
                           ${escapeHtml(
                             request.animalBreed
@@ -1866,11 +2542,13 @@ async function () {
                         </b>
                       </p>
                     `
-                    : ""
+                    :
+                    ""
                 }
 
                 <p>
                   💰 السعر:
+
                   <b>
                     ${money(
                       request.price
@@ -1880,9 +2558,11 @@ async function () {
 
                 ${
                   request.sellerName
-                    ? `
+                    ?
+                    `
                       <p>
                         👤 البائع:
+
                         <b>
                           ${escapeHtml(
                             request.sellerName
@@ -1890,11 +2570,13 @@ async function () {
                         </b>
                       </p>
                     `
-                    : ""
+                    :
+                    ""
                 }
 
                 <p>
                   🕒 تاريخ إرسال الطلب:
+
                   <b>
                     ${formatDate(
                       request.createdAt
@@ -1970,50 +2652,18 @@ async function () {
       </div>
     `);
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "LOAD MY PURCHASE REQUESTS ERROR:",
       error
     );
 
-    showModal(`
-
-      <div style="
-        direction:rtl;
-        color:white;
-        padding:15px;
-        text-align:center;
-      ">
-
-        <h2 style="
-          color:#68e6b0;
-        ">
-          📋 طلباتي
-        </h2>
-
-        <p style="
-          color:#ff8d8d;
-        ">
-          ❌ تعذر تحميل طلباتك.
-        </p>
-
-        <button
-          onclick="openLogin()"
-          style="
-            width:100%;
-            padding:14px;
-            background:#28566f;
-            color:white;
-            border:0;
-            border-radius:10px;
-          "
-        >
-          الرجوع إلى حسابي
-        </button>
-
-      </div>
-    `);
+    alert(
+      "❌ تعذر تحميل طلباتك."
+    );
   }
 };
 
@@ -2028,7 +2678,9 @@ async function () {
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
 
     window.openLogin();
 
@@ -2079,7 +2731,8 @@ async function () {
         requestsQuery
       );
 
-    const requests = [];
+    const requests =
+      [];
 
     snapshot.forEach(
       requestDoc => {
@@ -2087,23 +2740,30 @@ async function () {
         requests.push({
           id:
             requestDoc.id,
+
           ...requestDoc.data()
         });
       }
     );
 
     requests.sort(
-      (a, b) =>
+      (
+        a,
+        b
+      ) =>
+
         timestampToMillis(
           b.createdAt
         ) -
+
         timestampToMillis(
           a.createdAt
         )
     );
 
     if (
-      requests.length === 0
+      requests.length ===
+      0
     ) {
 
       showModal(`
@@ -2129,20 +2789,6 @@ async function () {
           ">
             لا توجد طلبات شراء حالياً.
           </div>
-
-          <button
-            onclick="openLogin()"
-            style="
-              width:100%;
-              padding:14px;
-              background:#28566f;
-              color:white;
-              border:0;
-              border-radius:10px;
-            "
-          >
-            الرجوع إلى حسابي
-          </button>
 
         </div>
       `);
@@ -2187,8 +2833,9 @@ async function () {
 
             const actionButtons =
               request.status ===
-                "pending"
-                ? `
+              "pending"
+                ?
+                `
 
                   <button
                     onclick="updatePurchaseRequest('${request.id}','accepted')"
@@ -2221,7 +2868,8 @@ async function () {
                   </button>
 
                 `
-                : "";
+                :
+                "";
 
             return `
 
@@ -2245,7 +2893,8 @@ async function () {
 
                 ${
                   request.animalBreed
-                    ? `
+                    ?
+                    `
                       <p>
                         السلالة:
                         <b>
@@ -2255,11 +2904,13 @@ async function () {
                         </b>
                       </p>
                     `
-                    : ""
+                    :
+                    ""
                 }
 
                 <p>
                   💰 السعر:
+
                   <b>
                     ${money(
                       request.price
@@ -2269,6 +2920,7 @@ async function () {
 
                 <p>
                   👤 المشتري:
+
                   <b>
                     ${escapeHtml(
                       request.buyerName ||
@@ -2279,6 +2931,7 @@ async function () {
 
                 <p>
                   📱 رقم المشتري:
+
                   <b dir="ltr">
                     ${escapeHtml(
                       request.buyerPhone ||
@@ -2289,6 +2942,7 @@ async function () {
 
                 <p>
                   🕒 تاريخ الطلب:
+
                   <b>
                     ${formatDate(
                       request.createdAt
@@ -2330,72 +2984,21 @@ async function () {
 
         ${cards}
 
-        <button
-          onclick="openLogin()"
-          style="
-            width:100%;
-            padding:14px;
-            background:#28566f;
-            color:white;
-            border:0;
-            border-radius:10px;
-            margin-top:10px;
-          "
-        >
-          الرجوع إلى حسابي
-        </button>
-
-        <div style="
-          height:30px;
-        "></div>
-
       </div>
     `);
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "LOAD PURCHASE REQUESTS ERROR:",
       error
     );
 
-    showModal(`
-
-      <div style="
-        direction:rtl;
-        color:white;
-        padding:15px;
-        text-align:center;
-      ">
-
-        <h2 style="
-          color:#68e6b0;
-        ">
-          📩 طلبات الشراء
-        </h2>
-
-        <p style="
-          color:#ff8d8d;
-        ">
-          ❌ تعذر تحميل طلبات الشراء.
-        </p>
-
-        <button
-          onclick="openLogin()"
-          style="
-            width:100%;
-            padding:14px;
-            background:#28566f;
-            color:white;
-            border:0;
-            border-radius:10px;
-          "
-        >
-          الرجوع إلى حسابي
-        </button>
-
-      </div>
-    `);
+    alert(
+      "❌ تعذر تحميل طلبات الشراء."
+    );
   }
 };
 
@@ -2413,7 +3016,9 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return;
   }
 
@@ -2425,6 +3030,7 @@ async function (
       newStatus
     )
   ) {
+
     return;
   }
 
@@ -2493,7 +3099,8 @@ async function (
           serverTimestamp()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
@@ -2516,7 +3123,9 @@ async function (
     await window
       .showPurchaseRequests();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "UPDATE PURCHASE REQUEST ERROR:",
@@ -2640,8 +3249,14 @@ async function () {
 
   let phone =
     input.value
-      .replace(/\s+/g, "")
-      .replace(/-/g, "");
+      .replace(
+        /\s+/g,
+        ""
+      )
+      .replace(
+        /-/g,
+        ""
+      );
 
   if (
     phone.startsWith(
@@ -2651,7 +3266,9 @@ async function () {
 
     phone =
       "+971" +
-      phone.substring(1);
+      phone.substring(
+        1
+      );
   }
 
   if (
@@ -2687,9 +3304,13 @@ async function () {
     ) {
 
       try {
+
         recaptchaVerifier
           .clear();
-      } catch (e) {}
+
+      } catch (
+        e
+      ) {}
 
       recaptchaVerifier =
         null;
@@ -2716,7 +3337,9 @@ async function () {
       phone
     );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "SEND PHONE CODE ERROR:",
@@ -2773,7 +3396,9 @@ function showCodeScreen(
           font-weight:bold;
         "
       >
-        ${escapeHtml(phone)}
+        ${escapeHtml(
+          phone
+        )}
       </p>
 
       <input
@@ -2829,6 +3454,7 @@ async function () {
     !status ||
     !confirmationResult
   ) {
+
     return;
   }
 
@@ -2837,7 +3463,8 @@ async function () {
     const result =
       await confirmationResult
         .confirm(
-          code.value.trim()
+          code.value
+            .trim()
         );
 
     await ensureUserProfile(
@@ -2846,7 +3473,9 @@ async function () {
 
     await showAccount();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       error
@@ -2884,7 +3513,9 @@ onAuthStateChanged(
         ".login"
       );
 
-    if (user) {
+    if (
+      user
+    ) {
 
       await ensureUserProfile(
         user
@@ -2925,7 +3556,9 @@ function createFirebaseArea() {
       "firebase-market"
     );
 
-  if (area) {
+  if (
+    area
+  ) {
     return area;
   }
 
@@ -2949,9 +3582,199 @@ function createFirebaseArea() {
       <h2 style="
         text-align:center;
         color:#68e6b0;
+        margin-bottom:7px;
       ">
-        سوق الحلال المباشر
+        🐪 سوق الحلال
       </h2>
+
+      <p style="
+        text-align:center;
+        color:#aaa;
+        margin-top:0;
+      ">
+        ابحث عن الحلال حسب الإمارة والمنطقة
+      </p>
+
+
+      <!-- ===================================== -->
+      <!-- فلترة السوق -->
+      <!-- ===================================== -->
+
+      <div
+        id="market-filters"
+        style="
+          background:#1d2521;
+          border:1px solid #35443d;
+          border-radius:16px;
+          padding:16px;
+          margin:22px 0 25px;
+          display:grid;
+          grid-template-columns:
+            repeat(auto-fit,minmax(150px,1fr));
+          gap:10px;
+        "
+      >
+
+        <select
+          id="marketEmirateFilter"
+          onchange="updateMarketCityFilter()"
+          style="
+            width:100%;
+            padding:13px;
+            border-radius:10px;
+            border:1px solid #45564e;
+          "
+        >
+
+          <option value="all">
+            📍 جميع الإمارات
+          </option>
+
+          <option value="الشارقة">
+            الشارقة
+          </option>
+
+          <option value="دبي">
+            دبي
+          </option>
+
+          <option value="أبوظبي">
+            أبوظبي
+          </option>
+
+          <option value="عجمان">
+            عجمان
+          </option>
+
+          <option value="رأس الخيمة">
+            رأس الخيمة
+          </option>
+
+          <option value="أم القيوين">
+            أم القيوين
+          </option>
+
+          <option value="الفجيرة">
+            الفجيرة
+          </option>
+
+        </select>
+
+
+        <select
+          id="marketCityFilter"
+          onchange="applyMarketFilters()"
+          style="
+            width:100%;
+            padding:13px;
+            border-radius:10px;
+            border:1px solid #45564e;
+          "
+        >
+
+          <option value="all">
+            جميع المدن والمناطق
+          </option>
+
+        </select>
+
+
+        <select
+          id="marketAnimalFilter"
+          onchange="applyMarketFilters()"
+          style="
+            width:100%;
+            padding:13px;
+            border-radius:10px;
+            border:1px solid #45564e;
+          "
+        >
+
+          <option value="all">
+            🐾 جميع أنواع الحلال
+          </option>
+
+          <option value="ناقة">
+            🐫 ناقة
+          </option>
+
+          <option value="غنم">
+            🐑 غنم
+          </option>
+
+          <option value="ماعز">
+            🐐 ماعز
+          </option>
+
+          <option value="بقر">
+            🐄 بقر
+          </option>
+
+          <option value="دجاج">
+            🐔 دجاج
+          </option>
+
+          <option value="صقور">
+            🦅 صقور
+          </option>
+
+          <option value="غزال">
+            🦌 غزال
+          </option>
+
+          <option value="نعام">
+            🐦 نعام
+          </option>
+
+          <option value="حمام">
+            🕊️ حمام
+          </option>
+
+        </select>
+
+
+        <select
+          id="marketSaleTypeFilter"
+          onchange="applyMarketFilters()"
+          style="
+            width:100%;
+            padding:13px;
+            border-radius:10px;
+            border:1px solid #45564e;
+          "
+        >
+
+          <option value="all">
+            جميع طرق البيع
+          </option>
+
+          <option value="direct">
+            🛒 بيع مباشر
+          </option>
+
+          <option value="auction">
+            🔨 مزاد إلكتروني
+          </option>
+
+        </select>
+
+
+        <button
+          onclick="resetMarketFilters()"
+          style="
+            width:100%;
+            background:#5c635f;
+            color:white;
+            border:0;
+            padding:13px;
+            border-radius:10px;
+          "
+        >
+          🔄 إظهار الكل
+        </button>
+
+      </div>
+
 
       <p
         id="firebase-status"
@@ -2960,6 +3783,7 @@ function createFirebaseArea() {
           color:#aaa;
         "
       ></p>
+
 
       <h2 style="
         margin-top:40px;
@@ -2977,6 +3801,7 @@ function createFirebaseArea() {
           gap:20px;
         "
       ></div>
+
 
       <h2 style="
         margin-top:50px;
@@ -3006,6 +3831,8 @@ function createFirebaseArea() {
   ).appendChild(
     area
   );
+
+  return area;
 }
 
 
@@ -3023,7 +3850,8 @@ function auctionActionHtml(
     auth.currentUser;
 
   const hasBid =
-    !!auction.lastBidderId;
+    !!auction
+      .lastBidderId;
 
   const isHighestBidder =
     !!user &&
@@ -3035,7 +3863,9 @@ function auctionActionHtml(
     "sold"
   ) {
 
-    if (isOwner) {
+    if (
+      isOwner
+    ) {
 
       return `
 
@@ -3057,6 +3887,7 @@ function auctionActionHtml(
 
           <p>
             السعر النهائي:
+
             <b>
               ${money(
                 auction.currentPrice
@@ -3066,9 +3897,11 @@ function auctionActionHtml(
 
           ${
             auction.lastBidderPhone
-              ? `
+              ?
+              `
                 <p>
                   📱 رقم الفائز:
+
                   <b dir="ltr">
                     ${escapeHtml(
                       auction.lastBidderPhone
@@ -3076,7 +3909,8 @@ function auctionActionHtml(
                   </b>
                 </p>
               `
-              : ""
+              :
+              ""
           }
 
           <p style="
@@ -3120,6 +3954,7 @@ function auctionActionHtml(
 
           <p>
             السعر النهائي:
+
             <b>
               ${money(
                 auction.currentPrice
@@ -3129,9 +3964,11 @@ function auctionActionHtml(
 
           ${
             auction.sellerName
-              ? `
+              ?
+              `
                 <p>
                   👤 البائع:
+
                   <b>
                     ${escapeHtml(
                       auction.sellerName
@@ -3139,14 +3976,17 @@ function auctionActionHtml(
                   </b>
                 </p>
               `
-              : ""
+              :
+              ""
           }
 
           ${
             auction.sellerPhone
-              ? `
+              ?
+              `
                 <p>
                   📱 رقم البائع:
+
                   <b dir="ltr">
                     ${escapeHtml(
                       auction.sellerPhone
@@ -3154,7 +3994,8 @@ function auctionActionHtml(
                   </b>
                 </p>
               `
-              : ""
+              :
+              ""
           }
 
           <p style="
@@ -3179,12 +4020,17 @@ function auctionActionHtml(
         margin-top:15px;
         font-weight:bold;
       ">
+
         ✅ انتهى المزاد وتم اعتماد البيع
+
         <br>
+
         السعر النهائي:
+
         ${money(
           auction.currentPrice
         )}
+
       </div>
     `;
   }
@@ -3216,7 +4062,9 @@ function auctionActionHtml(
     !expired
   ) {
 
-    if (isOwner) {
+    if (
+      isOwner
+    ) {
 
       return `
 
@@ -3275,7 +4123,9 @@ function auctionActionHtml(
   }
 
 
-  if (isOwner) {
+  if (
+    isOwner
+  ) {
 
     return `
 
@@ -3381,7 +4231,6 @@ function auctionActionHtml(
     `;
   }
 
-
   return `
 
     <div style="
@@ -3398,6 +4247,7 @@ function auctionActionHtml(
       <br><br>
 
       أعلى مزايدة:
+
       <span style="
         color:#68e6b0;
       ">
@@ -3443,6 +4293,7 @@ async function loadMarket() {
     !directContainer ||
     !auctionContainer
   ) {
+
     return;
   }
 
@@ -3459,7 +4310,8 @@ async function loadMarket() {
         )
       );
 
-    const animals = {};
+    const animals =
+      {};
 
     animalSnapshot.forEach(
       animalDoc => {
@@ -3469,6 +4321,7 @@ async function loadMarket() {
         ] = {
           id:
             animalDoc.id,
+
           ...animalDoc.data()
         };
       }
@@ -3476,23 +4329,31 @@ async function loadMarket() {
 
 
     // =====================================
-    // البيع المباشر
+    // البيع المباشر + الفلترة
     // =====================================
 
     const directAnimals =
       Object.values(
         animals
       )
-      .filter(
-        animal =>
-          animal.saleType ===
-            "direct" &&
-          (
-            !animal.status ||
-            animal.status ===
-              "active"
-          )
-      );
+        .filter(
+          animal =>
+            animal.saleType ===
+              "direct" &&
+            (
+              !animal.status ||
+              animal.status ===
+                "active"
+            )
+        )
+        .filter(
+          animal =>
+            animalMatchesMarketFilters(
+              animal,
+              "direct"
+            )
+        );
+
 
     if (
       directAnimals.length ===
@@ -3506,8 +4367,9 @@ async function loadMarket() {
           color:white;
           padding:20px;
           border-radius:15px;
+          text-align:center;
         ">
-          لا توجد عروض بيع مباشر حالياً
+          لا توجد عروض بيع مباشر مطابقة للبحث
         </div>
       `;
 
@@ -3518,90 +4380,95 @@ async function loadMarket() {
           .map(
             animal => `
 
-          <div style="
-            background:#222;
-            color:white;
-            padding:20px;
-            border-radius:18px;
-          ">
-
-            ${animalPhotoHtml(
-              animal
-            )}
-
-            <h3>
-              ${escapeHtml(
-                animal.name ||
-                animal.type ||
-                "حلال للبيع"
-              )}
-            </h3>
-
-            ${
-              animal.breed
-                ? `
-                  <p>
-                    السلالة:
-                    ${escapeHtml(
-                      animal.breed
-                    )}
-                  </p>
-                `
-                : ""
-            }
-
-            ${
-              animal.age
-                ? `
-                  <p>
-                    العمر:
-                    ${escapeHtml(
-                      animal.age
-                    )}
-                  </p>
-                `
-                : ""
-            }
-
-            <p>
-              📍
-              ${escapeHtml(
-                animal.location ||
-                "الذيد"
-              )}
-            </p>
-
-            <div style="
-              font-size:25px;
-              color:#68e6b0;
-              font-weight:bold;
-              margin:15px 0;
-            ">
-              ${money(
-                animal.price
-              )}
-            </div>
-
-            <button
-              onclick="requestPurchase('${animal.id}')"
-              style="
-                width:100%;
-                background:#00643e;
+              <div style="
+                background:#222;
                 color:white;
-                border:0;
-                padding:14px;
-                border-radius:10px;
-              "
-            >
-              طلب شراء
-            </button>
+                padding:20px;
+                border-radius:18px;
+              ">
 
-            ${ownerManagementButton(
-              animal
-            )}
+                ${animalPhotoHtml(
+                  animal
+                )}
 
-          </div>
-        `)
+                <h3>
+                  ${escapeHtml(
+                    animal.name ||
+                    animal.type ||
+                    "حلال للبيع"
+                  )}
+                </h3>
+
+                ${
+                  animal.breed
+                    ?
+                    `
+                      <p>
+                        السلالة:
+                        ${escapeHtml(
+                          animal.breed
+                        )}
+                      </p>
+                    `
+                    :
+                    ""
+                }
+
+                ${
+                  animal.age
+                    ?
+                    `
+                      <p>
+                        العمر:
+                        ${escapeHtml(
+                          animal.age
+                        )}
+                      </p>
+                    `
+                    :
+                    ""
+                }
+
+                <p>
+                  📍
+                  ${escapeHtml(
+                    animal.location ||
+                    "غير محدد"
+                  )}
+                </p>
+
+                <div style="
+                  font-size:25px;
+                  color:#68e6b0;
+                  font-weight:bold;
+                  margin:15px 0;
+                ">
+                  ${money(
+                    animal.price
+                  )}
+                </div>
+
+                <button
+                  onclick="requestPurchase('${animal.id}')"
+                  style="
+                    width:100%;
+                    background:#00643e;
+                    color:white;
+                    border:0;
+                    padding:14px;
+                    border-radius:10px;
+                  "
+                >
+                  طلب شراء
+                </button>
+
+                ${ownerManagementButton(
+                  animal
+                )}
+
+              </div>
+            `
+          )
           .join("");
     }
 
@@ -3618,7 +4485,8 @@ async function loadMarket() {
         )
       );
 
-    const auctions = [];
+    const auctions =
+      [];
 
     auctionSnapshot.forEach(
       auctionDoc => {
@@ -3626,6 +4494,7 @@ async function loadMarket() {
         auctions.push({
           id:
             auctionDoc.id,
+
           ...auctionDoc.data()
         });
       }
@@ -3633,57 +4502,88 @@ async function loadMarket() {
 
 
     // =====================================
-    // إبقاء المزاد المباع ظاهراً 24 ساعة فقط
+    // إبقاء المزاد المباع 24 ساعة
     // =====================================
 
     const AUCTION_RESULT_VISIBLE_TIME =
-      24 * 60 * 60 * 1000;
+      24 *
+      60 *
+      60 *
+      1000;
+
 
     const visibleAuctions =
-      auctions.filter(
-        auction => {
+      auctions
+        .filter(
+          auction => {
 
-          if (
-            auction.status ===
-            "active"
-          ) {
-            return true;
-          }
+            if (
+              auction.status ===
+              "active"
+            ) {
 
-          if (
-            auction.status ===
-            "not_approved"
-          ) {
-            return true;
-          }
-
-          if (
-            auction.status ===
-            "sold"
-          ) {
-
-            const approvedAt =
-              timestampToMillis(
-                auction.updatedAt
-              );
-
-            if (!approvedAt) {
               return true;
             }
 
-            const elapsed =
-              Date.now() -
-              approvedAt;
+            if (
+              auction.status ===
+              "not_approved"
+            ) {
 
-            return (
-              elapsed <
-              AUCTION_RESULT_VISIBLE_TIME
+              return true;
+            }
+
+            if (
+              auction.status ===
+              "sold"
+            ) {
+
+              const approvedAt =
+                timestampToMillis(
+                  auction.updatedAt
+                );
+
+              if (
+                !approvedAt
+              ) {
+
+                return true;
+              }
+
+              const elapsed =
+                Date.now() -
+                approvedAt;
+
+              return (
+                elapsed <
+                AUCTION_RESULT_VISIBLE_TIME
+              );
+            }
+
+            return false;
+          }
+        )
+        .filter(
+          auction => {
+
+            const animal =
+              animals[
+                auction.animalId
+              ];
+
+            if (
+              !animal
+            ) {
+
+              return false;
+            }
+
+            return animalMatchesMarketFilters(
+              animal,
+              "auction"
             );
           }
-
-          return false;
-        }
-      );
+        );
 
 
     if (
@@ -3698,8 +4598,9 @@ async function loadMarket() {
           color:white;
           padding:20px;
           border-radius:15px;
+          text-align:center;
         ">
-          لا توجد مزادات حالياً
+          لا توجد مزادات مطابقة للبحث
         </div>
       `;
 
@@ -3713,7 +4614,8 @@ async function loadMarket() {
               const animal =
                 animals[
                   auction.animalId
-                ] || {};
+                ] ||
+                {};
 
               const currentPrice =
                 Number(
@@ -3824,7 +4726,8 @@ async function loadMarket() {
 
                   ${
                     animal.breed
-                      ? `
+                      ?
+                      `
                         <p>
                           السلالة:
                           ${escapeHtml(
@@ -3832,12 +4735,14 @@ async function loadMarket() {
                           )}
                         </p>
                       `
-                      : ""
+                      :
+                      ""
                   }
 
                   ${
                     animal.age
-                      ? `
+                      ?
+                      `
                         <p>
                           العمر:
                           ${escapeHtml(
@@ -3845,19 +4750,21 @@ async function loadMarket() {
                           )}
                         </p>
                       `
-                      : ""
+                      :
+                      ""
                   }
 
                   <p>
                     📍
                     ${escapeHtml(
                       animal.location ||
-                      "الذيد"
+                      "غير محدد"
                     )}
                   </p>
 
                   <p>
                     سعر البداية:
+
                     <b>
                       ${money(
                         auction.startPrice
@@ -3867,6 +4774,7 @@ async function loadMarket() {
 
                   <p>
                     أقل زيادة:
+
                     <b>
                       ${money(
                         increment
@@ -3880,20 +4788,26 @@ async function loadMarket() {
                     font-weight:bold;
                     margin:15px 0;
                   ">
+
                     السعر الحالي:
+
                     <br>
+
                     ${money(
                       currentPrice
                     )}
+
                   </div>
 
                   ${
                     auction.status ===
                       "active" &&
                     !expired
-                      ? `
+                      ?
+                      `
                         <p>
                           الحد الأدنى للمزايدة القادمة:
+
                           <b>
                             ${money(
                               minimumNextBid
@@ -3901,13 +4815,15 @@ async function loadMarket() {
                           </b>
                         </p>
                       `
-                      : ""
+                      :
+                      ""
                   }
 
                   ${
                     auction.status ===
-                      "active"
-                      ? `
+                    "active"
+                      ?
+                      `
                         <div
                           data-auction-end="${endMillis}"
                           data-auction-id="${auction.id}"
@@ -3919,17 +4835,22 @@ async function loadMarket() {
                             margin:18px 0;
                           "
                         >
+
                           ${
                             expired
-                              ? "⛔ انتهى المزاد"
-                              : "⏱ " +
-                                getCountdownText(
-                                  auction.endTime
-                                )
+                              ?
+                              "⛔ انتهى المزاد"
+                              :
+                              "⏱ " +
+                              getCountdownText(
+                                auction.endTime
+                              )
                           }
+
                         </div>
                       `
-                      : `
+                      :
+                      `
                         <div style="
                           text-align:center;
                           color:#aaa;
@@ -3944,10 +4865,13 @@ async function loadMarket() {
                     color:#aaa;
                     text-align:center;
                   ">
+
                     موعد الانتهاء:
+
                     ${formatDate(
                       auction.endTime
                     )}
+
                   </p>
 
                   ${auctionActionHtml(
@@ -3958,10 +4882,12 @@ async function loadMarket() {
 
                   ${
                     isOwner
-                      ? ownerManagementButton(
-                          animal
-                        )
-                      : ""
+                      ?
+                      ownerManagementButton(
+                        animal
+                      )
+                      :
+                      ""
                   }
 
                 </div>
@@ -3971,12 +4897,26 @@ async function loadMarket() {
           .join("");
     }
 
+
+    // =====================================
+    // عدد النتائج
+    // =====================================
+
+    const totalResults =
+      directAnimals.length +
+      visibleAuctions.length;
+
     status.innerHTML =
-      "✅ متصل بالسوق";
+      "✅ متصل بالسوق • " +
+      totalResults +
+      " نتيجة";
+
 
     startAuctionTimers();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "LOAD MARKET ERROR:",
@@ -3994,12 +4934,16 @@ async function loadMarket() {
 // =====================================
 
 window.manageListing =
-async function (animalId) {
+async function (
+  animalId
+) {
 
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
 
     window.openLogin();
 
@@ -4034,6 +4978,7 @@ async function (animalId) {
     const animal = {
       id:
         animalSnap.id,
+
       ...animalSnap.data()
     };
 
@@ -4053,65 +4998,73 @@ async function (animalId) {
       Array.isArray(
         animal.images
       )
-        ? animal.images
-        : [];
+        ?
+        animal.images
+        :
+        [];
 
     const imageHtml =
-      images.length > 0
-        ? images
-            .map(
-              (
-                image,
-                index
-              ) => {
+      images.length >
+      0
+        ?
+        images
+          .map(
+            (
+              image,
+              index
+            ) => {
 
-                const safe =
-                  safeImageData(
-                    image
-                  );
+              const safe =
+                safeImageData(
+                  image
+                );
 
-                if (!safe) {
-                  return "";
-                }
+              if (
+                !safe
+              ) {
 
-                return `
-
-                  <div style="
-                    position:relative;
-                    margin-bottom:12px;
-                  ">
-
-                    <img
-                      src="${safe}"
-                      style="
-                        width:100%;
-                        max-height:250px;
-                        object-fit:cover;
-                        border-radius:12px;
-                      "
-                    >
-
-                    <button
-                      onclick="removeAnimalImage('${animal.id}', ${index})"
-                      style="
-                        width:100%;
-                        padding:10px;
-                        margin-top:6px;
-                        border:0;
-                        border-radius:8px;
-                        background:#8b2929;
-                        color:white;
-                      "
-                    >
-                      ❌ حذف هذه الصورة
-                    </button>
-
-                  </div>
-                `;
+                return "";
               }
-            )
-            .join("")
-        : `
+
+              return `
+
+                <div style="
+                  position:relative;
+                  margin-bottom:12px;
+                ">
+
+                  <img
+                    src="${safe}"
+                    style="
+                      width:100%;
+                      max-height:250px;
+                      object-fit:cover;
+                      border-radius:12px;
+                    "
+                  >
+
+                  <button
+                    onclick="removeAnimalImage('${animal.id}', ${index})"
+                    style="
+                      width:100%;
+                      padding:10px;
+                      margin-top:6px;
+                      border:0;
+                      border-radius:8px;
+                      background:#8b2929;
+                      color:white;
+                    "
+                  >
+                    ❌ حذف هذه الصورة
+                  </button>
+
+                </div>
+              `;
+            }
+          )
+          .join("")
+        :
+        `
           <p style="
             text-align:center;
             color:#aaa;
@@ -4120,14 +5073,13 @@ async function (animalId) {
           </p>
         `;
 
+
     const directPriceField =
       animal.saleType ===
-        "direct"
-        ? `
-          <label style="
-            display:block;
-            margin-bottom:6px;
-          ">
+      "direct"
+        ?
+        `
+          <label>
             السعر بالدرهم
           </label>
 
@@ -4148,7 +5100,8 @@ async function (animalId) {
             "
           >
         `
-        : `
+        :
+        `
           <div style="
             background:#302a16;
             color:#ffd66b;
@@ -4163,6 +5116,7 @@ async function (animalId) {
 
     let saleActionHtml =
       "";
+
 
     if (
       animal.saleType ===
@@ -4186,6 +5140,7 @@ async function (animalId) {
         const auction = {
           id:
             auctionSnap.id,
+
           ...auctionSnap.data()
         };
 
@@ -4200,7 +5155,9 @@ async function (animalId) {
             Date.now();
 
         const hasBid =
-          !!auction.lastBidderId;
+          !!auction
+            .lastBidderId;
+
 
         if (
           auction.status ===
@@ -4218,14 +5175,13 @@ async function (animalId) {
               margin-bottom:15px;
             ">
 
-              <h3 style="
-                margin-top:0;
-              ">
+              <h3>
                 ✅ تم اعتماد البيع
               </h3>
 
               <p>
                 السعر النهائي:
+
                 <b>
                   ${money(
                     auction.currentPrice
@@ -4235,9 +5191,11 @@ async function (animalId) {
 
               ${
                 auction.lastBidderPhone
-                  ? `
+                  ?
+                  `
                     <p>
                       📱 رقم الفائز:
+
                       <b dir="ltr">
                         ${escapeHtml(
                           auction.lastBidderPhone
@@ -4245,15 +5203,9 @@ async function (animalId) {
                       </b>
                     </p>
                   `
-                  : ""
+                  :
+                  ""
               }
-
-              <p style="
-                color:white;
-                font-size:14px;
-              ">
-                يتم إتمام المعاينة والاستلام والدفع بين الطرفين شخصياً.
-              </p>
 
             </div>
           `;
@@ -4298,6 +5250,7 @@ async function (animalId) {
               <br><br>
 
               السعر الحالي:
+
               <b style="
                 color:#68e6b0;
               ">
@@ -4312,15 +5265,6 @@ async function (animalId) {
               ${getCountdownText(
                 auction.endTime
               )}
-
-              <br><br>
-
-              <span style="
-                color:white;
-                font-size:14px;
-              ">
-                لا يمكن اعتماد البيع قبل انتهاء وقت المزاد.
-              </span>
 
             </div>
           `;
@@ -4357,9 +5301,7 @@ async function (animalId) {
               margin-bottom:12px;
             ">
 
-              <h3 style="
-                margin-top:0;
-              ">
+              <h3>
                 🏆 نتيجة المزاد
               </h3>
 
@@ -4390,8 +5332,6 @@ async function (animalId) {
                 padding:16px;
                 border-radius:10px;
                 margin-bottom:10px;
-                font-size:17px;
-                font-weight:bold;
               "
             >
               ✅ اعتماد البيع لأعلى مزايد
@@ -4407,8 +5347,6 @@ async function (animalId) {
                 padding:16px;
                 border-radius:10px;
                 margin-bottom:15px;
-                font-size:17px;
-                font-weight:bold;
               "
             >
               ❌ عدم اعتماد البيع
@@ -4445,23 +5383,14 @@ async function (animalId) {
         direction:rtl;
         color:white;
         padding:10px;
-        padding-top:15px;
       ">
 
         <h2 style="
           color:#68e6b0;
           text-align:center;
-          margin-top:0;
         ">
           ⚙️ إدارة إعلاني
         </h2>
-
-        <h3 style="
-          color:#68e6b0;
-          margin-top:25px;
-        ">
-          ✏️ تعديل بيانات الإعلان
-        </h3>
 
         <label>
           نوع الحيوان
@@ -4471,12 +5400,11 @@ async function (animalId) {
           id="editAnimalType"
           style="
             width:100%;
-            box-sizing:border-box;
             padding:13px;
             margin-bottom:14px;
-            border-radius:9px;
           "
         >
+
           <option value="ناقة" ${animal.type === "ناقة" ? "selected" : ""}>ناقة</option>
           <option value="غنم" ${animal.type === "غنم" ? "selected" : ""}>غنم</option>
           <option value="ماعز" ${animal.type === "ماعز" ? "selected" : ""}>ماعز</option>
@@ -4486,6 +5414,7 @@ async function (animalId) {
           <option value="غزال" ${animal.type === "غزال" ? "selected" : ""}>غزال</option>
           <option value="نعام" ${animal.type === "نعام" ? "selected" : ""}>نعام</option>
           <option value="حمام" ${animal.type === "حمام" ? "selected" : ""}>حمام</option>
+
         </select>
 
         <label>
@@ -4494,19 +5423,10 @@ async function (animalId) {
 
         <input
           id="editAnimalBreed"
-          type="text"
-          maxlength="80"
           value="${escapeHtml(
             animal.breed ||
             ""
           )}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-            padding:13px;
-            margin-bottom:14px;
-            border-radius:9px;
-          "
         >
 
         <label>
@@ -4515,19 +5435,10 @@ async function (animalId) {
 
         <input
           id="editAnimalAge"
-          type="text"
-          maxlength="50"
           value="${escapeHtml(
             animal.age ||
             ""
           )}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-            padding:13px;
-            margin-bottom:14px;
-            border-radius:9px;
-          "
         >
 
         <label>
@@ -4536,19 +5447,10 @@ async function (animalId) {
 
         <input
           id="editAnimalLocation"
-          type="text"
-          maxlength="80"
           value="${escapeHtml(
             animal.location ||
-            "الذيد"
+            ""
           )}"
-          style="
-            width:100%;
-            box-sizing:border-box;
-            padding:13px;
-            margin-bottom:14px;
-            border-radius:9px;
-          "
         >
 
         ${directPriceField}
@@ -4560,14 +5462,6 @@ async function (animalId) {
         <textarea
           id="editAnimalDescription"
           rows="4"
-          maxlength="500"
-          style="
-            width:100%;
-            box-sizing:border-box;
-            padding:13px;
-            margin-bottom:14px;
-            border-radius:9px;
-          "
         >${escapeHtml(
           animal.description ||
           ""
@@ -4577,14 +5471,7 @@ async function (animalId) {
           onclick="saveListingEdits('${animal.id}')"
           style="
             width:100%;
-            background:#00643e;
-            color:white;
-            border:0;
-            padding:15px;
-            border-radius:10px;
-            margin-bottom:22px;
-            font-size:17px;
-            font-weight:bold;
+            margin:15px 0;
           "
         >
           💾 حفظ التعديلات
@@ -4592,41 +5479,20 @@ async function (animalId) {
 
         <hr>
 
-        <h3 style="
-          color:#68e6b0;
-        ">
-          📷 صور الإعلان
-        </h3>
-
         ${imageHtml}
-
-        <hr>
-
-        <h3>
-          🖼️ استبدال الصور
-        </h3>
 
         <input
           id="manageImages"
           type="file"
           accept="image/*"
           multiple
-          style="
-            width:100%;
-            margin-bottom:12px;
-          "
         >
 
         <button
           onclick="replaceAnimalImages('${animal.id}')"
           style="
             width:100%;
-            background:#28566f;
-            color:white;
-            border:0;
-            padding:14px;
-            border-radius:10px;
-            margin-bottom:10px;
+            margin:10px 0;
           "
         >
           🖼️ حفظ الصور الجديدة
@@ -4636,12 +5502,7 @@ async function (animalId) {
           onclick="removeAllAnimalImages('${animal.id}')"
           style="
             width:100%;
-            background:#555;
-            color:white;
-            border:0;
-            padding:14px;
-            border-radius:10px;
-            margin-bottom:20px;
+            margin-bottom:15px;
           "
         >
           🧹 حذف جميع الصور
@@ -4654,10 +5515,7 @@ async function (animalId) {
           style="
             width:100%;
             background:#8b2929;
-            color:white;
-            border:0;
-            padding:16px;
-            border-radius:10px;
+            margin-top:10px;
           "
         >
           🗑️ حذف الإعلان نهائياً
@@ -4670,7 +5528,9 @@ async function (animalId) {
       </div>
     `);
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "MANAGE LISTING ERROR:",
@@ -4697,7 +5557,9 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
 
     window.openLogin();
 
@@ -4811,8 +5673,7 @@ async function (
         "السعر النهائي: " +
         money(
           auction.currentPrice
-        ) +
-        "\n\nبعد الاعتماد سيظهر للمزايد أنه فاز بالمزاد.";
+        );
 
     } else {
 
@@ -4825,7 +5686,9 @@ async function (
         confirmationMessage
       );
 
-    if (!ok) {
+    if (
+      !ok
+    ) {
       return;
     }
 
@@ -4837,7 +5700,9 @@ async function (
       );
 
     const batch =
-      writeBatch(db);
+      writeBatch(
+        db
+      );
 
     if (
       decision ===
@@ -4854,7 +5719,8 @@ async function (
             serverTimestamp()
         },
         {
-          merge: true
+          merge:
+            true
         }
       );
 
@@ -4871,7 +5737,8 @@ async function (
             serverTimestamp()
         },
         {
-          merge: true
+          merge:
+            true
         }
       );
 
@@ -4887,7 +5754,8 @@ async function (
             serverTimestamp()
         },
         {
-          merge: true
+          merge:
+            true
         }
       );
 
@@ -4901,7 +5769,8 @@ async function (
             serverTimestamp()
         },
         {
-          merge: true
+          merge:
+            true
         }
       );
     }
@@ -4914,7 +5783,7 @@ async function (
     ) {
 
       alert(
-        "✅ تم اعتماد البيع بنجاح.\n\nأصبح صاحب أعلى مزايدة هو الفائز بالمزاد."
+        "✅ تم اعتماد البيع بنجاح."
       );
 
     } else {
@@ -4928,24 +5797,14 @@ async function (
 
     await loadMarket();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "FINALIZE AUCTION ERROR:",
       error
     );
-
-    if (
-      error.code ===
-      "permission-denied"
-    ) {
-
-      alert(
-        "❌ Firebase رفض اعتماد نتيجة المزاد."
-      );
-
-      return;
-    }
 
     alert(
       "❌ تعذر اعتماد نتيجة المزاد."
@@ -4966,7 +5825,9 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return;
   }
 
@@ -5003,7 +5864,8 @@ async function (
     const type =
       document.getElementById(
         "editAnimalType"
-      )?.value || "";
+      )?.value ||
+      "";
 
     const breed =
       document.getElementById(
@@ -5063,7 +5925,8 @@ async function (
         !Number.isFinite(
           price
         ) ||
-        price <= 0
+        price <=
+          0
       ) {
 
         alert(
@@ -5081,7 +5944,8 @@ async function (
       animalRef,
       updateData,
       {
-        merge: true
+        merge:
+          true
       }
     );
 
@@ -5096,7 +5960,9 @@ async function (
         animalId
       );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "SAVE LISTING EDIT ERROR:",
@@ -5123,7 +5989,9 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
     return;
   }
 
@@ -5132,7 +6000,9 @@ async function (
       "هل تريد حذف هذه الصورة؟"
     );
 
-  if (!ok) {
+  if (
+    !ok
+  ) {
     return;
   }
 
@@ -5170,10 +6040,12 @@ async function (
       Array.isArray(
         animal.images
       )
-        ? [
-            ...animal.images
-          ]
-        : [];
+        ?
+        [
+          ...animal.images
+        ]
+        :
+        [];
 
     images.splice(
       imageIndex,
@@ -5189,7 +6061,8 @@ async function (
           serverTimestamp()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
@@ -5204,7 +6077,9 @@ async function (
         animalId
       );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       error
@@ -5231,7 +6106,9 @@ async function (
       "هل تريد حذف جميع صور الإعلان؟"
     );
 
-  if (!ok) {
+  if (
+    !ok
+  ) {
     return;
   }
 
@@ -5251,8 +6128,10 @@ async function (
 
     if (
       !snap.exists() ||
-      snap.data().sellerId !==
-        auth.currentUser?.uid
+      snap.data()
+        .sellerId !==
+        auth.currentUser
+          ?.uid
     ) {
 
       alert(
@@ -5272,7 +6151,8 @@ async function (
           serverTimestamp()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
@@ -5287,7 +6167,9 @@ async function (
         animalId
       );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       error
@@ -5317,7 +6199,8 @@ async function (
   if (
     !input ||
     !input.files ||
-    input.files.length === 0
+    input.files.length ===
+      0
   ) {
 
     alert(
@@ -5328,7 +6211,8 @@ async function (
   }
 
   if (
-    input.files.length > 5
+    input.files.length >
+    5
   ) {
 
     alert(
@@ -5354,8 +6238,10 @@ async function (
 
     if (
       !snap.exists() ||
-      snap.data().sellerId !==
-        auth.currentUser?.uid
+      snap.data()
+        .sellerId !==
+        auth.currentUser
+          ?.uid
     ) {
 
       alert(
@@ -5370,12 +6256,15 @@ async function (
         input.files
       );
 
-    const images = [];
+    const images =
+      [];
 
-    let totalSize = 0;
+    let totalSize =
+      0;
 
     for (
-      const file of files
+      const file
+      of files
     ) {
 
       const imageData =
@@ -5412,7 +6301,8 @@ async function (
           serverTimestamp()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
@@ -5427,7 +6317,9 @@ async function (
         animalId
       );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       error
@@ -5441,7 +6333,7 @@ async function (
 
 
 // =====================================
-// تم البيع - البيع المباشر فقط
+// تم البيع - البيع المباشر
 // =====================================
 
 window.markListingSold =
@@ -5474,7 +6366,8 @@ async function (
 
     if (
       animal.sellerId !==
-      auth.currentUser?.uid
+      auth.currentUser
+        ?.uid
     ) {
 
       alert(
@@ -5490,7 +6383,7 @@ async function (
     ) {
 
       alert(
-        "🔨 لا يمكن استخدام زر تم البيع للمزاد.\n\nيجب انتظار انتهاء المزاد ثم اعتماد أعلى مزايدة."
+        "🔨 لا يمكن استخدام زر تم البيع للمزاد."
       );
 
       return;
@@ -5498,10 +6391,12 @@ async function (
 
     const ok =
       confirm(
-        "هل تؤكد أن الحلال تم بيعه؟\n\nسيتم إخفاء الإعلان من السوق."
+        "هل تؤكد أن الحلال تم بيعه؟"
       );
 
-    if (!ok) {
+    if (
+      !ok
+    ) {
       return;
     }
 
@@ -5518,19 +6413,22 @@ async function (
           serverTimestamp()
       },
       {
-        merge: true
+        merge:
+          true
       }
     );
 
     window.closeModal();
 
     alert(
-      "✅ تم تسجيل الحلال كمباع وإزالته من السوق النشط."
+      "✅ تم تسجيل الحلال كمباع."
     );
 
     await loadMarket();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "MARK SOLD ERROR:",
@@ -5555,10 +6453,12 @@ async function (
 
   const ok =
     confirm(
-      "⚠️ هل أنت متأكد من حذف الإعلان نهائياً؟\n\nلا يمكن التراجع عن الحذف."
+      "⚠️ هل أنت متأكد من حذف الإعلان نهائياً؟"
     );
 
-  if (!ok) {
+  if (
+    !ok
+  ) {
     return;
   }
 
@@ -5587,7 +6487,8 @@ async function (
 
     if (
       animal.sellerId !==
-      auth.currentUser?.uid
+      auth.currentUser
+        ?.uid
     ) {
       return;
     }
@@ -5626,7 +6527,9 @@ async function (
 
     await loadMarket();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "DELETE LISTING ERROR:",
@@ -5652,7 +6555,9 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
 
     alert(
       "يجب تسجيل الدخول أولاً لإرسال طلب شراء."
@@ -5794,11 +6699,12 @@ async function (
         "\nالسعر: " +
         money(
           animal.price
-        ) +
-        "\n\nالدفع والاستلام يتمان مباشرة بينك وبين البائع."
+        )
       );
 
-    if (!ok) {
+    if (
+      !ok
+    ) {
       return;
     }
 
@@ -5808,8 +6714,7 @@ async function (
         "purchaseRequests"
       ),
       {
-        animalId:
-          animalId,
+        animalId,
 
         animalType:
           animal.type ||
@@ -5840,7 +6745,8 @@ async function (
           user.uid,
 
         buyerName:
-          profile?.displayName ||
+          profile
+            ?.displayName ||
           "",
 
         buyerPhone:
@@ -5862,24 +6768,14 @@ async function (
       "✅ تم إرسال طلب الشراء إلى البائع."
     );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "PURCHASE REQUEST ERROR:",
       error
     );
-
-    if (
-      error.code ===
-      "permission-denied"
-    ) {
-
-      alert(
-        "❌ Firebase رفض إرسال طلب الشراء."
-      );
-
-      return;
-    }
 
     alert(
       "❌ تعذر إرسال طلب الشراء."
@@ -5919,7 +6815,9 @@ async function (
         auctionId
       );
 
-    let minimumBid = 0;
+    let minimumBid =
+      0;
+
 
     await runTransaction(
       db,
@@ -5997,6 +6895,7 @@ async function (
       }
     );
 
+
     const enteredValue =
       prompt(
         "أدخل مبلغ المزايدة الجديدة بالدرهم\n\n" +
@@ -6031,7 +6930,8 @@ async function (
       !Number.isFinite(
         bidAmount
       ) ||
-      bidAmount <= 0
+      bidAmount <=
+        0
     ) {
 
       alert(
@@ -6040,6 +6940,7 @@ async function (
 
       return;
     }
+
 
     await runTransaction(
       db,
@@ -6157,7 +7058,9 @@ async function (
 
     await loadMarket();
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "BID ERROR:",
@@ -6178,14 +7081,17 @@ async function (
 
     if (
       error.message &&
-      error.message.startsWith(
-        "BID_TOO_LOW:"
-      )
+      error.message
+        .startsWith(
+          "BID_TOO_LOW:"
+        )
     ) {
 
       const required =
         error.message
-          .split(":")[1];
+          .split(
+            ":"
+          )[1];
 
       alert(
         "❌ تم تسجيل مزايدة أعلى قبلك.\n\n" +
@@ -6249,7 +7155,9 @@ async function (
   const user =
     auth.currentUser;
 
-  if (!user) {
+  if (
+    !user
+  ) {
 
     alert(
       "يجب تسجيل الدخول أولاً لإضافة الحلال."
@@ -6282,6 +7190,7 @@ async function (
       return;
     }
 
+
     if (
       !hasActiveSellerSubscription(
         profile
@@ -6290,7 +7199,8 @@ async function (
 
       const endDate =
         timestampToDate(
-          profile.subscriptionEnd
+          profile
+            .subscriptionEnd
         );
 
       let message =
@@ -6332,10 +7242,12 @@ async function (
       return;
     }
 
+
     const type =
       document.getElementById(
         "animalType"
-      )?.value || "";
+      )?.value ||
+      "";
 
     const breed =
       document.getElementById(
@@ -6353,12 +7265,13 @@ async function (
       document.getElementById(
         "animalLocation"
       )?.value.trim() ||
-      "الذيد";
+      "الذيد - الشارقة";
 
     const method =
       document.getElementById(
         "method"
-      )?.value || "";
+      )?.value ||
+      "";
 
     const price =
       Number(
@@ -6373,12 +7286,14 @@ async function (
       )?.value.trim() ||
       "";
 
+
     if (
       !type ||
       !Number.isFinite(
         price
       ) ||
-      price <= 0
+      price <=
+        0
     ) {
 
       alert(
@@ -6388,14 +7303,18 @@ async function (
       return;
     }
 
-    let images = [];
+
+    let images =
+      [];
 
     try {
 
       images =
         await getListingImages();
 
-    } catch (error) {
+    } catch (
+      error
+    ) {
 
       alert(
         "تعذر تجهيز الصور أو حجم الصور كبير."
@@ -6403,6 +7322,11 @@ async function (
 
       return;
     }
+
+
+    // =====================================
+    // البيع المباشر
+    // =====================================
 
     if (
       method ===
@@ -6439,7 +7363,8 @@ async function (
             user.uid,
 
           sellerName:
-            profile.displayName ||
+            profile
+              .displayName ||
             "",
 
           sellerPhone:
@@ -6472,6 +7397,11 @@ async function (
       return;
     }
 
+
+    // =====================================
+    // المزاد الإلكتروني
+    // =====================================
+
     if (
       method ===
       "مزاد إلكتروني"
@@ -6487,7 +7417,8 @@ async function (
       const endTimeValue =
         document.getElementById(
           "auctionEndTime"
-        )?.value || "";
+        )?.value ||
+        "";
 
       const endTime =
         new Date(
@@ -6498,7 +7429,8 @@ async function (
         !Number.isFinite(
           increment
         ) ||
-        increment <= 0 ||
+        increment <=
+          0 ||
         !endTimeValue ||
         Number.isNaN(
           endTime.getTime()
@@ -6562,7 +7494,8 @@ async function (
             user.uid,
 
           sellerName:
-            profile.displayName ||
+            profile
+              .displayName ||
             "",
 
           sellerPhone:
@@ -6593,7 +7526,8 @@ async function (
             user.uid,
 
           sellerName:
-            profile.displayName ||
+            profile
+              .displayName ||
             "",
 
           sellerPhone:
@@ -6639,11 +7573,14 @@ async function (
       return;
     }
 
+
     alert(
       "يرجى اختيار طريقة البيع."
     );
 
-  } catch (error) {
+  } catch (
+    error
+  ) {
 
     console.error(
       "SAVE LISTING ERROR:",
@@ -6665,7 +7602,10 @@ function resetListingForm(
   form
 ) {
 
-  if (form) {
+  if (
+    form
+  ) {
+
     form.reset();
   }
 
@@ -6674,20 +7614,12 @@ function resetListingForm(
       "imagePreview"
     );
 
-  if (preview) {
+  if (
+    preview
+  ) {
+
     preview.innerHTML =
       "";
-  }
-
-  const location =
-    document.getElementById(
-      "animalLocation"
-    );
-
-  if (location) {
-
-    location.value =
-      "الذيد";
   }
 
   const auctionFields =
@@ -6716,7 +7648,9 @@ function scrollToMarket() {
       "firebase-market"
     );
 
-  if (market) {
+  if (
+    market
+  ) {
 
     market.scrollIntoView({
       behavior:
