@@ -1,5 +1,6 @@
-// market-ui-v30.js
+// market-ui-v31.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
+// تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
 (function () {
   "use strict";
@@ -56,7 +57,6 @@
     const content = market.firstElementChild;
     if (!content) return;
 
-    // عنوان السوق
     const topHeading = content.querySelector(":scope > h2:first-of-type");
     if (topHeading && !topHeading.dataset.uiCleaned) {
       topHeading.innerHTML = `${iconWrap(SVG.market, "gold")}<span>سوق الحلال</span>`;
@@ -64,13 +64,11 @@
       topHeading.dataset.uiCleaned = "1";
     }
 
-    // خيارات الفلاتر: إزالة الإيموجي فقط مع الحفاظ على القيم والأحداث.
     market.querySelectorAll("#market-filters option").forEach(option => {
       const cleaned = cleanText(option.textContent);
       if (option.textContent !== cleaned) option.textContent = cleaned;
     });
 
-    // زر إظهار الكل
     const resetButton = market.querySelector('#market-filters button[onclick*="resetMarketFilters"]');
     if (resetButton && !resetButton.dataset.uiCleaned) {
       resetButton.innerHTML = `${iconWrap(SVG.reset)}<span>إظهار الكل</span>`;
@@ -78,7 +76,6 @@
       resetButton.dataset.uiCleaned = "1";
     }
 
-    // عنوان البيع المباشر والمزاد
     const direct = document.getElementById("direct-sales");
     if (direct) {
       const heading = direct.previousElementSibling;
@@ -99,35 +96,46 @@
       }
     }
 
-    // حالة الاتصال
     const status = document.getElementById("firebase-status");
     if (status) {
       const raw = cleanText(status.textContent);
+
       if (raw.includes("متصل بالسوق")) {
-        status.innerHTML = `${iconWrap(SVG.check)}<span>${raw}</span>`;
-        status.classList.add("market-status-clean");
-      } else if (raw) {
-        status.textContent = raw;
+        if (
+          status.dataset.uiStatus !== raw ||
+          !status.classList.contains("market-status-clean")
+        ) {
+          status.innerHTML = `${iconWrap(SVG.check)}<span>${raw}</span>`;
+          status.classList.add("market-status-clean");
+          status.dataset.uiStatus = raw;
+        }
+      } else {
+        status.classList.remove("market-status-clean");
+        delete status.dataset.uiStatus;
+
+        if (status.textContent !== raw) {
+          status.textContent = raw;
+        }
       }
     }
 
-    // إزالة دبوس الموقع من بطاقات السوق فقط.
     market.querySelectorAll("#direct-sales p, #auction-list p").forEach(p => {
-      if (p.childElementCount === 0 || p.textContent.includes("📍")) {
-        const text = p.textContent || "";
-        if (text.includes("📍")) {
-          p.innerHTML = `${iconWrap(SVG.location, "location")}<span>${cleanText(text)}</span>`;
-          p.classList.add("market-location-row");
-        }
+      if (p.dataset.locationCleaned) return;
+
+      const text = p.textContent || "";
+      if (text.includes("📍")) {
+        p.innerHTML = `${iconWrap(SVG.location, "location")}<span>${cleanText(text)}</span>`;
+        p.classList.add("market-location-row");
+        p.dataset.locationCleaned = "1";
       }
     });
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v30-style")) return;
+    if (document.getElementById("market-ui-v31-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v30-style";
+    style.id = "market-ui-v31-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -230,19 +238,34 @@
     document.head.appendChild(style);
   }
 
+  let scheduled = false;
+
+  function scheduleImprove() {
+    if (scheduled) return;
+    scheduled = true;
+
+    requestAnimationFrame(() => {
+      scheduled = false;
+      improveMarket();
+    });
+  }
+
   function start() {
     installStyles();
     improveMarket();
 
-    const observer = new MutationObserver(() => improveMarket());
-    observer.observe(document.body, {
+    const marketObserver = new MutationObserver(() => {
+      scheduleImprove();
+    });
+
+    marketObserver.observe(document.body, {
       childList: true,
       subtree: true
     });
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
+    document.addEventListener("DOMContentLoaded", start, { once: true });
   } else {
     start();
   }
