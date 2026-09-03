@@ -1,4 +1,4 @@
-// market-ui-v37.js
+// market-ui-v38.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
 // تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
@@ -132,10 +132,10 @@
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v37-style")) return;
+    if (document.getElementById("market-ui-v38-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v37-style";
+    style.id = "market-ui-v38-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -541,6 +541,58 @@
         #firebase-market #auction-list button{
           min-height:48px !important;
           font-size:15px !important;
+        }
+      }
+
+
+      @media(min-width:1051px){
+        /* V38 - تحسين صور بطاقات الكمبيوتر فقط */
+
+        /* حاوية الصورة داخل بطاقات البيع والمزاد */
+        #firebase-market #direct-sales > div > div:first-child,
+        #firebase-market #auction-list > div > div:first-child{
+          width:100% !important;
+          height:300px !important;
+          min-height:300px !important;
+          max-height:300px !important;
+          padding:0 !important;
+          margin:0 0 14px 0 !important;
+          overflow:hidden !important;
+          border-radius:18px !important;
+          background:#f2eee4 !important;
+          display:block !important;
+          box-sizing:border-box !important;
+        }
+
+        /* الصورة نفسها: تملأ البطاقة بالكامل بدون أشرطة جانبية */
+        #firebase-market #direct-sales > div > div:first-child img,
+        #firebase-market #auction-list > div > div:first-child img{
+          width:100% !important;
+          height:100% !important;
+          max-width:none !important;
+          max-height:none !important;
+          object-fit:cover !important;
+          object-position:center !important;
+          display:block !important;
+          border-radius:0 !important;
+          margin:0 !important;
+        }
+
+        /* في حالة عدم وجود صورة، لا نجعل مكانها مرتفعاً أكثر من اللازم */
+        #firebase-market #direct-sales > div > div:first-child:not(:has(img)),
+        #firebase-market #auction-list > div > div:first-child:not(:has(img)){
+          height:180px !important;
+          min-height:180px !important;
+          max-height:180px !important;
+          display:flex !important;
+          align-items:center !important;
+          justify-content:center !important;
+        }
+
+        /* عداد الصور يبقى فوق الصورة وبشكل مرتب */
+        #firebase-market #direct-sales > div > div:first-child > div,
+        #firebase-market #auction-list > div > div:first-child > div{
+          z-index:2 !important;
         }
       }
 
