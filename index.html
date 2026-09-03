@@ -117,6 +117,63 @@
     }
   </style>
 
+
+  <style>
+    /* الشعار الرسمي في رأس الموقع */
+    header .brand{
+      display:flex !important;
+      align-items:center !important;
+      gap:12px !important;
+    }
+
+    header .site-logo{
+      width:74px !important;
+      height:74px !important;
+      object-fit:contain !important;
+      flex:0 0 74px !important;
+      border-radius:16px;
+    }
+
+    header .brand-text{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    header .brand-text b{
+      display:block;
+    }
+
+    header .brand-text small{
+      display:block;
+    }
+
+    @media (max-width:768px){
+      header .brand{
+        gap:8px !important;
+      }
+
+      header .site-logo{
+        width:58px !important;
+        height:58px !important;
+        flex-basis:58px !important;
+        border-radius:12px;
+      }
+
+      header .brand-text b{
+        line-height:1.35;
+      }
+    }
+
+    @media (max-width:480px){
+      header .site-logo{
+        width:52px !important;
+        height:52px !important;
+        flex-basis:52px !important;
+      }
+    }
+  </style>
+
 </head>
 
 <body>
@@ -124,8 +181,15 @@
 <header>
 
   <div class="brand">
-    🐪 <b>سوق الحلال الإلكتروني</b>
-    <small>دولة الإمارات العربية المتحدة</small>
+    <img
+      src="logo-souq-alhalal.png"
+      alt="شعار سوق الحلال الإلكتروني"
+      class="site-logo"
+    >
+    <div class="brand-text">
+      <b>سوق الحلال الإلكتروني</b>
+      <small>دولة الإمارات العربية المتحدة</small>
+    </div>
   </div>
 
   <nav>
