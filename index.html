@@ -488,6 +488,32 @@
     }
   </style>
 
+
+  <style>
+    /* أيقونات خطية موحدة للشريط السفلي */
+    .mobile-bottom-nav .bottom-icon svg{
+      width:27px;
+      height:27px;
+      fill:none;
+      stroke:currentColor;
+      stroke-width:1.8;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      display:block;
+    }
+
+    .mobile-bottom-nav a.active .bottom-icon svg{
+      stroke:#0a6c4a;
+    }
+
+    .benefit-auction .benefit-svg,
+    .benefit-uae .benefit-svg{
+      fill:none !important;
+      stroke:#0b6b4b !important;
+      stroke-width:3.5 !important;
+    }
+  </style>
+
 </head>
 
 <body>
@@ -606,7 +632,10 @@
 
   <div class="benefit-card">
     <div class="benefit-icon benefit-uae" aria-hidden="true">
-      <svg viewBox="0 0 64 64" class="benefit-svg"><path d="M13 42c5-4 9-10 13-17l5 3 5-10 6 5 5-7 5 4-3 9 4 5-8 3-4 8-9-1-6 5-13-7z"/></svg>
+      <svg viewBox="0 0 64 64" class="benefit-svg">
+        <path d="M32 57s17-16 17-31a17 17 0 1 0-34 0c0 15 17 31 17 31z"/>
+        <circle cx="32" cy="26" r="6"/>
+      </svg>
     </div>
     <b>متوفر في جميع<br>إمارات الدولة</b>
     <small>دعم شامل</small>
@@ -614,7 +643,10 @@
 
   <div class="benefit-card">
     <div class="benefit-icon benefit-auction" aria-hidden="true">
-      <svg viewBox="0 0 64 64" class="benefit-svg"><path d="M11 42h7l2-14c1-7 7-12 14-12 5 0 8 2 11 6 2-4 5-6 9-6 5 0 8 4 8 9v4h-5v-4c0-2-1-3-3-3-3 0-5 3-7 8l-3 8h-6l-3-10c-1-4-4-6-7-6-4 0-7 3-8 7l-2 13h7v6H11z"/><path d="M24 43v10m18-12v12"/></svg>
+      <svg viewBox="0 0 64 64" class="benefit-svg">
+        <path d="M16 18l14 14m-8-20 20 20m-5-25 12 12-9 9-12-12z"/>
+        <path d="M30 32L12 50m-4 4h30"/>
+      </svg>
     </div>
     <b>مزادات مباشرة</b>
     <small>بشكل عادل<br>وواضح</small>
@@ -1609,27 +1641,27 @@ document.addEventListener(
 
 <nav class="mobile-bottom-nav" aria-label="التنقل الرئيسي">
   <a href="#home" class="active">
-    <span class="bottom-icon">⌂</span>
+    <span class="bottom-icon"><svg viewBox="0 0 24 24"><path d="M3 11.5L12 4l9 7.5V21h-6v-6H9v6H3z"/></svg></span>
     <span>الرئيسية</span>
   </a>
 
   <a href="#auction">
-    <span class="bottom-icon">🔨</span>
+    <span class="bottom-icon"><svg viewBox="0 0 24 24"><path d="M6 5l5 5m-3-7 7 7m-2-9 5 5-4 4-5-5zM11 10l-7 7m-2 3h12"/></svg></span>
     <span>المزادات</span>
   </a>
 
   <a href="#sell">
-    <span class="bottom-icon">🛒</span>
+    <span class="bottom-icon"><svg viewBox="0 0 24 24"><path d="M3 5h2l2 10h10l3-7H7m2 11a1.5 1.5 0 1 0 0 .1m8-.1a1.5 1.5 0 1 0 0 .1"/></svg></span>
     <span>إعلاناتي</span>
   </a>
 
   <a href="#contact">
-    <span class="bottom-icon">💬</span>
+    <span class="bottom-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8m-8 3h5"/></svg></span>
     <span>الرسائل</span>
   </a>
 
   <a href="javascript:void(0)" onclick="openLogin()">
-    <span class="bottom-icon">👤</span>
+    <span class="bottom-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></span>
     <span>حسابي</span>
   </a>
 </nav>
