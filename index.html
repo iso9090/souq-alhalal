@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <title>سوق الحلال الإلكتروني - الذيد</title>
+  <title>سوق الحلال الإلكتروني - الإمارات</title>
 
   <link rel="stylesheet" href="style.css">
 </head>
@@ -16,7 +16,7 @@
 
   <div class="brand">
     🐪 <b>سوق الحلال الإلكتروني</b>
-    <small>الذيد - إمارة الشارقة</small>
+    <small>دولة الإمارات العربية المتحدة</small>
   </div>
 
   <nav>
@@ -48,7 +48,7 @@
   <div>
 
     <span>
-      منصة تجريبية لأصحاب الحلال
+      منصة إلكترونية لأصحاب الحلال
     </span>
 
     <h1>
@@ -60,9 +60,9 @@
     </h2>
 
     <p>
-      منصة موحدة في الذيد تجمع المزاد الإلكتروني العلني
-      والبيع المباشر، مع تصور لخدمات التوثيق البيطري
-      والنقل والدفع الإلكتروني.
+      منصة تجمع أصحاب الحلال في مختلف إمارات الدولة،
+      وتوفر المزاد الإلكتروني العلني والبيع المباشر
+      بطريقة سهلة وواضحة.
     </p>
 
     <div class="actions">
@@ -110,8 +110,8 @@
   </div>
 
   <div>
-    💳
-    <b>دفع إلكتروني</b>
+    🤝
+    <b>بيع مباشر</b>
   </div>
 
   <div>
@@ -121,7 +121,7 @@
 
   <div>
     📍
-    <b>الذيد</b>
+    <b>جميع الإمارات</b>
   </div>
 
 </section>
@@ -164,7 +164,7 @@
       </h3>
 
       <p>
-        5 سنوات • الذيد • حالة صحية ممتازة
+        5 سنوات • الذيد - الشارقة • حالة صحية ممتازة
       </p>
 
       <div
@@ -200,7 +200,7 @@
       </h3>
 
       <p>
-        سنة • الذيد • بيانات موثقة
+        سنة • الذيد - الشارقة • بيانات موثقة
       </p>
 
       <div
@@ -239,7 +239,7 @@
     </h2>
 
     <p>
-      حلال بسعر محدد مع إمكانية تقديم عرض
+      حلال بسعر محدد والتواصل مباشرة بين البائع والمشتري
     </p>
 
   </div>
@@ -259,7 +259,7 @@
       </h3>
 
       <p>
-        5 سنوات • الذيد
+        5 سنوات • الذيد - الشارقة
       </p>
 
       <div class="price">
@@ -285,7 +285,7 @@
       </h3>
 
       <p>
-        سنة • الذيد
+        سنة • العين - أبوظبي
       </p>
 
       <div class="price">
@@ -311,7 +311,7 @@
       </h3>
 
       <p>
-        سنة • المنطقة الوسطى
+        سنة • رأس الخيمة
       </p>
 
       <div class="price">
@@ -403,7 +403,9 @@
     <div class="fields">
 
 
+      <!-- ===================================== -->
       <!-- نوع الحيوان -->
+      <!-- ===================================== -->
 
       <select
         id="animalType"
@@ -455,29 +457,88 @@
       </select>
 
 
+      <!-- ===================================== -->
       <!-- السلالة -->
+      <!-- ===================================== -->
 
       <input
         id="animalBreed"
         placeholder="السلالة">
 
 
+      <!-- ===================================== -->
       <!-- العمر -->
+      <!-- ===================================== -->
 
       <input
         id="animalAge"
         placeholder="العمر">
 
 
-      <!-- الموقع -->
+      <!-- ===================================== -->
+      <!-- الإمارة -->
+      <!-- ===================================== -->
+
+      <select
+        id="animalEmirate"
+        required
+        onchange="updateLocationOptions()">
+
+        <option value="الشارقة" selected>
+          📍 إمارة الشارقة
+        </option>
+
+        <option value="دبي">
+          📍 إمارة دبي
+        </option>
+
+        <option value="أبوظبي">
+          📍 إمارة أبوظبي
+        </option>
+
+        <option value="عجمان">
+          📍 إمارة عجمان
+        </option>
+
+        <option value="رأس الخيمة">
+          📍 إمارة رأس الخيمة
+        </option>
+
+        <option value="أم القيوين">
+          📍 إمارة أم القيوين
+        </option>
+
+        <option value="الفجيرة">
+          📍 إمارة الفجيرة
+        </option>
+
+      </select>
+
+
+      <!-- ===================================== -->
+      <!-- المدينة / المنطقة -->
+      <!-- ===================================== -->
+
+      <select
+        id="animalCity"
+        required
+        onchange="updateFullLocation()">
+      </select>
+
+
+      <!-- ===================================== -->
+      <!-- الموقع الكامل الذي يحفظ في Firebase -->
+      <!-- ===================================== -->
 
       <input
         id="animalLocation"
-        value="الذيد"
-        placeholder="الموقع">
+        type="hidden"
+        value="الذيد - الشارقة">
 
 
+      <!-- ===================================== -->
       <!-- طريقة البيع -->
+      <!-- ===================================== -->
 
       <select
         id="method"
@@ -494,7 +555,9 @@
       </select>
 
 
+      <!-- ===================================== -->
       <!-- السعر -->
+      <!-- ===================================== -->
 
       <input
         id="animalPrice"
@@ -570,7 +633,9 @@
       </div>
 
 
+      <!-- ===================================== -->
       <!-- الوصف -->
+      <!-- ===================================== -->
 
       <textarea
         id="animalDescription"
@@ -623,11 +688,12 @@
   </h2>
 
   <p>
-    الموقع المقترح: الذيد – إمارة الشارقة
+    سوق الحلال الإلكتروني - دولة الإمارات العربية المتحدة
   </p>
 
   <p>
-    هذه نسخة أولية تجريبية وليست منصة بيع أو دفع فعلية.
+    منصة إلكترونية تربط البائع والمشتري،
+    وتتم المعاينة والاستلام والدفع مباشرة بين الطرفين.
   </p>
 
 </section>
@@ -665,15 +731,258 @@
 
 <footer>
 
-  سوق الحلال الإلكتروني • الذيد – إمارة الشارقة
+  سوق الحلال الإلكتروني • دولة الإمارات العربية المتحدة
 
   <br>
 
   <small>
-    نموذج أولي للمشروع
+    حلالك في عِزبتك... بيعه بطريقتك
   </small>
 
 </footer>
+
+
+<!-- ===================================== -->
+<!-- الإمارة والمدن -->
+<!-- ===================================== -->
+
+<script>
+
+const emirateLocations = {
+
+  "الشارقة": [
+    "الذيد",
+    "مدينة الشارقة",
+    "مليحة",
+    "البطائح",
+    "المدام",
+    "الحمرية",
+    "خورفكان",
+    "كلباء",
+    "دبا الحصن"
+  ],
+
+  "دبي": [
+    "دبي",
+    "حتا",
+    "الخوانيج",
+    "العوير",
+    "الليسيلي",
+    "مرغم",
+    "لهباب"
+  ],
+
+  "أبوظبي": [
+    "أبوظبي",
+    "العين",
+    "مدينة زايد",
+    "ليوا",
+    "غياثي",
+    "المرفأ",
+    "الرويس",
+    "السلع",
+    "جزيرة دلما"
+  ],
+
+  "عجمان": [
+    "عجمان",
+    "مصفوت",
+    "المنامة"
+  ],
+
+  "رأس الخيمة": [
+    "رأس الخيمة",
+    "الرمس",
+    "شعم",
+    "غليلة",
+    "الجزيرة الحمراء",
+    "خت"
+  ],
+
+  "أم القيوين": [
+    "أم القيوين",
+    "فلج المعلا"
+  ],
+
+  "الفجيرة": [
+    "الفجيرة",
+    "دبا الفجيرة",
+    "مسافي",
+    "مربح",
+    "قدفع",
+    "البدية",
+    "الطويين"
+  ]
+};
+
+
+function updateLocationOptions() {
+
+  const emirate =
+    document.getElementById(
+      "animalEmirate"
+    );
+
+  const city =
+    document.getElementById(
+      "animalCity"
+    );
+
+  if (
+    !emirate ||
+    !city
+  ) {
+    return;
+  }
+
+
+  const locations =
+    emirateLocations[
+      emirate.value
+    ] || [];
+
+
+  city.innerHTML =
+    "";
+
+
+  locations.forEach(
+    function (locationName) {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        locationName;
+
+      option.textContent =
+        locationName;
+
+      city.appendChild(
+        option
+      );
+    }
+  );
+
+
+  if (
+    emirate.value ===
+      "الشارقة"
+  ) {
+
+    city.value =
+      "الذيد";
+  }
+
+
+  updateFullLocation();
+}
+
+
+function updateFullLocation() {
+
+  const emirate =
+    document.getElementById(
+      "animalEmirate"
+    );
+
+  const city =
+    document.getElementById(
+      "animalCity"
+    );
+
+  const fullLocation =
+    document.getElementById(
+      "animalLocation"
+    );
+
+
+  if (
+    !emirate ||
+    !city ||
+    !fullLocation
+  ) {
+    return;
+  }
+
+
+  if (
+    !city.value
+  ) {
+
+    fullLocation.value =
+      emirate.value;
+
+    return;
+  }
+
+
+  fullLocation.value =
+    city.value +
+    " - " +
+    emirate.value;
+}
+
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
+
+    updateLocationOptions();
+
+  }
+);
+
+
+// =====================================
+// بعد حفظ الإعلان وإعادة النموذج
+// نعيد الموقع إلى الذيد - الشارقة
+// =====================================
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function () {
+
+    const form =
+      document.getElementById(
+        "listingForm"
+      );
+
+    if (!form) {
+      return;
+    }
+
+    form.addEventListener(
+      "reset",
+      function () {
+
+        setTimeout(
+          function () {
+
+            const emirate =
+              document.getElementById(
+                "animalEmirate"
+              );
+
+            if (emirate) {
+              emirate.value =
+                "الشارقة";
+            }
+
+            updateLocationOptions();
+
+          },
+          0
+        );
+      }
+    );
+
+  }
+);
+
+</script>
 
 
 <!-- ===================================== -->
@@ -685,54 +994,77 @@
 function toggleAuctionFields() {
 
   const method =
-    document.getElementById("method");
+    document.getElementById(
+      "method"
+    );
 
   const auctionFields =
-    document.getElementById("auctionFields");
+    document.getElementById(
+      "auctionFields"
+    );
 
   const price =
-    document.getElementById("animalPrice");
+    document.getElementById(
+      "animalPrice"
+    );
 
   const increment =
-    document.getElementById("auctionIncrement");
+    document.getElementById(
+      "auctionIncrement"
+    );
 
   const endTime =
-    document.getElementById("auctionEndTime");
+    document.getElementById(
+      "auctionEndTime"
+    );
 
 
-  if (!method || !auctionFields || !price) {
+  if (
+    !method ||
+    !auctionFields ||
+    !price
+  ) {
     return;
   }
 
 
-  if (method.value === "مزاد إلكتروني") {
+  if (
+    method.value ===
+      "مزاد إلكتروني"
+  ) {
 
-    auctionFields.style.display = "block";
+    auctionFields.style.display =
+      "block";
 
     price.placeholder =
       "سعر بداية المزاد بالدرهم";
 
     if (increment) {
-      increment.required = true;
+      increment.required =
+        true;
     }
 
     if (endTime) {
-      endTime.required = true;
+      endTime.required =
+        true;
     }
 
   } else {
 
-    auctionFields.style.display = "none";
+    auctionFields.style.display =
+      "none";
 
     price.placeholder =
       "سعر البيع بالدرهم";
 
     if (increment) {
-      increment.required = false;
+      increment.required =
+        false;
     }
 
     if (endTime) {
-      endTime.required = false;
+      endTime.required =
+        false;
     }
   }
 }
@@ -771,7 +1103,10 @@ document.addEventListener(
       );
 
 
-    if (!imageInput || !preview) {
+    if (
+      !imageInput ||
+      !preview
+    ) {
       return;
     }
 
@@ -780,22 +1115,27 @@ document.addEventListener(
       "change",
       function () {
 
-        preview.innerHTML = "";
+        preview.innerHTML =
+          "";
 
 
         const files =
           Array.from(
-            imageInput.files || []
+            imageInput.files ||
+            []
           );
 
 
-        if (files.length > 5) {
+        if (
+          files.length > 5
+        ) {
 
           alert(
             "يمكن اختيار 5 صور كحد أقصى."
           );
 
-          imageInput.value = "";
+          imageInput.value =
+            "";
 
           return;
         }
@@ -869,7 +1209,10 @@ document.addEventListener(
 <!-- JavaScript Firebase -->
 <!-- ===================================== -->
 
-<script type="module" src="app.js?v=25"></script>
+<script
+  type="module"
+  src="app.js?v=25">
+</script>
 
 </body>
 
