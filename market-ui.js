@@ -1,4 +1,4 @@
-// market-ui-v33.js
+// market-ui-v34.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
 // تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
@@ -132,10 +132,10 @@
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v33-style")) return;
+    if (document.getElementById("market-ui-v34-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v33-style";
+    style.id = "market-ui-v34-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -294,14 +294,38 @@
         margin-top:auto !important;
       }
 
+      /* بطاقة بدون صورة: مساحة ثابتة ونظيفة بدل الفراغ الكبير */
+      #firebase-market #direct-sales > div > div:first-child:not(:has(img)),
+      #firebase-market #auction-list > div > div:first-child:not(:has(img)){
+        height:220px !important;
+        min-height:220px !important;
+        max-height:220px !important;
+      }
+
       @media(min-width:769px){
         #firebase-market #direct-sales,
         #firebase-market #auction-list{
           grid-auto-rows:1fr !important;
         }
+
+        #firebase-market #direct-sales > div,
+        #firebase-market #auction-list > div{
+          min-height:560px !important;
+        }
       }
 
       @media(max-width:768px){
+        /* مساحة إضافية أسفل السوق حتى لا يغطي شريط التنقل السعر أو الأزرار */
+        #firebase-market{
+          padding-bottom:115px !important;
+        }
+
+        #firebase-market #direct-sales > div > div:first-child:not(:has(img)),
+        #firebase-market #auction-list > div > div:first-child:not(:has(img)){
+          height:170px !important;
+          min-height:170px !important;
+          max-height:170px !important;
+        }
         #firebase-market .market-heading-main{
           font-size:25px !important;
         }
