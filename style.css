@@ -1046,3 +1046,41 @@ footer small{color:#c4d7cf;}
     min-height:46px !important;
   }
 }
+
+
+/* =========================================================
+   V41 — إصلاح تداخل شريط التنقل السفلي مع نافذة الحساب
+   ========================================================= */
+
+#modal.modal{
+  z-index:20000 !important;
+}
+
+#modal .box{
+  position:relative !important;
+  z-index:20001 !important;
+  max-height:calc(100dvh - 28px) !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+
+@media (max-width:768px){
+  #modal.modal{
+    align-items:flex-start !important;
+    padding:14px 12px 24px !important;
+    overflow-y:auto !important;
+  }
+
+  #modal .box{
+    width:calc(100vw - 24px) !important;
+    max-height:calc(100dvh - 38px) !important;
+    padding-bottom:28px !important;
+  }
+
+  body:has(#modal[style*="display: block"]) .mobile-bottom-nav,
+  body:has(#modal[style*="display:block"]) .mobile-bottom-nav{
+    visibility:hidden !important;
+    pointer-events:none !important;
+  }
+}
