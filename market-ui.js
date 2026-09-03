@@ -1,4 +1,4 @@
-// market-ui-v35.js
+// market-ui-v36.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
 // تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
@@ -132,10 +132,10 @@
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v35-style")) return;
+    if (document.getElementById("market-ui-v36-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v35-style";
+    style.id = "market-ui-v36-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -320,6 +320,104 @@
         #firebase-market #direct-sales button[onclick^="requestPurchase"],
         #firebase-market #auction-list button[id^="bid-button-"]{
           margin-top:14px !important;
+        }
+      }
+
+
+      @media(min-width:769px){
+        /* V36 - بطاقات سطح المكتب: 3 أعمدة متوازنة بدون فراغات زائدة */
+        #firebase-market > div{
+          max-width:1180px !important;
+        }
+
+        #firebase-market #direct-sales,
+        #firebase-market #auction-list{
+          display:grid !important;
+          grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+          gap:18px !important;
+          align-items:start !important;
+          grid-auto-rows:auto !important;
+        }
+
+        #firebase-market #direct-sales > div,
+        #firebase-market #auction-list > div{
+          width:100% !important;
+          height:auto !important;
+          min-height:0 !important;
+          padding:14px !important;
+          box-sizing:border-box !important;
+          border-radius:20px !important;
+          align-self:start !important;
+        }
+
+        /* صورة موحدة الارتفاع مع الحفاظ على اكتمال الحيوان */
+        #firebase-market #direct-sales > div > div:first-child,
+        #firebase-market #auction-list > div > div:first-child{
+          height:220px !important;
+          min-height:220px !important;
+          max-height:220px !important;
+          overflow:hidden !important;
+          border-radius:16px !important;
+          background:#f4efe3 !important;
+        }
+
+        #firebase-market #direct-sales > div > div:first-child img,
+        #firebase-market #auction-list > div > div:first-child img{
+          width:100% !important;
+          height:100% !important;
+          object-fit:contain !important;
+          object-position:center !important;
+          background:#f4efe3 !important;
+          display:block !important;
+        }
+
+        #firebase-market #direct-sales h3,
+        #firebase-market #auction-list h3{
+          margin:12px 0 7px !important;
+          min-height:0 !important;
+          line-height:1.45 !important;
+        }
+
+        #firebase-market #direct-sales p,
+        #firebase-market #auction-list p{
+          margin:6px 0 !important;
+          line-height:1.55 !important;
+        }
+
+        #firebase-market #direct-sales button,
+        #firebase-market #auction-list button{
+          min-height:44px !important;
+          margin-top:10px !important;
+        }
+
+        /* البطاقات بدون صورة: لا تترك مساحة ضخمة */
+        #firebase-market #direct-sales > div > div:first-child:not(:has(img)),
+        #firebase-market #auction-list > div > div:first-child:not(:has(img)){
+          height:135px !important;
+          min-height:135px !important;
+          max-height:135px !important;
+          display:flex !important;
+          align-items:center !important;
+          justify-content:center !important;
+          font-size:0 !important;
+          color:transparent !important;
+          background:#f4efe3 !important;
+          position:relative !important;
+        }
+
+        #firebase-market #direct-sales > div > div:first-child:not(:has(img))::after,
+        #firebase-market #auction-list > div > div:first-child:not(:has(img))::after{
+          content:"لا توجد صورة";
+          color:#8b8f8c !important;
+          font-size:15px !important;
+          font-weight:600 !important;
+        }
+      }
+
+      @media(min-width:769px) and (max-width:1050px){
+        #firebase-market #direct-sales,
+        #firebase-market #auction-list{
+          grid-template-columns:repeat(2,minmax(0,1fr)) !important;
         }
       }
 
