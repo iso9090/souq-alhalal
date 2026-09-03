@@ -155,10 +155,8 @@ function formatDate(timestamp) {
   return date.toLocaleString(
     "ar-AE",
     {
-      dateStyle:
-        "medium",
-      timeStyle:
-        "short"
+      dateStyle: "medium",
+      timeStyle: "short"
     }
   );
 }
@@ -655,8 +653,7 @@ function compressImageFile(file) {
             };
 
           img.src =
-            event.target
-              .result;
+            event.target.result;
         };
 
       reader.readAsDataURL(
@@ -3634,17 +3631,60 @@ async function loadMarket() {
       }
     );
 
+
+    // =====================================
+    // إبقاء المزاد المباع ظاهراً 24 ساعة فقط
+    // =====================================
+
+    const AUCTION_RESULT_VISIBLE_TIME =
+      24 * 60 * 60 * 1000;
+
     const visibleAuctions =
       auctions.filter(
-        auction =>
-          [
-            "active",
-            "sold",
+        auction => {
+
+          if (
+            auction.status ===
+            "active"
+          ) {
+            return true;
+          }
+
+          if (
+            auction.status ===
             "not_approved"
-          ].includes(
-            auction.status
-          )
+          ) {
+            return true;
+          }
+
+          if (
+            auction.status ===
+            "sold"
+          ) {
+
+            const approvedAt =
+              timestampToMillis(
+                auction.updatedAt
+              );
+
+            if (!approvedAt) {
+              return true;
+            }
+
+            const elapsed =
+              Date.now() -
+              approvedAt;
+
+            return (
+              elapsed <
+              AUCTION_RESULT_VISIBLE_TIME
+            );
+          }
+
+          return false;
+        }
       );
+
 
     if (
       visibleAuctions.length ===
@@ -4121,11 +4161,8 @@ async function (animalId) {
         `;
 
 
-    // =====================================
-    // إدارة نتيجة المزاد
-    // =====================================
-
-    let saleActionHtml = "";
+    let saleActionHtml =
+      "";
 
     if (
       animal.saleType ===
@@ -5905,11 +5942,6 @@ async function (
         const auction =
           auctionSnap.data();
 
-
-        // =====================================
-        // منع صاحب المزاد من المزايدة
-        // =====================================
-
         if (
           auction.sellerId ===
           auth.currentUser.uid
@@ -5919,7 +5951,6 @@ async function (
             "OWNER_CANNOT_BID"
           );
         }
-
 
         if (
           auction.status !==
@@ -6031,11 +6062,6 @@ async function (
         const auction =
           auctionSnap.data();
 
-
-        // =====================================
-        // حماية ثانية لمنع صاحب المزاد
-        // =====================================
-
         if (
           auction.sellerId ===
           auth.currentUser.uid
@@ -6045,7 +6071,6 @@ async function (
             "OWNER_CANNOT_BID"
           );
         }
-
 
         if (
           auction.status !==
@@ -6139,7 +6164,6 @@ async function (
       error
     );
 
-
     if (
       error.message ===
       "OWNER_CANNOT_BID"
@@ -6151,7 +6175,6 @@ async function (
 
       return;
     }
-
 
     if (
       error.message &&
@@ -6177,7 +6200,6 @@ async function (
       return;
     }
 
-
     if (
       error.message ===
       "AUCTION_ENDED"
@@ -6192,7 +6214,6 @@ async function (
       return;
     }
 
-
     if (
       error.message ===
       "AUCTION_NOT_ACTIVE"
@@ -6206,7 +6227,6 @@ async function (
 
       return;
     }
-
 
     alert(
       "❌ لم يتم حفظ المزايدة."
@@ -6262,11 +6282,6 @@ async function (
       return;
     }
 
-
-    // =====================================
-    // التحقق من الاشتراك الشهري للبائع
-    // =====================================
-
     if (
       !hasActiveSellerSubscription(
         profile
@@ -6316,7 +6331,6 @@ async function (
 
       return;
     }
-
 
     const type =
       document.getElementById(
@@ -6390,11 +6404,6 @@ async function (
       return;
     }
 
-
-    // =====================================
-    // البيع المباشر
-    // =====================================
-
     if (
       method ===
       "بيع مباشر"
@@ -6462,11 +6471,6 @@ async function (
 
       return;
     }
-
-
-    // =====================================
-    // المزاد الإلكتروني
-    // =====================================
 
     if (
       method ===
