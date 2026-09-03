@@ -514,6 +514,15 @@
     }
   </style>
 
+
+  <style>
+    .market-anchor{
+      scroll-margin-top:110px;
+      height:0;
+      overflow:hidden;
+    }
+  </style>
+
 </head>
 
 <body>
@@ -656,207 +665,11 @@
 
 
 <!-- ===================================== -->
-<!-- المزاد التجريبي -->
+<!-- نقاط الانتقال إلى السوق الفعلي -->
 <!-- ===================================== -->
 
-<section id="auction">
-
-  <div class="title">
-
-    <h2>
-      المزاد الإلكتروني العلني
-    </h2>
-
-    <p>
-      مزايدات إلكترونية واضحة ومحددة المدة
-    </p>
-
-  </div>
-
-
-  <div class="grid">
-
-
-    <article class="card">
-
-      <div class="photo">
-        🐪
-      </div>
-
-      <span class="tag">
-        مزاد نشط
-      </span>
-
-      <h3>
-        جمل مجهم
-      </h3>
-
-      <p>
-        5 سنوات • الذيد - الشارقة • حالة صحية ممتازة
-      </p>
-
-      <div
-        class="price"
-        id="p1">
-        25,800 AED
-      </div>
-
-      <div class="timer">
-        ينتهي خلال 00:18:25
-      </div>
-
-      <button
-        onclick="bid('p1',25800)">
-        قدم مزايدتك
-      </button>
-
-    </article>
-
-
-    <article class="card">
-
-      <div class="photo">
-        🐏
-      </div>
-
-      <span class="tag">
-        مزاد نشط
-      </span>
-
-      <h3>
-        خروف نعيمي
-      </h3>
-
-      <p>
-        سنة • الذيد - الشارقة • بيانات موثقة
-      </p>
-
-      <div
-        class="price"
-        id="p2">
-        3,200 AED
-      </div>
-
-      <div class="timer">
-        ينتهي خلال 01:42:10
-      </div>
-
-      <button
-        onclick="bid('p2',3200)">
-        قدم مزايدتك
-      </button>
-
-    </article>
-
-
-  </div>
-
-</section>
-
-
-<!-- ===================================== -->
-<!-- البيع المباشر التجريبي -->
-<!-- ===================================== -->
-
-<section id="direct">
-
-  <div class="title">
-
-    <h2>
-      البيع المباشر
-    </h2>
-
-    <p>
-      حلال بسعر محدد والتواصل مباشرة بين البائع والمشتري
-    </p>
-
-  </div>
-
-
-  <div class="grid three">
-
-
-    <article class="card">
-
-      <div class="photo">
-        🐫
-      </div>
-
-      <h3>
-        جمل مجهم
-      </h3>
-
-      <p>
-        5 سنوات • الذيد - الشارقة
-      </p>
-
-      <div class="price">
-        22,000 AED
-      </div>
-
-      <button
-        onclick="details('جمل مجهم','22,000')">
-        عرض التفاصيل
-      </button>
-
-    </article>
-
-
-    <article class="card">
-
-      <div class="photo">
-        🐑
-      </div>
-
-      <h3>
-        خروف نعيمي
-      </h3>
-
-      <p>
-        سنة • العين - أبوظبي
-      </p>
-
-      <div class="price">
-        1,650 AED
-      </div>
-
-      <button
-        onclick="details('خروف نعيمي','1,650')">
-        عرض التفاصيل
-      </button>
-
-    </article>
-
-
-    <article class="card">
-
-      <div class="photo">
-        🐐
-      </div>
-
-      <h3>
-        ماعز محلي
-      </h3>
-
-      <p>
-        سنة • رأس الخيمة
-      </p>
-
-      <div class="price">
-        850 AED
-      </div>
-
-      <button
-        onclick="details('ماعز محلي','850')">
-        عرض التفاصيل
-      </button>
-
-    </article>
-
-
-  </div>
-
-</section>
+<div id="auction" class="market-anchor"></div>
+<div id="direct" class="market-anchor"></div>
 
 
 <!-- ===================================== -->
