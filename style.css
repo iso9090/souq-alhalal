@@ -737,3 +737,134 @@ footer small{color:#c4d7cf;}
     grid-column:1 / -1;
   }
 }
+
+
+/* =========================================================
+   MARKET V33 — تحسين حجم بطاقات الهاتف وترتيب التفاصيل
+   ========================================================= */
+
+@media(max-width:768px){
+
+  #firebase-market > div{
+    padding:8px !important;
+  }
+
+  #direct-sales,
+  #auction-list{
+    gap:12px !important;
+  }
+
+  #direct-sales > div,
+  #auction-list > div{
+    padding:9px !important;
+    border-radius:18px !important;
+  }
+
+  #direct-sales img,
+  #auction-list img{
+    height:178px !important;
+    border-radius:14px !important;
+  }
+
+  #direct-sales div[style*="font-size:90px"],
+  #auction-list div[style*="font-size:90px"]{
+    height:178px !important;
+    border-radius:14px !important;
+  }
+
+  #direct-sales h3,
+  #auction-list h3{
+    font-size:18px !important;
+    margin:11px 4px 6px !important;
+    line-height:1.4 !important;
+  }
+
+  #direct-sales p,
+  #auction-list p{
+    font-size:14px !important;
+    margin:5px 4px !important;
+    line-height:1.45 !important;
+  }
+
+  #direct-sales [style*="font-size:25px"],
+  #auction-list [style*="font-size:27px"]{
+    font-size:22px !important;
+    padding:10px !important;
+    margin:10px 0 !important;
+    border-radius:13px !important;
+  }
+
+  #direct-sales button,
+  #auction-list button{
+    min-height:46px !important;
+    padding:11px !important;
+    border-radius:13px !important;
+    font-size:15px !important;
+  }
+
+  #auction-list [id^="auction-tag-"]{
+    font-size:12px !important;
+    padding:6px 10px !important;
+  }
+
+  #auction-list [data-auction-end]{
+    font-size:14px !important;
+    padding:9px !important;
+    margin:10px 0 !important;
+  }
+}
+
+@media(max-width:480px){
+
+  #firebase-market > div{
+    padding:6px !important;
+  }
+
+  #direct-sales,
+  #auction-list{
+    gap:10px !important;
+  }
+
+  #direct-sales > div,
+  #auction-list > div{
+    padding:8px !important;
+    border-radius:16px !important;
+  }
+
+  #direct-sales img,
+  #auction-list img{
+    height:162px !important;
+    border-radius:13px !important;
+  }
+
+  #direct-sales div[style*="font-size:90px"],
+  #auction-list div[style*="font-size:90px"]{
+    height:162px !important;
+    border-radius:13px !important;
+  }
+
+  #direct-sales h3,
+  #auction-list h3{
+    font-size:17px !important;
+    margin-top:9px !important;
+  }
+
+  #direct-sales p,
+  #auction-list p{
+    font-size:13.5px !important;
+  }
+
+  #direct-sales [style*="font-size:25px"],
+  #auction-list [style*="font-size:27px"]{
+    font-size:20px !important;
+  }
+
+  #direct-sales button,
+  #auction-list button{
+    min-height:44px !important;
+    font-size:14.5px !important;
+  }
+}
+
+/* إزالة الإيموجي من موقع البطاقات بصرياً لاحقاً عبر نسخة app.js الجديدة.
+   هذه النسخة تركز فقط على الحجم والمسافات لضمان الأمان. */
