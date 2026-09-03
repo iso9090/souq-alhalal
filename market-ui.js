@@ -1,4 +1,4 @@
-// market-ui-v32.js
+// market-ui-v33.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
 // تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
@@ -132,10 +132,10 @@
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v32-style")) return;
+    if (document.getElementById("market-ui-v33-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v32-style";
+    style.id = "market-ui-v33-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -234,8 +234,8 @@
       /* حاوية الصورة والصورة بنفس الارتفاع لمنع الفراغ الرمادي */
       #firebase-market #direct-sales > div > div:first-child,
       #firebase-market #auction-list > div > div:first-child{
-        height:205px !important;
-        min-height:205px !important;
+        height:auto !important;
+        min-height:0 !important;
         padding:0 !important;
         overflow:hidden !important;
         border-radius:16px !important;
@@ -245,9 +245,11 @@
       #firebase-market #direct-sales > div > div:first-child img,
       #firebase-market #auction-list > div > div:first-child img{
         width:100% !important;
-        height:205px !important;
-        min-height:205px !important;
-        object-fit:cover !important;
+        height:auto !important;
+        min-height:0 !important;
+        max-height:none !important;
+        object-fit:contain !important;
+        object-position:center !important;
         display:block !important;
         border-radius:16px !important;
       }
@@ -315,22 +317,36 @@
           flex-basis:25px;
         }
 
-        #firebase-market #direct-sales > div > div:first-child,
-        #firebase-market #auction-list > div > div:first-child,
-        #firebase-market #direct-sales > div > div:first-child img,
-        #firebase-market #auction-list > div > div:first-child img{
-          height:168px !important;
-          min-height:168px !important;
+        /* ضغط المسافات داخل البطاقة على الهاتف */
+        #firebase-market #direct-sales > div,
+        #firebase-market #auction-list > div{
+          padding:10px !important;
+        }
+
+        #firebase-market #direct-sales h3,
+        #firebase-market #auction-list h3{
+          margin-top:10px !important;
+          margin-bottom:4px !important;
+          min-height:0 !important;
+        }
+
+        #firebase-market #direct-sales p,
+        #firebase-market #auction-list p{
+          margin-top:5px !important;
+          margin-bottom:5px !important;
+          line-height:1.5 !important;
+        }
+
+        #firebase-market #direct-sales .market-location-row,
+        #firebase-market #auction-list .market-location-row{
+          min-height:0 !important;
         }
       }
 
       @media(max-width:480px){
-        #firebase-market #direct-sales > div > div:first-child,
-        #firebase-market #auction-list > div > div:first-child,
-        #firebase-market #direct-sales > div > div:first-child img,
-        #firebase-market #auction-list > div > div:first-child img{
-          height:155px !important;
-          min-height:155px !important;
+        #firebase-market #direct-sales > div,
+        #firebase-market #auction-list > div{
+          padding:9px !important;
         }
       }
     `;
