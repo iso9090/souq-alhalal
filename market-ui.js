@@ -1,4 +1,4 @@
-// market-ui-v38.js
+// market-ui-v39.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
 // تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
@@ -132,10 +132,10 @@
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v38-style")) return;
+    if (document.getElementById("market-ui-v39-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v38-style";
+    style.id = "market-ui-v39-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -596,9 +596,59 @@
         }
       }
 
+
+      @media(min-width:1051px){
+        /* V39 - إظهار صورة الحيوان كاملة قدر الإمكان على الكمبيوتر */
+        #firebase-market #direct-sales > div > div:first-child,
+        #firebase-market #auction-list > div > div:first-child{
+          height:300px !important;
+          min-height:300px !important;
+          max-height:300px !important;
+          background:#f2eee4 !important;
+          overflow:hidden !important;
+        }
+
+        #firebase-market #direct-sales > div > div:first-child img,
+        #firebase-market #auction-list > div > div:first-child img{
+          width:100% !important;
+          height:100% !important;
+          object-fit:contain !important;
+          object-position:center center !important;
+          background:#f2eee4 !important;
+          display:block !important;
+        }
+
+        /* الصور الأفقية الواسعة تملأ البطاقة بشكل أجمل */
+        #firebase-market #direct-sales > div > div:first-child img.market-landscape-image,
+        #firebase-market #auction-list > div > div:first-child img.market-landscape-image{
+          object-fit:cover !important;
+        }
+      }
+
     `;
 
     document.head.appendChild(style);
+  }
+
+
+  function markLandscapeImages() {
+    document.querySelectorAll(
+      "#firebase-market #direct-sales > div > div:first-child img, " +
+      "#firebase-market #auction-list > div > div:first-child img"
+    ).forEach((img) => {
+      const apply = () => {
+        if (!img.naturalWidth || !img.naturalHeight) return;
+        const ratio = img.naturalWidth / img.naturalHeight;
+        if (ratio >= 1.45) {
+          img.classList.add("market-landscape-image");
+        } else {
+          img.classList.remove("market-landscape-image");
+        }
+      };
+
+      if (img.complete) apply();
+      else img.addEventListener("load", apply, { once: true });
+    });
   }
 
   let scheduled = false;
@@ -610,12 +660,14 @@
     requestAnimationFrame(() => {
       scheduled = false;
       improveMarket();
+      markLandscapeImages();
     });
   }
 
   function start() {
     installStyles();
     improveMarket();
+    markLandscapeImages();
 
     const marketObserver = new MutationObserver(() => {
       scheduleImprove();
