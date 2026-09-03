@@ -1,4 +1,4 @@
-// market-ui-v34.js
+// market-ui-v35.js
 // تحسين واجهة سوق الحلال فقط بدون تغيير منطق Firebase أو المزايدات.
 // تم إصلاح مشكلة التكرار التي كانت تسبب تعليق الصفحة.
 
@@ -132,10 +132,10 @@
   }
 
   function installStyles() {
-    if (document.getElementById("market-ui-v34-style")) return;
+    if (document.getElementById("market-ui-v35-style")) return;
 
     const style = document.createElement("style");
-    style.id = "market-ui-v34-style";
+    style.id = "market-ui-v35-style";
     style.textContent = `
       #firebase-market .market-heading{
         display:flex !important;
@@ -303,14 +303,23 @@
       }
 
       @media(min-width:769px){
+        /* سطح المكتب: لا نفرض ارتفاعاً موحداً حتى لا تظهر فراغات كبيرة */
         #firebase-market #direct-sales,
         #firebase-market #auction-list{
-          grid-auto-rows:1fr !important;
+          grid-auto-rows:auto !important;
+          align-items:start !important;
         }
 
         #firebase-market #direct-sales > div,
         #firebase-market #auction-list > div{
-          min-height:560px !important;
+          height:auto !important;
+          min-height:0 !important;
+          align-self:start !important;
+        }
+
+        #firebase-market #direct-sales button[onclick^="requestPurchase"],
+        #firebase-market #auction-list button[id^="bid-button-"]{
+          margin-top:14px !important;
         }
       }
 
