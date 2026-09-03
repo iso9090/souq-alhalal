@@ -41,39 +41,26 @@
       box-shadow:0 14px 35px rgba(26,72,53,.14);
     }
 
-    .hero .actions{
-      margin-top:20px;
-    }
+    .hero .actions{ margin-top:20px; }
 
     @media (max-width:768px){
-      .hero{
-        gap:18px !important;
-      }
-
-      .hero-livestock-photo{
-        height:280px;
-        border-radius:20px;
-      }
-
-      .hero .actions{
-        margin-top:16px;
-      }
+      .hero{ gap:18px !important; }
+      .hero-livestock-photo{ height:280px; border-radius:20px; }
+      .hero .actions{ margin-top:16px; }
     }
 
     @media (max-width:480px){
-      .hero-livestock-photo{
-        height:235px;
-        border-radius:18px;
-      }
+      .hero-livestock-photo{ height:235px; border-radius:18px; }
     }
-  </style>
 
-
-  <style>
     /* تثبيت ترتيب وحجم الواجهة الرئيسية */
     #home.hero{
       display:block !important;
       padding:22px !important;
+      background:#fffdf8 !important;
+      border:1px solid rgba(190,155,82,.22) !important;
+      border-radius:30px !important;
+      box-shadow:0 16px 40px rgba(24,72,52,.08) !important;
     }
 
     #home .hero-photo-wrap{
@@ -90,35 +77,14 @@
       object-fit:cover !important;
       object-position:center !important;
       margin:0 !important;
-      border-radius:22px !important;
+      border-radius:26px !important;
+      box-shadow:none !important;
     }
 
-    @media (max-width:768px){
-      #home.hero{
-        padding:14px !important;
-      }
+    #home h1{ color:#0b6345 !important; font-weight:800 !important; }
+    #home h2{ color:#b88624 !important; font-weight:800 !important; }
+    #home p{ color:#616661 !important; }
 
-      #home .hero-photo-wrap{
-        margin-bottom:20px !important;
-      }
-
-      #home .hero-livestock-photo{
-        height:230px !important;
-        border-radius:18px !important;
-      }
-
-      #home h1{
-        margin-top:12px !important;
-      }
-
-      #home .actions{
-        margin-top:18px !important;
-      }
-    }
-  </style>
-
-
-  <style>
     /* الشعار الرسمي في رأس الموقع */
     header .brand{
       display:flex !important;
@@ -140,68 +106,8 @@
       gap:4px;
     }
 
-    header .brand-text b{
-      display:block;
-    }
-
-    header .brand-text small{
-      display:block;
-    }
-
-    @media (max-width:768px){
-      header .brand{
-        gap:8px !important;
-      }
-
-      header .site-logo{
-        width:58px !important;
-        height:58px !important;
-        flex-basis:58px !important;
-        border-radius:12px;
-      }
-
-      header .brand-text b{
-        line-height:1.35;
-      }
-    }
-
-    @media (max-width:480px){
-      header .site-logo{
-        width:52px !important;
-        height:52px !important;
-        flex-basis:52px !important;
-      }
-    }
-  </style>
-
-
-  <style>
-    /* الهوية المعتمدة للواجهة الرئيسية */
-    #home.hero{
-      background:#fffdf8 !important;
-      border:1px solid rgba(190,155,82,.22) !important;
-      border-radius:30px !important;
-      box-shadow:0 16px 40px rgba(24,72,52,.08) !important;
-    }
-
-    #home .hero-livestock-photo{
-      border-radius:26px !important;
-      box-shadow:none !important;
-    }
-
-    #home h1{
-      color:#0b6345 !important;
-      font-weight:800 !important;
-    }
-
-    #home h2{
-      color:#b88624 !important;
-      font-weight:800 !important;
-    }
-
-    #home p{
-      color:#616661 !important;
-    }
+    header .brand-text b,
+    header .brand-text small{ display:block; }
 
     .hero-actions-approved{
       display:grid !important;
@@ -278,17 +184,8 @@
       gap:8px;
     }
 
-    .benefit-card b{
-      color:#17365d;
-      font-size:1.05rem;
-      line-height:1.45;
-    }
-
-    .benefit-card small{
-      color:#6b7280;
-      font-size:.9rem;
-      line-height:1.45;
-    }
+    .benefit-card b{ color:#17365d; font-size:1.05rem; line-height:1.45; }
+    .benefit-card small{ color:#6b7280; font-size:.9rem; line-height:1.45; }
 
     .benefit-icon{
       width:62px;
@@ -320,30 +217,45 @@
       stroke-linejoin:round;
     }
 
-    .benefit-handshake .benefit-svg{
-      stroke:#b98724;
-    }
+    .benefit-handshake .benefit-svg{ stroke:#b98724; }
 
+    .benefit-auction .benefit-svg,
     .benefit-uae .benefit-svg{
-      fill:#0b6b4b;
-      stroke:#0b6b4b;
-      stroke-width:2;
+      fill:none !important;
+      stroke:#0b6b4b !important;
+      stroke-width:3.5 !important;
     }
 
-    .benefit-auction .benefit-svg{
-      fill:#0b6b4b;
-      stroke:#0b6b4b;
-      stroke-width:2;
+    .mobile-bottom-nav{ display:none; }
+
+    .market-anchor{
+      scroll-margin-top:110px;
+      height:0;
+      overflow:hidden;
     }
 
-    .mobile-bottom-nav{
-      display:none;
+    .mobile-bottom-nav .bottom-icon svg{
+      width:27px;
+      height:27px;
+      fill:none;
+      stroke:currentColor;
+      stroke-width:1.8;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      display:block;
     }
 
     @media (max-width:768px){
-      body{
-        padding-bottom:92px;
+      body{ padding-bottom:92px; }
+
+      header .brand{ gap:8px !important; }
+      header .site-logo{
+        width:58px !important;
+        height:58px !important;
+        flex-basis:58px !important;
+        border-radius:12px;
       }
+      header .brand-text b{ line-height:1.35; }
 
       #home.hero{
         margin-top:18px !important;
@@ -351,27 +263,13 @@
         border-radius:26px !important;
       }
 
-      #home .hero-livestock-photo{
-        height:240px !important;
-        border-radius:22px !important;
-      }
+      #home .hero-photo-wrap{ margin-bottom:20px !important; }
+      #home .hero-livestock-photo{ height:240px !important; border-radius:22px !important; }
+      #home h1{ font-size:2.25rem !important; line-height:1.25 !important; margin:12px 0 8px !important; }
+      #home h2{ font-size:1.35rem !important; line-height:1.45 !important; }
+      #home .actions{ margin-top:18px !important; }
 
-      #home h1{
-        font-size:2.25rem !important;
-        line-height:1.25 !important;
-        margin-bottom:8px !important;
-      }
-
-      #home h2{
-        font-size:1.35rem !important;
-        line-height:1.45 !important;
-      }
-
-      .hero-actions-approved{
-        grid-template-columns:1fr 1fr !important;
-        gap:10px !important;
-      }
-
+      .hero-actions-approved{ grid-template-columns:1fr 1fr !important; gap:10px !important; }
       .hero-actions-approved .hero-action{
         min-height:70px !important;
         padding:8px 10px !important;
@@ -400,31 +298,11 @@
         gap:5px;
       }
 
-      .benefit-icon{
-        width:48px;
-        height:48px;
-        font-size:30px;
-      }
-
-      .benefit-shield{
-        border-width:4px;
-        font-size:22px;
-      }
-
-      .benefit-svg{
-        width:42px;
-        height:42px;
-      }
-
-      .benefit-card b{
-        font-size:.78rem;
-        line-height:1.35;
-      }
-
-      .benefit-card small{
-        font-size:.68rem;
-        line-height:1.35;
-      }
+      .benefit-icon{ width:48px; height:48px; font-size:30px; }
+      .benefit-shield{ border-width:4px; font-size:22px; }
+      .benefit-svg{ width:42px; height:42px; }
+      .benefit-card b{ font-size:.78rem; line-height:1.35; }
+      .benefit-card small{ font-size:.68rem; line-height:1.35; }
 
       .mobile-bottom-nav{
         position:fixed;
@@ -463,78 +341,29 @@
         font-weight:800;
       }
 
-      .mobile-bottom-nav .bottom-icon{
-        font-size:24px;
-        line-height:1;
-      }
+      .mobile-bottom-nav a.active .bottom-icon svg{ stroke:#0a6c4a; }
     }
 
     @media (max-width:480px){
-      .hero-actions-approved .hero-action{
-        font-size:.92rem !important;
+      header .site-logo{
+        width:52px !important;
+        height:52px !important;
+        flex-basis:52px !important;
       }
 
-      .home-benefits{
-        gap:6px;
-      }
-
-      .benefit-card b{
-        font-size:.72rem;
-      }
-
-      .benefit-card small{
-        font-size:.62rem;
-      }
+      .hero-actions-approved .hero-action{ font-size:.92rem !important; }
+      .home-benefits{ gap:6px; }
+      .benefit-card b{ font-size:.72rem; }
+      .benefit-card small{ font-size:.62rem; }
     }
   </style>
-
-
-  <style>
-    /* أيقونات خطية موحدة للشريط السفلي */
-    .mobile-bottom-nav .bottom-icon svg{
-      width:27px;
-      height:27px;
-      fill:none;
-      stroke:currentColor;
-      stroke-width:1.8;
-      stroke-linecap:round;
-      stroke-linejoin:round;
-      display:block;
-    }
-
-    .mobile-bottom-nav a.active .bottom-icon svg{
-      stroke:#0a6c4a;
-    }
-
-    .benefit-auction .benefit-svg,
-    .benefit-uae .benefit-svg{
-      fill:none !important;
-      stroke:#0b6b4b !important;
-      stroke-width:3.5 !important;
-    }
-  </style>
-
-
-  <style>
-    .market-anchor{
-      scroll-margin-top:110px;
-      height:0;
-      overflow:hidden;
-    }
-  </style>
-
 </head>
 
 <body>
 
 <header>
-
   <div class="brand">
-    <img
-      src="logo-souq-alhalal.png"
-      alt="شعار سوق الحلال الإلكتروني"
-      class="site-logo"
-    >
+    <img src="logo-souq-alhalal.png" alt="شعار سوق الحلال الإلكتروني" class="site-logo">
     <div class="brand-text">
       <b>سوق الحلال الإلكتروني</b>
       <small>دولة الإمارات العربية المتحدة</small>
@@ -549,45 +378,20 @@
     <a href="#contact">تواصل معنا</a>
   </nav>
 
-  <button
-    class="login"
-    onclick="openLogin()">
-    تسجيل الدخول
-  </button>
-
+  <button class="login" onclick="openLogin()">تسجيل الدخول</button>
 </header>
-
 
 <main>
 
-
-<!-- ===================================== -->
-<!-- الرئيسية -->
-<!-- ===================================== -->
-
 <section id="home" class="hero">
-
   <div class="animals hero-photo-wrap">
-    <img
-      src="hero-livestock.png"
-      alt="جمل وأغنام وماعز في عزبة"
-      class="hero-livestock-photo"
-    >
+    <img src="hero-livestock.png" alt="جمل وأغنام وماعز في عزبة" class="hero-livestock-photo">
   </div>
 
   <div>
-
-    <span>
-      منصة إلكترونية لأصحاب الحلال
-    </span>
-
-    <h1>
-      سوق الحلال الإلكتروني
-    </h1>
-
-    <h2>
-      حلالك في عِزبتك... بيعه بطريقتك
-    </h2>
+    <span>منصة إلكترونية لأصحاب الحلال</span>
+    <h1>سوق الحلال الإلكتروني</h1>
+    <h2>حلالك في عِزبتك... بيعه بطريقتك</h2>
 
     <p>
       منصة تجمع أصحاب الحلال في مختلف إمارات الدولة،
@@ -596,35 +400,20 @@
     </p>
 
     <div class="actions hero-actions-approved">
-
       <a href="#auction" class="hero-action auction-action">
         <span class="action-main">🔨 <strong>دخول المزاد</strong></span>
         <span class="action-arrow">‹</span>
       </a>
 
-      <a
-        class="gold hero-action direct-action"
-        href="#direct">
+      <a class="gold hero-action direct-action" href="#direct">
         <span class="action-main">🛒 <strong>البيع المباشر</strong></span>
         <span class="action-arrow">‹</span>
       </a>
-
     </div>
-
   </div>
-
-
-
-
 </section>
 
-
-<!-- ===================================== -->
-<!-- المزايا الرئيسية -->
-<!-- ===================================== -->
-
 <section class="home-benefits">
-
   <div class="benefit-card">
     <div class="benefit-icon benefit-shield">✓</div>
     <b>أمان وموثوقية</b>
@@ -660,797 +449,236 @@
     <b>مزادات مباشرة</b>
     <small>بشكل عادل<br>وواضح</small>
   </div>
-
 </section>
-
-
-<!-- ===================================== -->
-<!-- نقاط الانتقال إلى السوق الفعلي -->
-<!-- ===================================== -->
 
 <div id="auction" class="market-anchor"></div>
 <div id="direct" class="market-anchor"></div>
 
-
-<!-- ===================================== -->
-<!-- إضافة حلال -->
-<!-- ===================================== -->
-
-<section
-  id="sell"
-  class="panel">
-
+<section id="sell" class="panel">
   <div class="title">
-
-    <h2>
-      اعرض حلالك
-    </h2>
-
-    <p>
-      أضف بيانات الحيوان واختر طريقة البيع
-    </p>
-
+    <h2>اعرض حلالك</h2>
+    <p>أضف بيانات الحيوان واختر طريقة البيع</p>
   </div>
 
-
-  <form
-    id="listingForm"
-    onsubmit="saveListing(event)">
-
-
-    <!-- ===================================== -->
-    <!-- صور الحيوان -->
-    <!-- ===================================== -->
-
+  <form id="listingForm" onsubmit="saveListing(event)">
     <div class="upload">
+      <div style="font-size:45px;">📷</div>
+      <b>صور الحيوان</b>
+      <small>اختر حتى 5 صور من الهاتف</small>
 
-      <div style="font-size:45px;">
-        📷
-      </div>
+      <input id="animalImages" type="file" accept="image/*" multiple
+        style="display:block;width:100%;margin-top:15px;">
 
-      <b>
-        صور الحيوان
-      </b>
-
-      <small>
-        اختر حتى 5 صور من الهاتف
-      </small>
-
-      <input
-        id="animalImages"
-        type="file"
-        accept="image/*"
-        multiple
-        style="
-          display:block;
-          width:100%;
-          margin-top:15px;
-        "
-      >
-
-      <div
-        id="imagePreview"
-        style="
-          display:grid;
-          grid-template-columns:repeat(3,1fr);
-          gap:8px;
-          margin-top:15px;
-        "
-      ></div>
-
+      <div id="imagePreview"
+        style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px;"></div>
     </div>
 
-
     <div class="fields">
-
-
-      <!-- ===================================== -->
-      <!-- نوع الحيوان -->
-      <!-- ===================================== -->
-
-      <select
-        id="animalType"
-        required>
-
-        <option
-          value=""
-          selected
-          disabled>
-          اختر نوع الحيوان
-        </option>
-
-        <option value="ناقة">
-          🐫 ناقة
-        </option>
-
-        <option value="غنم">
-          🐑 غنم
-        </option>
-
-        <option value="ماعز">
-          🐐 ماعز
-        </option>
-
-        <option value="بقر">
-          🐄 بقر
-        </option>
-
-        <option value="دجاج">
-          🐔 دجاج
-        </option>
-
-        <option value="صقور">
-          🦅 صقور
-        </option>
-
-        <option value="غزال">
-          🦌 غزال
-        </option>
-
-        <option value="نعام">
-          🐦 نعام
-        </option>
-
-        <option value="حمام">
-          🕊️ حمام
-        </option>
-
+      <select id="animalType" required>
+        <option value="" selected disabled>اختر نوع الحيوان</option>
+        <option value="ناقة">🐫 ناقة</option>
+        <option value="غنم">🐑 غنم</option>
+        <option value="ماعز">🐐 ماعز</option>
+        <option value="بقر">🐄 بقر</option>
+        <option value="دجاج">🐔 دجاج</option>
+        <option value="صقور">🦅 صقور</option>
+        <option value="غزال">🦌 غزال</option>
+        <option value="نعام">🐦 نعام</option>
+        <option value="حمام">🕊️ حمام</option>
       </select>
 
+      <input id="animalBreed" placeholder="السلالة">
+      <input id="animalAge" placeholder="العمر">
 
-      <input
-        id="animalBreed"
-        placeholder="السلالة">
-
-
-      <input
-        id="animalAge"
-        placeholder="العمر">
-
-
-      <select
-        id="animalEmirate"
-        required
-        onchange="updateLocationOptions()">
-
-        <option value="الشارقة" selected>
-          📍 إمارة الشارقة
-        </option>
-
+      <select id="animalEmirate" required onchange="updateLocationOptions()">
+        <option value="الشارقة" selected>📍 إمارة الشارقة</option>
         <option value="دبي">📍 إمارة دبي</option>
         <option value="أبوظبي">📍 إمارة أبوظبي</option>
         <option value="عجمان">📍 إمارة عجمان</option>
         <option value="رأس الخيمة">📍 إمارة رأس الخيمة</option>
         <option value="أم القيوين">📍 إمارة أم القيوين</option>
         <option value="الفجيرة">📍 إمارة الفجيرة</option>
-
       </select>
 
+      <select id="animalCity" required onchange="updateFullLocation()"></select>
+      <input id="animalLocation" type="hidden" value="الذيد - الشارقة">
 
-      <select
-        id="animalCity"
-        required
-        onchange="updateFullLocation()">
+      <select id="method" onchange="toggleAuctionFields()">
+        <option value="بيع مباشر">🛒 بيع مباشر</option>
+        <option value="مزاد إلكتروني">🔨 مزاد إلكتروني</option>
       </select>
 
+      <input id="animalPrice" required type="number" min="1" placeholder="السعر بالدرهم">
 
-      <input
-        id="animalLocation"
-        type="hidden"
-        value="الذيد - الشارقة">
-
-
-      <select
-        id="method"
-        onchange="toggleAuctionFields()">
-
-        <option value="بيع مباشر">
-          🛒 بيع مباشر
-        </option>
-
-        <option value="مزاد إلكتروني">
-          🔨 مزاد إلكتروني
-        </option>
-
-      </select>
-
-
-      <input
-        id="animalPrice"
-        required
-        type="number"
-        min="1"
-        placeholder="السعر بالدرهم">
-
-
-      <div
-        id="auctionFields"
-        style="
-          display:none;
-          width:100%;
-        ">
-
-
-        <div
-          style="
-            background:#10271c;
-            border:1px solid #1d6044;
-            border-radius:12px;
-            padding:14px;
-            margin-bottom:14px;
-            color:#68e6b0;
-            text-align:center;
-          ">
+      <div id="auctionFields" style="display:none;width:100%;">
+        <div style="background:#10271c;border:1px solid #1d6044;border-radius:12px;padding:14px;margin-bottom:14px;color:#68e6b0;text-align:center;">
           🔨 بيانات المزاد الإلكتروني
         </div>
 
+        <label style="display:block;margin-bottom:7px;">أقل زيادة للمزايدة</label>
+        <input id="auctionIncrement" type="number" min="1" placeholder="مثال: 200"
+          style="width:100%;box-sizing:border-box;margin-bottom:14px;">
 
-        <label
-          style="
-            display:block;
-            margin-bottom:7px;
-          ">
-          أقل زيادة للمزايدة
-        </label>
-
-        <input
-          id="auctionIncrement"
-          type="number"
-          min="1"
-          placeholder="مثال: 200"
-          style="
-            width:100%;
-            box-sizing:border-box;
-            margin-bottom:14px;
-          ">
-
-
-        <label
-          style="
-            display:block;
-            margin-bottom:7px;
-          ">
-          تاريخ ووقت انتهاء المزاد
-        </label>
-
-        <input
-          id="auctionEndTime"
-          type="datetime-local"
-          style="
-            width:100%;
-            box-sizing:border-box;
-            margin-bottom:14px;
-          ">
-
+        <label style="display:block;margin-bottom:7px;">تاريخ ووقت انتهاء المزاد</label>
+        <input id="auctionEndTime" type="datetime-local"
+          style="width:100%;box-sizing:border-box;margin-bottom:14px;">
       </div>
 
-
-      <textarea
-        id="animalDescription"
-        placeholder="الوصف والحالة الصحية"></textarea>
-
-
-      <button type="submit">
-        حفظ العرض
-      </button>
-
+      <textarea id="animalDescription" placeholder="الوصف والحالة الصحية"></textarea>
+      <button type="submit">حفظ العرض</button>
     </div>
-
   </form>
-
 </section>
 
-
-<!-- ===================================== -->
-<!-- التواصل -->
-<!-- ===================================== -->
-
-<section
-  id="contact"
-  class="contact">
-
-  <h2>
-    تواصل معنا
-  </h2>
-
-  <p>
-    سوق الحلال الإلكتروني - دولة الإمارات العربية المتحدة
-  </p>
-
+<section id="contact" class="contact">
+  <h2>تواصل معنا</h2>
+  <p>سوق الحلال الإلكتروني - دولة الإمارات العربية المتحدة</p>
   <p>
     منصة إلكترونية تربط البائع والمشتري،
     وتتم المعاينة والاستلام والدفع مباشرة بين الطرفين.
   </p>
-
 </section>
-
 
 </main>
 
-
-<div
-  id="modal"
-  class="modal">
-
+<div id="modal" class="modal">
   <div class="box">
-
-    <button
-      class="x"
-      onclick="closeModal()">
-      ×
-    </button>
-
+    <button class="x" onclick="closeModal()">×</button>
     <div id="modalContent"></div>
-
   </div>
-
 </div>
 
-
 <footer>
-
   سوق الحلال الإلكتروني • دولة الإمارات العربية المتحدة
-
   <br>
-
-  <small>
-    حلالك في عِزبتك... بيعه بطريقتك
-  </small>
-
+  <small>حلالك في عِزبتك... بيعه بطريقتك</small>
 </footer>
 
-
 <script>
-
 const emirateLocations = {
-
-  "الشارقة": [
-    "الذيد",
-    "مدينة الشارقة",
-    "مليحة",
-    "البطائح",
-    "المدام",
-    "الحمرية",
-    "خورفكان",
-    "كلباء",
-    "دبا الحصن"
-  ],
-
-  "دبي": [
-    "دبي",
-    "حتا",
-    "الخوانيج",
-    "العوير",
-    "الليسيلي",
-    "مرغم",
-    "لهباب"
-  ],
-
-  "أبوظبي": [
-    "أبوظبي",
-    "العين",
-    "مدينة زايد",
-    "ليوا",
-    "غياثي",
-    "المرفأ",
-    "الرويس",
-    "السلع",
-    "جزيرة دلما"
-  ],
-
-  "عجمان": [
-    "عجمان",
-    "مصفوت",
-    "المنامة"
-  ],
-
-  "رأس الخيمة": [
-    "رأس الخيمة",
-    "الرمس",
-    "شعم",
-    "غليلة",
-    "الجزيرة الحمراء",
-    "خت"
-  ],
-
-  "أم القيوين": [
-    "أم القيوين",
-    "فلج المعلا"
-  ],
-
-  "الفجيرة": [
-    "الفجيرة",
-    "دبا الفجيرة",
-    "مسافي",
-    "مربح",
-    "قدفع",
-    "البدية",
-    "الطويين"
-  ]
+  "الشارقة": ["الذيد","مدينة الشارقة","مليحة","البطائح","المدام","الحمرية","خورفكان","كلباء","دبا الحصن"],
+  "دبي": ["دبي","حتا","الخوانيج","العوير","الليسيلي","مرغم","لهباب"],
+  "أبوظبي": ["أبوظبي","العين","مدينة زايد","ليوا","غياثي","المرفأ","الرويس","السلع","جزيرة دلما"],
+  "عجمان": ["عجمان","مصفوت","المنامة"],
+  "رأس الخيمة": ["رأس الخيمة","الرمس","شعم","غليلة","الجزيرة الحمراء","خت"],
+  "أم القيوين": ["أم القيوين","فلج المعلا"],
+  "الفجيرة": ["الفجيرة","دبا الفجيرة","مسافي","مربح","قدفع","البدية","الطويين"]
 };
 
-
 function updateLocationOptions() {
+  const emirate = document.getElementById("animalEmirate");
+  const city = document.getElementById("animalCity");
+  if (!emirate || !city) return;
 
-  const emirate =
-    document.getElementById(
-      "animalEmirate"
-    );
+  const locations = emirateLocations[emirate.value] || [];
+  city.innerHTML = "";
 
-  const city =
-    document.getElementById(
-      "animalCity"
-    );
+  locations.forEach(function (locationName) {
+    const option = document.createElement("option");
+    option.value = locationName;
+    option.textContent = locationName;
+    city.appendChild(option);
+  });
 
-  if (
-    !emirate ||
-    !city
-  ) {
-    return;
-  }
-
-
-  const locations =
-    emirateLocations[
-      emirate.value
-    ] || [];
-
-
-  city.innerHTML =
-    "";
-
-
-  locations.forEach(
-    function (locationName) {
-
-      const option =
-        document.createElement(
-          "option"
-        );
-
-      option.value =
-        locationName;
-
-      option.textContent =
-        locationName;
-
-      city.appendChild(
-        option
-      );
-    }
-  );
-
-
-  if (
-    emirate.value ===
-      "الشارقة"
-  ) {
-
-    city.value =
-      "الذيد";
-  }
-
-
+  if (emirate.value === "الشارقة") city.value = "الذيد";
   updateFullLocation();
 }
 
-
 function updateFullLocation() {
+  const emirate = document.getElementById("animalEmirate");
+  const city = document.getElementById("animalCity");
+  const fullLocation = document.getElementById("animalLocation");
+  if (!emirate || !city || !fullLocation) return;
 
-  const emirate =
-    document.getElementById(
-      "animalEmirate"
-    );
-
-  const city =
-    document.getElementById(
-      "animalCity"
-    );
-
-  const fullLocation =
-    document.getElementById(
-      "animalLocation"
-    );
-
-
-  if (
-    !emirate ||
-    !city ||
-    !fullLocation
-  ) {
+  if (!city.value) {
+    fullLocation.value = emirate.value;
     return;
   }
 
-
-  if (
-    !city.value
-  ) {
-
-    fullLocation.value =
-      emirate.value;
-
-    return;
-  }
-
-
-  fullLocation.value =
-    city.value +
-    " - " +
-    emirate.value;
+  fullLocation.value = city.value + " - " + emirate.value;
 }
 
+document.addEventListener("DOMContentLoaded", function () {
+  updateLocationOptions();
 
-document.addEventListener(
-  "DOMContentLoaded",
-  function () {
+  const form = document.getElementById("listingForm");
+  if (!form) return;
 
-    updateLocationOptions();
-
-  }
-);
-
-
-document.addEventListener(
-  "DOMContentLoaded",
-  function () {
-
-    const form =
-      document.getElementById(
-        "listingForm"
-      );
-
-    if (!form) {
-      return;
-    }
-
-    form.addEventListener(
-      "reset",
-      function () {
-
-        setTimeout(
-          function () {
-
-            const emirate =
-              document.getElementById(
-                "animalEmirate"
-              );
-
-            if (emirate) {
-              emirate.value =
-                "الشارقة";
-            }
-
-            updateLocationOptions();
-
-          },
-          0
-        );
-      }
-    );
-
-  }
-);
-
+  form.addEventListener("reset", function () {
+    setTimeout(function () {
+      const emirate = document.getElementById("animalEmirate");
+      if (emirate) emirate.value = "الشارقة";
+      updateLocationOptions();
+    }, 0);
+  });
+});
 </script>
 
-
 <script>
-
 function toggleAuctionFields() {
+  const method = document.getElementById("method");
+  const auctionFields = document.getElementById("auctionFields");
+  const price = document.getElementById("animalPrice");
+  const increment = document.getElementById("auctionIncrement");
+  const endTime = document.getElementById("auctionEndTime");
 
-  const method =
-    document.getElementById(
-      "method"
-    );
+  if (!method || !auctionFields || !price) return;
 
-  const auctionFields =
-    document.getElementById(
-      "auctionFields"
-    );
-
-  const price =
-    document.getElementById(
-      "animalPrice"
-    );
-
-  const increment =
-    document.getElementById(
-      "auctionIncrement"
-    );
-
-  const endTime =
-    document.getElementById(
-      "auctionEndTime"
-    );
-
-
-  if (
-    !method ||
-    !auctionFields ||
-    !price
-  ) {
-    return;
-  }
-
-
-  if (
-    method.value ===
-      "مزاد إلكتروني"
-  ) {
-
-    auctionFields.style.display =
-      "block";
-
-    price.placeholder =
-      "سعر بداية المزاد بالدرهم";
-
-    if (increment) {
-      increment.required =
-        true;
-    }
-
-    if (endTime) {
-      endTime.required =
-        true;
-    }
-
+  if (method.value === "مزاد إلكتروني") {
+    auctionFields.style.display = "block";
+    price.placeholder = "سعر بداية المزاد بالدرهم";
+    if (increment) increment.required = true;
+    if (endTime) endTime.required = true;
   } else {
-
-    auctionFields.style.display =
-      "none";
-
-    price.placeholder =
-      "سعر البيع بالدرهم";
-
-    if (increment) {
-      increment.required =
-        false;
-    }
-
-    if (endTime) {
-      endTime.required =
-        false;
-    }
+    auctionFields.style.display = "none";
+    price.placeholder = "سعر البيع بالدرهم";
+    if (increment) increment.required = false;
+    if (endTime) endTime.required = false;
   }
 }
 
-
-document.addEventListener(
-  "DOMContentLoaded",
-  function () {
-
-    toggleAuctionFields();
-
-  }
-);
-
+document.addEventListener("DOMContentLoaded", toggleAuctionFields);
 </script>
 
-
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+  const imageInput = document.getElementById("animalImages");
+  const preview = document.getElementById("imagePreview");
+  if (!imageInput || !preview) return;
 
-document.addEventListener(
-  "DOMContentLoaded",
-  function () {
+  imageInput.addEventListener("change", function () {
+    preview.innerHTML = "";
+    const files = Array.from(imageInput.files || []);
 
-    const imageInput =
-      document.getElementById(
-        "animalImages"
-      );
-
-    const preview =
-      document.getElementById(
-        "imagePreview"
-      );
-
-
-    if (
-      !imageInput ||
-      !preview
-    ) {
+    if (files.length > 5) {
+      alert("يمكن اختيار 5 صور كحد أقصى.");
+      imageInput.value = "";
       return;
     }
 
+    files.forEach(function (file) {
+      if (!file.type.startsWith("image/")) return;
 
-    imageInput.addEventListener(
-      "change",
-      function () {
-
-        preview.innerHTML =
-          "";
-
-
-        const files =
-          Array.from(
-            imageInput.files ||
-            []
-          );
-
-
-        if (
-          files.length > 5
-        ) {
-
-          alert(
-            "يمكن اختيار 5 صور كحد أقصى."
-          );
-
-          imageInput.value =
-            "";
-
-          return;
-        }
-
-
-        files.forEach(
-          function (file) {
-
-            if (
-              !file.type.startsWith(
-                "image/"
-              )
-            ) {
-              return;
-            }
-
-
-            const reader =
-              new FileReader();
-
-
-            reader.onload =
-              function (event) {
-
-                const img =
-                  document.createElement(
-                    "img"
-                  );
-
-
-                img.src =
-                  event.target.result;
-
-
-                img.style.width =
-                  "100%";
-
-                img.style.height =
-                  "100px";
-
-                img.style.objectFit =
-                  "cover";
-
-                img.style.borderRadius =
-                  "10px";
-
-
-                preview.appendChild(
-                  img
-                );
-              };
-
-
-            reader.readAsDataURL(
-              file
-            );
-
-          }
-        );
-
-      }
-    );
-
-  }
-);
-
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const img = document.createElement("img");
+        img.src = event.target.result;
+        img.style.width = "100%";
+        img.style.height = "100px";
+        img.style.objectFit = "cover";
+        img.style.borderRadius = "10px";
+        preview.appendChild(img);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+});
 </script>
 
+<script type="module" src="app.js?v=29"></script>
 
-<script
-  type="module"
-  src="app.js?v=29">
-</script>
-
+<!-- تصميم بطاقات السوق الاحترافي -->
+<script src="market-ui.js?v=30"></script>
 
 <nav class="mobile-bottom-nav" aria-label="التنقل الرئيسي">
   <a href="#home" class="active">
@@ -1480,5 +708,4 @@ document.addEventListener(
 </nav>
 
 </body>
-
 </html>
