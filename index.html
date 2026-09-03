@@ -174,6 +174,314 @@
     }
   </style>
 
+
+  <style>
+    /* الهوية المعتمدة للواجهة الرئيسية */
+    #home.hero{
+      background:#fffdf8 !important;
+      border:1px solid rgba(190,155,82,.22) !important;
+      border-radius:30px !important;
+      box-shadow:0 16px 40px rgba(24,72,52,.08) !important;
+    }
+
+    #home .hero-livestock-photo{
+      border-radius:26px !important;
+      box-shadow:none !important;
+    }
+
+    #home h1{
+      color:#0b6345 !important;
+      font-weight:800 !important;
+    }
+
+    #home h2{
+      color:#b88624 !important;
+      font-weight:800 !important;
+    }
+
+    #home p{
+      color:#616661 !important;
+    }
+
+    .hero-actions-approved{
+      display:grid !important;
+      grid-template-columns:1fr 1fr !important;
+      gap:18px !important;
+      width:100% !important;
+    }
+
+    .hero-actions-approved .hero-action{
+      min-height:74px !important;
+      border-radius:20px !important;
+      display:flex !important;
+      align-items:center !important;
+      justify-content:space-between !important;
+      padding:10px 16px !important;
+      text-decoration:none !important;
+      box-sizing:border-box !important;
+      font-size:1.08rem !important;
+      font-weight:800 !important;
+    }
+
+    .hero-actions-approved .auction-action{
+      background:linear-gradient(135deg,#0b6847,#07865b) !important;
+      color:#fff !important;
+    }
+
+    .hero-actions-approved .direct-action{
+      background:linear-gradient(135deg,#d9a62d,#f0c963) !important;
+      color:#1f241f !important;
+    }
+
+    .hero-actions-approved .action-main{
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .hero-actions-approved .action-arrow{
+      width:40px;
+      height:40px;
+      min-width:40px;
+      border-radius:50%;
+      background:#fff;
+      color:#0b6847;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:36px;
+      line-height:1;
+      font-weight:400;
+    }
+
+    .home-benefits{
+      width:min(1180px,calc(100% - 40px));
+      margin:24px auto 38px;
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:16px;
+    }
+
+    .benefit-card{
+      background:#fff;
+      border:1px solid rgba(183,150,84,.2);
+      border-radius:22px;
+      min-height:180px;
+      padding:24px 14px 20px;
+      box-sizing:border-box;
+      text-align:center;
+      box-shadow:0 10px 26px rgba(24,72,52,.06);
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap:8px;
+    }
+
+    .benefit-card b{
+      color:#17365d;
+      font-size:1.05rem;
+      line-height:1.45;
+    }
+
+    .benefit-card small{
+      color:#6b7280;
+      font-size:.9rem;
+      line-height:1.45;
+    }
+
+    .benefit-icon{
+      width:62px;
+      height:62px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-bottom:5px;
+      font-size:34px;
+    }
+
+    .benefit-shield{
+      border-radius:18px 18px 26px 26px;
+      background:linear-gradient(145deg,#0d7450,#0b513b);
+      color:#fff;
+      border:5px solid #d7a72f;
+      font-weight:900;
+      box-sizing:border-box;
+      font-size:28px;
+    }
+
+    .benefit-handshake{
+      font-size:42px;
+    }
+
+    .benefit-uae{
+      color:#0b6b4b;
+      font-size:48px;
+      transform:rotate(45deg);
+    }
+
+    .benefit-auction{
+      color:#0b6b4b;
+      font-size:48px;
+      filter:saturate(.7);
+    }
+
+    .mobile-bottom-nav{
+      display:none;
+    }
+
+    @media (max-width:768px){
+      body{
+        padding-bottom:92px;
+      }
+
+      #home.hero{
+        margin-top:18px !important;
+        padding:14px !important;
+        border-radius:26px !important;
+      }
+
+      #home .hero-livestock-photo{
+        height:240px !important;
+        border-radius:22px !important;
+      }
+
+      #home h1{
+        font-size:2.25rem !important;
+        line-height:1.25 !important;
+        margin-bottom:8px !important;
+      }
+
+      #home h2{
+        font-size:1.35rem !important;
+        line-height:1.45 !important;
+      }
+
+      .hero-actions-approved{
+        grid-template-columns:1fr 1fr !important;
+        gap:10px !important;
+      }
+
+      .hero-actions-approved .hero-action{
+        min-height:70px !important;
+        padding:8px 10px !important;
+        font-size:1rem !important;
+        border-radius:18px !important;
+      }
+
+      .hero-actions-approved .action-arrow{
+        width:34px;
+        height:34px;
+        min-width:34px;
+        font-size:30px;
+      }
+
+      .home-benefits{
+        width:calc(100% - 28px);
+        grid-template-columns:repeat(4,1fr);
+        gap:8px;
+        margin:14px auto 22px;
+      }
+
+      .benefit-card{
+        min-height:145px;
+        padding:14px 5px 12px;
+        border-radius:18px;
+        gap:5px;
+      }
+
+      .benefit-icon{
+        width:48px;
+        height:48px;
+        font-size:30px;
+      }
+
+      .benefit-shield{
+        border-width:4px;
+        font-size:22px;
+      }
+
+      .benefit-handshake{
+        font-size:34px;
+      }
+
+      .benefit-uae,
+      .benefit-auction{
+        font-size:36px;
+      }
+
+      .benefit-card b{
+        font-size:.78rem;
+        line-height:1.35;
+      }
+
+      .benefit-card small{
+        font-size:.68rem;
+        line-height:1.35;
+      }
+
+      .mobile-bottom-nav{
+        position:fixed;
+        right:10px;
+        left:10px;
+        bottom:8px;
+        z-index:9999;
+        height:72px;
+        background:rgba(8,24,21,.96);
+        border-radius:24px;
+        display:grid;
+        grid-template-columns:repeat(5,1fr);
+        align-items:center;
+        padding:6px;
+        box-sizing:border-box;
+        box-shadow:0 12px 35px rgba(0,0,0,.24);
+        backdrop-filter:blur(12px);
+      }
+
+      .mobile-bottom-nav a{
+        height:60px;
+        border-radius:17px;
+        color:#c9cfcc;
+        text-decoration:none;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:2px;
+        font-size:.72rem;
+      }
+
+      .mobile-bottom-nav a.active{
+        background:#f8f6ef;
+        color:#0a6c4a;
+        font-weight:800;
+      }
+
+      .mobile-bottom-nav .bottom-icon{
+        font-size:24px;
+        line-height:1;
+      }
+    }
+
+    @media (max-width:480px){
+      .hero-actions-approved .hero-action{
+        font-size:.92rem !important;
+      }
+
+      .home-benefits{
+        gap:6px;
+      }
+
+      .benefit-card b{
+        font-size:.72rem;
+      }
+
+      .benefit-card small{
+        font-size:.62rem;
+      }
+    }
+  </style>
+
 </head>
 
 <body>
@@ -246,16 +554,18 @@
       بطريقة سهلة وواضحة.
     </p>
 
-    <div class="actions">
+    <div class="actions hero-actions-approved">
 
-      <a href="#auction">
-        🔨 دخول المزاد
+      <a href="#auction" class="hero-action auction-action">
+        <span class="action-main">🔨 <strong>دخول المزاد</strong></span>
+        <span class="action-arrow">‹</span>
       </a>
 
       <a
-        class="gold"
+        class="gold hero-action direct-action"
         href="#direct">
-        🛒 البيع المباشر
+        <span class="action-main">🛒 <strong>البيع المباشر</strong></span>
+        <span class="action-arrow">‹</span>
       </a>
 
     </div>
@@ -269,34 +579,33 @@
 
 
 <!-- ===================================== -->
-<!-- الخدمات -->
+<!-- المزايا الرئيسية -->
 <!-- ===================================== -->
 
-<section class="trust">
+<section class="home-benefits">
 
-  <div>
-    🛡️
-    <b>موثوق وآمن</b>
+  <div class="benefit-card">
+    <div class="benefit-icon benefit-shield">✓</div>
+    <b>أمان وموثوقية</b>
+    <small>تأكيد بيانات<br>البائع والمشتري</small>
   </div>
 
-  <div>
-    🩺
-    <b>توثيق بيطري</b>
+  <div class="benefit-card">
+    <div class="benefit-icon benefit-handshake">🤝</div>
+    <b>سهولة التعامل</b>
+    <small>واجهة بسيطة<br>وسريعة</small>
   </div>
 
-  <div>
-    🤝
-    <b>بيع مباشر</b>
+  <div class="benefit-card">
+    <div class="benefit-icon benefit-uae">◆</div>
+    <b>متوفر في جميع<br>إمارات الدولة</b>
+    <small>دعم شامل</small>
   </div>
 
-  <div>
-    🚚
-    <b>خدمات نقل</b>
-  </div>
-
-  <div>
-    📍
-    <b>جميع الإمارات</b>
+  <div class="benefit-card">
+    <div class="benefit-icon benefit-auction">🐪</div>
+    <b>مزادات مباشرة</b>
+    <small>بشكل عادل<br>وواضح</small>
   </div>
 
 </section>
@@ -1284,6 +1593,34 @@ document.addEventListener(
   type="module"
   src="app.js?v=29">
 </script>
+
+
+<nav class="mobile-bottom-nav" aria-label="التنقل الرئيسي">
+  <a href="#home" class="active">
+    <span class="bottom-icon">⌂</span>
+    <span>الرئيسية</span>
+  </a>
+
+  <a href="#auction">
+    <span class="bottom-icon">🔨</span>
+    <span>المزادات</span>
+  </a>
+
+  <a href="#sell">
+    <span class="bottom-icon">🛒</span>
+    <span>إعلاناتي</span>
+  </a>
+
+  <a href="#contact">
+    <span class="bottom-icon">💬</span>
+    <span>الرسائل</span>
+  </a>
+
+  <a href="javascript:void(0)" onclick="openLogin()">
+    <span class="bottom-icon">👤</span>
+    <span>حسابي</span>
+  </a>
+</nav>
 
 </body>
 
