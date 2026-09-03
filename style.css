@@ -467,3 +467,273 @@ footer small{color:#c4d7cf;}
     border-radius:18px !important;
   }
 }
+
+
+/* =========================================================
+   MARKET V32 — بطاقات السوق الحقيقية
+   ========================================================= */
+
+#firebase-market{
+  background:#f7f2e8 !important;
+  padding:8px 0 30px;
+}
+
+#firebase-market > div{
+  max-width:1180px !important;
+  margin:24px auto 0 !important;
+  padding:18px !important;
+}
+
+#firebase-market h2{
+  color:#0b6847 !important;
+  font-weight:800 !important;
+}
+
+#firebase-market > div > h2:first-child{
+  font-size:30px !important;
+  margin-bottom:6px !important;
+}
+
+#firebase-market > div > p{
+  color:#73786f !important;
+}
+
+#market-filters{
+  background:#fffdf8 !important;
+  border:1px solid rgba(183,150,84,.24) !important;
+  border-radius:22px !important;
+  padding:16px !important;
+  box-shadow:0 10px 28px rgba(28,72,54,.06) !important;
+}
+
+#market-filters select{
+  background:#fff !important;
+  color:#274137 !important;
+  border:1px solid #ddd4c5 !important;
+  min-height:48px !important;
+}
+
+#market-filters button{
+  min-height:48px !important;
+  background:#eee8dc !important;
+  color:#315247 !important;
+  border:1px solid #ddd4c5 !important;
+  font-weight:700 !important;
+}
+
+/* الشبكات */
+#direct-sales,
+#auction-list{
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr)) !important;
+  gap:18px !important;
+}
+
+/* البطاقة الحقيقية */
+#direct-sales > div,
+#auction-list > div{
+  position:relative !important;
+  overflow:hidden !important;
+  background:#fff !important;
+  color:#263b33 !important;
+  padding:12px !important;
+  border:1px solid rgba(183,150,84,.20) !important;
+  border-radius:24px !important;
+  box-shadow:0 12px 32px rgba(28,72,54,.08) !important;
+}
+
+/* صور البائع */
+#direct-sales > div > div:first-child,
+#auction-list > div > div:first-child{
+  border-radius:18px !important;
+  overflow:hidden !important;
+  background:#eee9df !important;
+}
+
+#direct-sales img,
+#auction-list img{
+  width:100% !important;
+  height:230px !important;
+  object-fit:cover !important;
+  border-radius:18px !important;
+}
+
+/* في حال لم يرفع البائع صورة: لا نعرض حيوان كرتوني */
+#direct-sales div[style*="font-size:90px"],
+#auction-list div[style*="font-size:90px"]{
+  font-size:0 !important;
+  height:190px !important;
+  padding:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:linear-gradient(145deg,#eee8dc,#f8f4ec) !important;
+  color:#6b756f !important;
+}
+
+#direct-sales div[style*="font-size:90px"]::after,
+#auction-list div[style*="font-size:90px"]::after{
+  content:"لا توجد صورة";
+  font-size:15px;
+  font-weight:700;
+  color:#7b827d;
+}
+
+/* العناوين والبيانات */
+#direct-sales h3,
+#auction-list h3{
+  color:#164f3b !important;
+  font-size:20px !important;
+  margin:14px 4px 9px !important;
+  font-weight:800 !important;
+}
+
+#direct-sales p,
+#auction-list p{
+  color:#6a716d !important;
+  margin:7px 4px !important;
+  line-height:1.55 !important;
+}
+
+#direct-sales b,
+#auction-list b{
+  color:#24483b !important;
+}
+
+/* السعر */
+#direct-sales [style*="font-size:25px"],
+#auction-list [style*="font-size:27px"]{
+  background:#f1f8f4 !important;
+  color:#0b7650 !important;
+  border:1px solid #d3e9de !important;
+  border-radius:15px !important;
+  padding:12px !important;
+  margin:14px 0 !important;
+  text-align:center !important;
+  line-height:1.45 !important;
+}
+
+/* حالة المزاد */
+#auction-list [id^="auction-tag-"]{
+  background:#0b6f4d !important;
+  color:#fff !important;
+  padding:7px 12px !important;
+  border-radius:999px !important;
+  margin:12px 2px 2px !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+}
+
+/* الوقت المتبقي */
+#auction-list [data-auction-end]{
+  background:#fff7df !important;
+  color:#9a6b12 !important;
+  border:1px solid #ecd8a1 !important;
+  border-radius:14px !important;
+  padding:11px !important;
+  font-size:16px !important;
+  margin:12px 0 !important;
+}
+
+/* الأزرار */
+#direct-sales button,
+#auction-list button{
+  min-height:50px !important;
+  border-radius:15px !important;
+  border:0 !important;
+  font-size:16px !important;
+  font-weight:800 !important;
+  box-shadow:none !important;
+}
+
+#direct-sales button[onclick^="requestPurchase"]{
+  background:linear-gradient(135deg,#0b6847,#07865b) !important;
+}
+
+#auction-list button[id^="bid-button-"]{
+  background:linear-gradient(135deg,#0b6847,#07865b) !important;
+}
+
+#direct-sales button[onclick^="manageListing"],
+#auction-list button[onclick^="manageListing"]{
+  background:#456b7d !important;
+}
+
+/* نتائج أو حالات المزاد */
+#auction-list [style*="background:#302a16"],
+#auction-list [style*="background:#123c2c"],
+#auction-list [style*="background:#421d1d"],
+#auction-list [style*="background:#333"]{
+  border-radius:14px !important;
+}
+
+/* رسائل عدم وجود نتائج */
+#direct-sales > div:only-child:not(:has(img)),
+#auction-list > div:only-child:not(:has(img)){
+  min-height:90px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:#fffdf8 !important;
+  color:#6e756f !important;
+  border:1px dashed #d6ccba !important;
+  box-shadow:none !important;
+}
+
+/* موبايل */
+@media(max-width:768px){
+  #firebase-market{
+    padding-bottom:18px;
+  }
+
+  #firebase-market > div{
+    padding:12px !important;
+    margin-top:12px !important;
+  }
+
+  #firebase-market > div > h2:first-child{
+    font-size:25px !important;
+  }
+
+  #market-filters{
+    border-radius:18px !important;
+    gap:8px !important;
+  }
+
+  #direct-sales,
+  #auction-list{
+    grid-template-columns:1fr !important;
+    gap:14px !important;
+  }
+
+  #direct-sales > div,
+  #auction-list > div{
+    padding:10px !important;
+    border-radius:20px !important;
+  }
+
+  #direct-sales img,
+  #auction-list img{
+    height:220px !important;
+    border-radius:16px !important;
+  }
+
+  #direct-sales h3,
+  #auction-list h3{
+    font-size:19px !important;
+  }
+}
+
+@media(max-width:480px){
+  #direct-sales img,
+  #auction-list img{
+    height:205px !important;
+  }
+
+  #market-filters{
+    grid-template-columns:1fr 1fr !important;
+  }
+
+  #market-filters button{
+    grid-column:1 / -1;
+  }
+}
