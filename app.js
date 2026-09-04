@@ -1544,6 +1544,22 @@ function createFirebaseArea() {
   return area;
 }
 
+window.goToDirectSales = function (event) {
+  if (event) event.preventDefault();
+
+  createFirebaseArea();
+
+  requestAnimationFrame(() => {
+    const anchor = document.getElementById("direct-sales-anchor");
+    if (!anchor) return;
+
+    anchor.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+};
+
 function auctionActionHtml(auction, expired, isOwner) {
   const user = auth.currentUser;
   const hasBid = !!auction.lastBidderId;
