@@ -1842,6 +1842,9 @@ async function loadMarket() {
       )
       .filter(animal =>
         animalMatchesMarketFilters(animal, "direct")
+      )
+      .sort((a, b) =>
+        timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt)
       );
 
     if (directAnimals.length === 0) {
@@ -1918,7 +1921,10 @@ async function loadMarket() {
         const animal = animals[auction.animalId];
         if (!animal) return false;
         return animalMatchesMarketFilters(animal, "auction");
-      });
+      })
+      .sort((a, b) =>
+        timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt)
+      );
 
     if (visibleAuctions.length === 0) {
       auctionContainer.innerHTML = `
