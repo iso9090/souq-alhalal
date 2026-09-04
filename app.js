@@ -112,6 +112,38 @@ function formatListingDate(timestamp) {
   });
 }
 
+function listingAnimalDetailsHtml(animal = {}) {
+  const details = [
+    animal.breed ? `السلالة: <b>${escapeHtml(animal.breed)}</b>` : "",
+    animal.gender ? `الجنس: <b>${animal.gender === "male" ? "ذكر" : "أنثى"}</b>` : "",
+    animal.age ? `العمر: <b>${escapeHtml(animal.age)}</b>` : "",
+    animal.birthDate ? `تاريخ الميلاد: <b>${escapeHtml(animal.birthDate)}</b>` : "",
+    animal.animalIdentifier ? `معرّف الحيوان: <b>${escapeHtml(animal.animalIdentifier)}</b>` : ""
+  ].filter(Boolean);
+
+  if (details.length === 0) return "";
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:14px 0;">
+      ${details.map(detail => `
+        <div style="padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.06);font-size:14px;">
+          ${detail}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function listingDescriptionHtml(animal = {}) {
+  if (!animal.description) return "";
+
+  return `
+    <p style="margin:12px 0;line-height:1.7;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">
+      📝 ${escapeHtml(animal.description)}
+    </p>
+  `;
+}
+
 function getCountdownText(endTime) {
   const end = timestampToMillis(endTime);
   if (!end) return "غير محدد";
@@ -907,47 +939,15 @@ window.showMyListings = async function () {
             ${escapeHtml(animal.name || animal.type || "حلال")}
           </h3>
 
-          ${animal.breed ? `
-            <p>
-              السلالة:
-              <b>${escapeHtml(animal.breed)}</b>
-            </p>
-          ` : ""}
-
-          ${animal.age ? `
-            <p>
-              العمر:
-              <b>${escapeHtml(animal.age)}</b>
-            </p>
-          ` : ""}
-
-          ${animal.gender ? `
-            <p>
-              الجنس:
-              <b>${animal.gender === "male" ? "ذكر" : "أنثى"}</b>
-            </p>
-          ` : ""}
-
-          ${animal.birthDate ? `
-            <p>
-              تاريخ الميلاد:
-              <b>${escapeHtml(animal.birthDate)}</b>
-            </p>
-          ` : ""}
-
-          ${animal.animalIdentifier ? `
-            <p>
-              رقم/معرّف الحيوان:
-              <b>${escapeHtml(animal.animalIdentifier)}</b>
-            </p>
-          ` : ""}
+          ${priceHtml}
+          ${extraHtml}
 
           <p>
             📍 ${escapeHtml(animal.location || "غير محدد")}
           </p>
 
-          ${priceHtml}
-          ${extraHtml}
+          ${listingAnimalDetailsHtml(animal)}
+          ${listingDescriptionHtml(animal)}
 
           <p style="color:#aaa;font-size:13px;margin-top:14px;">
             📅 تاريخ الإعلان:
@@ -1817,19 +1817,18 @@ async function loadMarket() {
 
           <h3>${escapeHtml(animal.name || animal.type || "حلال للبيع")}</h3>
 
-          ${animal.breed ? `<p>السلالة: ${escapeHtml(animal.breed)}</p>` : ""}
-          ${animal.age ? `<p>العمر: ${escapeHtml(animal.age)}</p>` : ""}
-          ${animal.gender ? `<p>الجنس: ${animal.gender === "male" ? "ذكر" : "أنثى"}</p>` : ""}
-          ${animal.birthDate ? `<p>تاريخ الميلاد: ${escapeHtml(animal.birthDate)}</p>` : ""}
-          ${animal.animalIdentifier ? `<p>رقم/معرّف الحيوان: ${escapeHtml(animal.animalIdentifier)}</p>` : ""}
-
-          <p>📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}</p>
-
-          <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
-
           <div style="font-size:25px;color:#68e6b0;font-weight:bold;margin:15px 0;">
             ${money(animal.price)}
           </div>
+
+          <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
+
+          ${listingAnimalDetailsHtml(animal)}
+          ${listingDescriptionHtml(animal)}
+
+          <p style="color:#aaa;font-size:13px;margin-top:14px;">
+            📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
+          </p>
 
           <button onclick="requestPurchase('${animal.id}')"
             style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;">
@@ -1929,31 +1928,11 @@ async function loadMarket() {
 
             <h3>${escapeHtml(animal.name || animal.type || "مزاد حلال")}</h3>
 
-            ${animal.breed ? `<p>السلالة: ${escapeHtml(animal.breed)}</p>` : ""}
-            ${animal.age ? `<p>العمر: ${escapeHtml(animal.age)}</p>` : ""}
-            ${animal.gender ? `<p>الجنس: ${animal.gender === "male" ? "ذكر" : "أنثى"}</p>` : ""}
-            ${animal.birthDate ? `<p>تاريخ الميلاد: ${escapeHtml(animal.birthDate)}</p>` : ""}
-            ${animal.animalIdentifier ? `<p>رقم/معرّف الحيوان: ${escapeHtml(animal.animalIdentifier)}</p>` : ""}
-
-            <p>📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}</p>
-
-            <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
-
-            <p>سعر البداية: <b>${money(auction.startPrice)}</b></p>
-            <p>أقل زيادة: <b>${money(increment)}</b></p>
-
             <div style="font-size:27px;color:#68e6b0;font-weight:bold;margin:15px 0;">
               السعر الحالي:
               <br>
               ${money(currentPrice)}
             </div>
-
-            ${auction.status === "active" && !expired ? `
-              <p>
-                الحد الأدنى للمزايدة القادمة:
-                <b>${money(minimumNextBid)}</b>
-              </p>
-            ` : ""}
 
             ${auction.status === "active" ? `
               <div
@@ -1968,9 +1947,28 @@ async function loadMarket() {
               </div>
             `}
 
+            <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
+
+            ${listingAnimalDetailsHtml(animal)}
+
+            <p>سعر البداية: <b>${money(auction.startPrice)}</b></p>
+            <p>أقل زيادة: <b>${money(increment)}</b></p>
+            ${auction.status === "active" && !expired ? `
+              <p>
+                الحد الأدنى للمزايدة القادمة:
+                <b>${money(minimumNextBid)}</b>
+              </p>
+            ` : ""}
+
             <p style="color:#aaa;text-align:center;">
               موعد الانتهاء:
               ${formatDate(auction.endTime)}
+            </p>
+
+            ${listingDescriptionHtml(animal)}
+
+            <p style="color:#aaa;font-size:13px;margin-top:14px;">
+              📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
             </p>
 
             ${auctionActionHtml(auction, expired, isOwner)}
