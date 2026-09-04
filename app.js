@@ -12,7 +12,8 @@ import {
   addDoc,
   writeBatch,
   runTransaction,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
 
 import {
@@ -2864,6 +2865,10 @@ function scrollToMarket() {
 // 💬 نظام الرسائل والتفاوض
 // =====================================
 
+let activeConversationUnsubscribe = null;
+let activeConversationId = null;
+
+
 function directConversationId(animalId, buyerId) {
   return "direct_" + animalId + "_" + buyerId;
 }
@@ -3040,6 +3045,12 @@ window.openAuctionConversation = async function (auctionId) {
 };
 
 window.showMessages = async function () {
+  if (activeConversationUnsubscribe) {
+    activeConversationUnsubscribe();
+    activeConversationUnsubscribe = null;
+    activeConversationId = null;
+  }
+
   const user = auth.currentUser;
 
   if (!user) {
@@ -3177,6 +3188,12 @@ window.showConversation = async function (conversationId) {
     window.openLogin();
     return;
   }
+
+  if (activeConversationUnsubscribe) {
+    activeConversationUnsubscribe();
+    activeConversationUnsubscribe = null;
+  }
+  activeConversationId = conversationId;
 
   try {
     const conversation = await getConversation(conversationId);
@@ -3362,6 +3379,27 @@ window.showConversation = async function (conversationId) {
       const box = document.getElementById("conversationMessages");
       if (box) box.scrollTop = box.scrollHeight;
     }, 0);
+
+    // تحديث المحادثة تلقائياً عند وصول رسالة جديدة.
+    let firstSnapshot = true;
+    activeConversationUnsubscribe = onSnapshot(
+      collection(db, "conversations", conversationId, "messages"),
+      snapshot => {
+        if (activeConversationId !== conversationId) return;
+
+        if (firstSnapshot) {
+          firstSnapshot = false;
+          return;
+        }
+
+        if (snapshot.docChanges().some(change => change.type === "added")) {
+          window.showConversation(conversationId);
+        }
+      },
+      error => {
+        console.error("LIVE MESSAGES ERROR:", error);
+      }
+    );
 
   } catch (error) {
     console.error("SHOW CONVERSATION ERROR:", error);
