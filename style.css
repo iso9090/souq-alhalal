@@ -1422,14 +1422,13 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
   }
 
   body header .brand{min-width:0;gap:7px !important;}
-  body header .brand-text{min-width:0;}
+  body header .brand-text{min-width:0;overflow:visible;}
   body header .brand-text b{
-    max-width:122px;
-    overflow:hidden;
     font-size:.86rem;
-    line-height:1.35;
-    white-space:nowrap;
-    text-overflow:ellipsis;
+    line-height:1.45;
+    white-space:normal;
+    overflow:visible;
+    text-overflow:clip;
   }
   body header .brand-text small{display:none !important;}
 
@@ -1471,7 +1470,7 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
     flex-basis:42px !important;
   }
 
-  body header .brand-text b{max-width:92px;font-size:.78rem;}
+  body header .brand-text b{font-size:.78rem;line-height:1.45;}
   .mobile-sell-button,
   body header .login{padding-inline:8px;font-size:.72rem;}
 }

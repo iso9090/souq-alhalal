@@ -1532,7 +1532,14 @@ function createFirebaseArea() {
     </div>
   `;
 
-  (document.querySelector("main") || document.body).appendChild(area);
+  const main = document.querySelector("main");
+  const sellSection = document.getElementById("sell");
+
+  if (main && sellSection) {
+    main.insertBefore(area, sellSection);
+  } else {
+    (main || document.body).appendChild(area);
+  }
   return area;
 }
 
