@@ -492,6 +492,19 @@
       <input id="animalBreed" placeholder="السلالة">
       <input id="animalAge" placeholder="العمر">
 
+      <select id="animalGender" required>
+        <option value="" selected disabled>اختر الجنس</option>
+        <option value="male">ذكر</option>
+        <option value="female">أنثى</option>
+      </select>
+
+      <div style="width:100%;">
+        <label for="animalBirthDate" style="display:block;margin-bottom:7px;">تاريخ الميلاد — اختياري</label>
+        <input id="animalBirthDate" type="date" style="width:100%;">
+      </div>
+
+      <input id="animalIdentifier" placeholder="رقم/معرّف الحيوان — اختياري">
+
       <select id="animalEmirate" required onchange="updateLocationOptions()">
         <option value="الشارقة" selected>📍 إمارة الشارقة</option>
         <option value="دبي">📍 إمارة دبي</option>
@@ -677,7 +690,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script type="module" src="app.js?v=41"></script>
+<script type="module" src="app.js?v=42"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=40"></script>

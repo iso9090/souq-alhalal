@@ -902,6 +902,27 @@ window.showMyListings = async function () {
             </p>
           ` : ""}
 
+          ${animal.gender ? `
+            <p>
+              الجنس:
+              <b>${animal.gender === "male" ? "ذكر" : "أنثى"}</b>
+            </p>
+          ` : ""}
+
+          ${animal.birthDate ? `
+            <p>
+              تاريخ الميلاد:
+              <b>${escapeHtml(animal.birthDate)}</b>
+            </p>
+          ` : ""}
+
+          ${animal.animalIdentifier ? `
+            <p>
+              رقم/معرّف الحيوان:
+              <b>${escapeHtml(animal.animalIdentifier)}</b>
+            </p>
+          ` : ""}
+
           <p>
             📍 ${escapeHtml(animal.location || "غير محدد")}
           </p>
@@ -1779,6 +1800,9 @@ async function loadMarket() {
 
           ${animal.breed ? `<p>السلالة: ${escapeHtml(animal.breed)}</p>` : ""}
           ${animal.age ? `<p>العمر: ${escapeHtml(animal.age)}</p>` : ""}
+          ${animal.gender ? `<p>الجنس: ${animal.gender === "male" ? "ذكر" : "أنثى"}</p>` : ""}
+          ${animal.birthDate ? `<p>تاريخ الميلاد: ${escapeHtml(animal.birthDate)}</p>` : ""}
+          ${animal.animalIdentifier ? `<p>رقم/معرّف الحيوان: ${escapeHtml(animal.animalIdentifier)}</p>` : ""}
 
           <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
 
@@ -1886,6 +1910,9 @@ async function loadMarket() {
 
             ${animal.breed ? `<p>السلالة: ${escapeHtml(animal.breed)}</p>` : ""}
             ${animal.age ? `<p>العمر: ${escapeHtml(animal.age)}</p>` : ""}
+            ${animal.gender ? `<p>الجنس: ${animal.gender === "male" ? "ذكر" : "أنثى"}</p>` : ""}
+            ${animal.birthDate ? `<p>تاريخ الميلاد: ${escapeHtml(animal.birthDate)}</p>` : ""}
+            ${animal.animalIdentifier ? `<p>رقم/معرّف الحيوان: ${escapeHtml(animal.animalIdentifier)}</p>` : ""}
 
             <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
 
@@ -2117,6 +2144,19 @@ window.manageListing = async function (animalId) {
         <label>العمر</label>
         <input id="editAnimalAge" value="${escapeHtml(animal.age || "")}">
 
+        <label>الجنس</label>
+        <select id="editAnimalGender">
+          <option value="" ${!animal.gender ? "selected" : ""}>غير محدد</option>
+          <option value="male" ${animal.gender === "male" ? "selected" : ""}>ذكر</option>
+          <option value="female" ${animal.gender === "female" ? "selected" : ""}>أنثى</option>
+        </select>
+
+        <label>تاريخ الميلاد — اختياري</label>
+        <input id="editAnimalBirthDate" type="date" value="${escapeHtml(animal.birthDate || "")}">
+
+        <label>رقم/معرّف الحيوان — اختياري</label>
+        <input id="editAnimalIdentifier" value="${escapeHtml(animal.animalIdentifier || "")}">
+
         <label>الموقع</label>
         <input id="editAnimalLocation" value="${escapeHtml(animal.location || "")}">
 
@@ -2276,6 +2316,9 @@ window.saveListingEdits = async function (animalId) {
     const type = document.getElementById("editAnimalType")?.value || "";
     const breed = document.getElementById("editAnimalBreed")?.value.trim() || "";
     const age = document.getElementById("editAnimalAge")?.value.trim() || "";
+    const gender = document.getElementById("editAnimalGender")?.value || "";
+    const birthDate = document.getElementById("editAnimalBirthDate")?.value || "";
+    const animalIdentifier = document.getElementById("editAnimalIdentifier")?.value.trim() || "";
     const location = document.getElementById("editAnimalLocation")?.value.trim() || "";
     const description = document.getElementById("editAnimalDescription")?.value.trim() || "";
 
@@ -2284,6 +2327,9 @@ window.saveListingEdits = async function (animalId) {
       type,
       breed,
       age,
+      gender,
+      birthDate,
+      animalIdentifier,
       location,
       description,
       updatedAt: serverTimestamp()
@@ -2772,13 +2818,16 @@ window.saveListing = async function (event) {
     const type = document.getElementById("animalType")?.value || "";
     const breed = document.getElementById("animalBreed")?.value.trim() || "";
     const age = document.getElementById("animalAge")?.value.trim() || "";
+    const gender = document.getElementById("animalGender")?.value || "";
+    const birthDate = document.getElementById("animalBirthDate")?.value || "";
+    const animalIdentifier = document.getElementById("animalIdentifier")?.value.trim() || "";
     const location = document.getElementById("animalLocation")?.value.trim() || "الذيد - الشارقة";
     const method = document.getElementById("method")?.value || "";
     const price = Number(document.getElementById("animalPrice")?.value);
     const description = document.getElementById("animalDescription")?.value.trim() || "";
 
-    if (!type || !Number.isFinite(price) || price <= 0) {
-      alert("تأكد من نوع الحيوان والسعر.");
+    if (!type || !gender || !Number.isFinite(price) || price <= 0) {
+      alert("تأكد من نوع الحيوان والجنس والسعر.");
       return;
     }
 
@@ -2797,6 +2846,9 @@ window.saveListing = async function (event) {
         type,
         breed,
         age,
+        gender,
+        birthDate,
+        animalIdentifier,
         location,
         saleType: "direct",
         price,
@@ -2847,6 +2899,9 @@ window.saveListing = async function (event) {
         type,
         breed,
         age,
+        gender,
+        birthDate,
+        animalIdentifier,
         location,
         saleType: "auction",
         price,
