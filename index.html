@@ -505,6 +505,17 @@
 
       <input id="animalIdentifier" placeholder="رقم/معرّف الحيوان — اختياري">
 
+      <select id="animalVaccinationStatus" onchange="toggleVaccinationDate('animalVaccinationStatus', 'animalVaccinationDateField', 'animalVaccinationDate')">
+        <option value="unknown" selected>حالة التطعيم: غير محدد</option>
+        <option value="vaccinated">حالة التطعيم: مطعّم</option>
+        <option value="not_vaccinated">حالة التطعيم: غير مطعّم</option>
+      </select>
+
+      <div id="animalVaccinationDateField" style="display:none;width:100%;">
+        <label for="animalVaccinationDate" style="display:block;margin-bottom:7px;">تاريخ آخر تطعيم — اختياري</label>
+        <input id="animalVaccinationDate" type="date" style="width:100%;">
+      </div>
+
       <select id="animalEmirate" required onchange="updateLocationOptions()">
         <option value="الشارقة" selected>📍 إمارة الشارقة</option>
         <option value="دبي">📍 إمارة دبي</option>
@@ -690,7 +701,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script type="module" src="app.js?v=44"></script>
+<script type="module" src="app.js?v=45"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=40"></script>

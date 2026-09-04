@@ -112,13 +112,33 @@ function formatListingDate(timestamp) {
   });
 }
 
+function vaccinationStatusLabel(status) {
+  if (status === "vaccinated") return "مطعّم";
+  if (status === "not_vaccinated") return "غير مطعّم";
+  return "غير محدد";
+}
+
+window.toggleVaccinationDate = function (statusId, fieldId, dateId) {
+  const status = document.getElementById(statusId)?.value || "unknown";
+  const field = document.getElementById(fieldId);
+  const dateInput = document.getElementById(dateId);
+  const showDate = status === "vaccinated";
+
+  if (field) field.style.display = showDate ? "block" : "none";
+  if (!showDate && dateInput) dateInput.value = "";
+};
+
 function listingAnimalDetailsHtml(animal = {}) {
   const details = [
     animal.breed ? `السلالة: <b>${escapeHtml(animal.breed)}</b>` : "",
     animal.gender ? `الجنس: <b>${animal.gender === "male" ? "ذكر" : "أنثى"}</b>` : "",
     animal.age ? `العمر: <b>${escapeHtml(animal.age)}</b>` : "",
     animal.birthDate ? `تاريخ الميلاد: <b>${escapeHtml(animal.birthDate)}</b>` : "",
-    animal.animalIdentifier ? `معرّف الحيوان: <b>${escapeHtml(animal.animalIdentifier)}</b>` : ""
+    animal.animalIdentifier ? `معرّف الحيوان: <b>${escapeHtml(animal.animalIdentifier)}</b>` : "",
+    `حالة التطعيم: <b>${vaccinationStatusLabel(animal.vaccinationStatus)}</b>`,
+    animal.vaccinationStatus === "vaccinated" && animal.vaccinationDate
+      ? `آخر تطعيم: <b>${escapeHtml(animal.vaccinationDate)}</b>`
+      : ""
   ].filter(Boolean);
 
   if (details.length === 0) return "";
@@ -2182,6 +2202,21 @@ window.manageListing = async function (animalId) {
         <label>رقم/معرّف الحيوان — اختياري</label>
         <input id="editAnimalIdentifier" value="${escapeHtml(animal.animalIdentifier || "")}">
 
+        <label>حالة التطعيم</label>
+        <select id="editAnimalVaccinationStatus"
+          onchange="toggleVaccinationDate('editAnimalVaccinationStatus', 'editAnimalVaccinationDateField', 'editAnimalVaccinationDate')">
+          <option value="unknown" ${!animal.vaccinationStatus || animal.vaccinationStatus === "unknown" ? "selected" : ""}>غير محدد</option>
+          <option value="vaccinated" ${animal.vaccinationStatus === "vaccinated" ? "selected" : ""}>مطعّم</option>
+          <option value="not_vaccinated" ${animal.vaccinationStatus === "not_vaccinated" ? "selected" : ""}>غير مطعّم</option>
+        </select>
+
+        <div id="editAnimalVaccinationDateField"
+          style="display:${animal.vaccinationStatus === "vaccinated" ? "block" : "none"};width:100%;">
+          <label>تاريخ آخر تطعيم — اختياري</label>
+          <input id="editAnimalVaccinationDate" type="date"
+            value="${animal.vaccinationStatus === "vaccinated" ? escapeHtml(animal.vaccinationDate || "") : ""}">
+        </div>
+
         <label>الموقع</label>
         <input id="editAnimalLocation" value="${escapeHtml(animal.location || "")}">
 
@@ -2344,6 +2379,10 @@ window.saveListingEdits = async function (animalId) {
     const gender = document.getElementById("editAnimalGender")?.value || "";
     const birthDate = document.getElementById("editAnimalBirthDate")?.value || "";
     const animalIdentifier = document.getElementById("editAnimalIdentifier")?.value.trim() || "";
+    const vaccinationStatus = document.getElementById("editAnimalVaccinationStatus")?.value || "unknown";
+    const vaccinationDate = vaccinationStatus === "vaccinated"
+      ? document.getElementById("editAnimalVaccinationDate")?.value || ""
+      : "";
     const location = document.getElementById("editAnimalLocation")?.value.trim() || "";
     const description = document.getElementById("editAnimalDescription")?.value.trim() || "";
 
@@ -2355,6 +2394,8 @@ window.saveListingEdits = async function (animalId) {
       gender,
       birthDate,
       animalIdentifier,
+      vaccinationStatus,
+      vaccinationDate,
       location,
       description,
       updatedAt: serverTimestamp()
@@ -2846,6 +2887,10 @@ window.saveListing = async function (event) {
     const gender = document.getElementById("animalGender")?.value || "";
     const birthDate = document.getElementById("animalBirthDate")?.value || "";
     const animalIdentifier = document.getElementById("animalIdentifier")?.value.trim() || "";
+    const vaccinationStatus = document.getElementById("animalVaccinationStatus")?.value || "unknown";
+    const vaccinationDate = vaccinationStatus === "vaccinated"
+      ? document.getElementById("animalVaccinationDate")?.value || ""
+      : "";
     const location = document.getElementById("animalLocation")?.value.trim() || "الذيد - الشارقة";
     const method = document.getElementById("method")?.value || "";
     const price = Number(document.getElementById("animalPrice")?.value);
@@ -2874,6 +2919,8 @@ window.saveListing = async function (event) {
         gender,
         birthDate,
         animalIdentifier,
+        vaccinationStatus,
+        vaccinationDate,
         location,
         saleType: "direct",
         price,
@@ -2927,6 +2974,8 @@ window.saveListing = async function (event) {
         gender,
         birthDate,
         animalIdentifier,
+        vaccinationStatus,
+        vaccinationDate,
         location,
         saleType: "auction",
         price,
@@ -2979,6 +3028,9 @@ function resetListingForm(form) {
 
   const auctionFields = document.getElementById("auctionFields");
   if (auctionFields) auctionFields.style.display = "none";
+
+  const vaccinationDateField = document.getElementById("animalVaccinationDateField");
+  if (vaccinationDateField) vaccinationDateField.style.display = "none";
 }
 
 function scrollToMarket() {
