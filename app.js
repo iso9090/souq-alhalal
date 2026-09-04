@@ -1430,7 +1430,8 @@ window.verifyPhoneCode = async function () {
   try {
     const result = await confirmationResult.confirm(code.value.trim());
     await ensureUserProfile(result.user);
-    await showAccount();
+    closeModal();
+    window.location.hash = "#home";
   } catch (error) {
     console.error(error);
     status.innerHTML = "❌ رمز التحقق غير صحيح.";
