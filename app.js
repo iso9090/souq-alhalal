@@ -2981,7 +2981,6 @@ window.saveListing = async function (event) {
         images,
         sellerId: user.uid,
         sellerName: profile.displayName || "",
-        sellerPhone: user.phoneNumber || "",
         status: "active",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -3123,6 +3122,36 @@ async function getConversation(conversationId) {
   const snap = await getDoc(doc(db, "conversations", conversationId));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
+}
+
+async function ensurePrivateConversationContact(conversationId, conversation) {
+  const user = auth.currentUser;
+
+  if (!user ||
+      conversation.contextType !== "direct" ||
+      !conversation.participants?.includes(user.uid)) {
+    return;
+  }
+
+  const contactRef = doc(
+    db,
+    "conversations",
+    conversationId,
+    "privateContacts",
+    user.uid
+  );
+  const contactSnap = await getDoc(contactRef);
+
+  if (contactSnap.exists()) return;
+
+  const profile = await getUserProfile();
+
+  await setDoc(contactRef, {
+    uid: user.uid,
+    displayName: profile?.displayName || "",
+    phoneNumber: profile?.phoneNumber || "",
+    createdAt: serverTimestamp()
+  });
 }
 
 window.openDirectConversation = async function (animalId) {
@@ -3583,6 +3612,8 @@ window.showConversation = async function (conversationId) {
       return;
     }
 
+    await ensurePrivateConversationContact(conversationId, conversation);
+
     await markConversationRead(conversation);
 
     const messagesSnapshot = await getDocs(
@@ -3611,6 +3642,37 @@ window.showConversation = async function (conversationId) {
     const canOffer =
       conversation.contextType === "direct" &&
       conversation.buyerId === user.uid;
+
+    let contactDetailsHtml = "";
+
+    if (conversation.contextType === "direct" &&
+        conversation.contactStatus === "unlocked") {
+      const otherUid = isSeller
+        ? conversation.buyerId
+        : conversation.sellerId;
+      const contactSnap = await getDoc(doc(
+        db,
+        "conversations",
+        conversationId,
+        "privateContacts",
+        otherUid
+      ));
+
+      if (contactSnap.exists()) {
+        const contact = contactSnap.data();
+        contactDetailsHtml = `
+          <div style="background:#123c2c;border:1px solid #277657;padding:13px;border-radius:11px;margin-bottom:12px;">
+            <div style="color:#68e6b0;font-weight:800;margin-bottom:7px;">
+              ✅ بيانات التواصل بعد قبول العرض
+            </div>
+            <div>👤 ${escapeHtml(contact.displayName || "مستخدم")}</div>
+            <div style="margin-top:5px;">
+              📱 <b dir="ltr">${escapeHtml(contact.phoneNumber || "غير متوفر")}</b>
+            </div>
+          </div>
+        `;
+      }
+    }
 
     const messagesHtml = messages.length === 0
       ? `
@@ -3771,6 +3833,8 @@ window.showConversation = async function (conversationId) {
             <b style="color:#68e6b0;">${money(conversation.finalPrice)}</b>
           </div>
         `}
+
+        ${contactDetailsHtml}
 
         <div id="conversationMessages"
           style="background:#171c19;border-radius:14px;padding:12px;min-height:210px;max-height:42vh;overflow-y:auto;">
@@ -4006,6 +4070,8 @@ window.decideConversationOffer = async function (conversationId, messageId, deci
       return;
     }
 
+    await ensurePrivateConversationContact(conversationId, conversation);
+
     const messageRef = doc(
       db,
       "conversations",
@@ -4049,7 +4115,12 @@ window.decideConversationOffer = async function (conversationId, messageId, deci
       lastMessageSenderId: user.uid,
       lastMessageAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      buyerUnread: Number(conversation.buyerUnread || 0) + 1
+      buyerUnread: Number(conversation.buyerUnread || 0) + 1,
+      ...(decision === "accepted" ? {
+        contactStatus: "unlocked",
+        acceptedOfferId: messageId,
+        contactUnlockedAt: serverTimestamp()
+      } : {})
     }, { merge: true });
 
     await batch.commit();

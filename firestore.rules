@@ -100,6 +100,10 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.saleType in ['direct', 'auction']
+        && (
+          request.resource.data.saleType != 'direct'
+          || !request.resource.data.keys().hasAny(['sellerPhone'])
+        )
         && request.resource.data.status == 'active'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
@@ -112,6 +116,10 @@ service cloud.firestore {
           'auctionId',
           'createdAt'
         ])
+        && (
+          request.resource.data.saleType != 'direct'
+          || !request.resource.data.keys().hasAny(['sellerPhone'])
+        )
         && verificationFieldsUnchanged();
 
       allow delete: if isOwner('sellerId');
@@ -362,6 +370,50 @@ service cloud.firestore {
               )
             )
           )
+          ||
+          (
+            resource.data.contextType == 'direct'
+            && resource.data.sellerId == request.auth.uid
+            && !resource.data.keys().hasAny(['contactStatus'])
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'lastMessage',
+              'lastMessageType',
+              'lastMessageSenderId',
+              'lastMessageAt',
+              'buyerUnread',
+              'updatedAt',
+              'contactStatus',
+              'acceptedOfferId',
+              'contactUnlockedAt'
+            ])
+            && request.resource.data.lastMessage is string
+            && request.resource.data.lastMessageType == 'text'
+            && request.resource.data.lastMessageSenderId == request.auth.uid
+            && request.resource.data.lastMessageAt == request.time
+            && request.resource.data.updatedAt == request.time
+            && request.resource.data.buyerUnread ==
+              (resource.data.keys().hasAny(['buyerUnread'])
+                ? resource.data.buyerUnread
+                : 0) + 1
+            && request.resource.data.contactStatus == 'unlocked'
+            && request.resource.data.acceptedOfferId is string
+            && request.resource.data.contactUnlockedAt == request.time
+            && getAfter(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.type == 'offer'
+            && getAfter(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.senderId == resource.data.buyerId
+            && getAfter(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.status == 'accepted'
+            && getAfter(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.decidedBy == request.auth.uid
+            && getAfter(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.decidedAt == request.time
+          )
         );
 
       allow delete: if false;
@@ -430,6 +482,47 @@ service cloud.firestore {
           && request.resource.data.decidedAt == request.time;
 
         allow delete: if false;
+      }
+
+      match /privateContacts/{contactUid} {
+        allow get: if signedIn()
+          && (
+            contactUid == request.auth.uid
+            || (
+              conversationIsParticipant(conversationId)
+              && contactUid in get(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.participants
+              && get(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.contextType == 'direct'
+              && get(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.contactStatus == 'unlocked'
+            )
+          );
+
+        allow list: if false;
+
+        allow create: if signedIn()
+          && contactUid == request.auth.uid
+          && conversationIsParticipant(conversationId)
+          && get(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.contextType == 'direct'
+          && request.resource.data.keys().hasOnly([
+            'uid', 'displayName', 'phoneNumber', 'createdAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.displayName == get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.displayName
+          && request.resource.data.phoneNumber == get(
+            /databases/$(database)/documents/users/$(request.auth.uid)
+          ).data.phoneNumber
+          && request.resource.data.createdAt == request.time;
+
+        allow update, delete: if false;
       }
     }
 
