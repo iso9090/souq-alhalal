@@ -664,7 +664,8 @@ window.saveProfile = async function () {
     status.innerHTML = "✅ تم الحفظ";
     await loadMarket();
 
-    setTimeout(() => showAccount(), 300);
+    closeModal();
+    window.location.hash = "#home";
   } catch (error) {
     console.error(error);
     status.innerHTML = "❌ تعذر الحفظ";
