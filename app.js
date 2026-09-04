@@ -184,9 +184,22 @@ function accountTypeText(type) {
   return "مشتري";
 }
 
+const SELLER_SUBSCRIPTION_PRICE_AED = 100;
+
+// فترة الإطلاق المجانية: حتى نهاية 4 أكتوبر 2026 بتوقيت الإمارات.
+const FREE_LAUNCH_END = new Date("2026-10-04T23:59:59+04:00");
+
+function isLaunchFreePeriodActive() {
+  return Date.now() <= FREE_LAUNCH_END.getTime();
+}
+
 function hasActiveSellerSubscription(profile) {
   if (!profile) return false;
   if (profile.accountType !== "seller" && profile.accountType !== "both") return false;
+
+  // خلال فترة الإطلاق المجانية يستطيع البائع النشر وإنشاء المزادات بدون دفع.
+  if (isLaunchFreePeriodActive()) return true;
+
   if (profile.subscriptionStatus !== "active") return false;
   const endDate = timestampToDate(profile.subscriptionEnd);
   if (!endDate) return false;
@@ -512,11 +525,6 @@ async function showAccount() {
           style="width:100%;padding:15px;background:#28566f;color:white;border:0;border-radius:10px;margin-bottom:10px;font-size:17px;font-weight:bold;">
           📋 طلباتي
         </button>
-
-        <button onclick="showMyBids()"
-          style="width:100%;padding:15px;background:#984d00;color:white;border:0;border-radius:10px;margin-bottom:10px;font-size:17px;font-weight:bold;">
-          🏆 مزايداتي
-        </button>
       `
       : "";
 
@@ -541,7 +549,19 @@ async function showAccount() {
     const subscriptionActive = hasActiveSellerSubscription(profile);
     const subscriptionEnd = timestampToDate(profile?.subscriptionEnd);
 
-    if (subscriptionActive) {
+    if (isLaunchFreePeriodActive()) {
+      subscriptionHtml = `
+        <div style="background:#123c2c;color:#68e6b0;padding:14px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">
+          🎉 فترة الإطلاق المجانية
+          <br>
+          <span style="color:white;font-size:14px;font-weight:normal;">
+            يمكنك إضافة الإعلانات والمزادات مجاناً حتى 4 أكتوبر 2026.
+            <br>
+            بعد انتهاء الفترة: اشتراك البائع ${SELLER_SUBSCRIPTION_PRICE_AED} درهم.
+          </span>
+        </div>
+      `;
+    } else if (subscriptionActive) {
       subscriptionHtml = `
         <div style="background:#123c2c;color:#68e6b0;padding:14px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">
           ✅ اشتراك البائع فعال
@@ -559,7 +579,9 @@ async function showAccount() {
           ⛔ اشتراك البائع غير فعال
           <br>
           <span style="color:white;font-size:14px;">
-            يجب تجديد الاشتراك حتى تتمكن من إضافة إعلان أو مزاد.
+            اشتراك البائع ${SELLER_SUBSCRIPTION_PRICE_AED} درهم.
+            <br>
+            يجب تفعيل الاشتراك حتى تتمكن من إضافة إعلان أو مزاد.
           </span>
         </div>
       `;
@@ -949,286 +971,6 @@ window.showMyListings = async function () {
         </button>
       </div>
     `);
-  }
-};
-
-
-// =====================================
-// 🏆 مزايداتي - للمشتري
-// =====================================
-
-window.showMyBids = async function () {
-  const user = auth.currentUser;
-
-  if (!user) {
-    window.openLogin();
-    return;
-  }
-
-  showModal(`
-    <div style="direction:rtl;color:white;padding:12px;text-align:center;">
-      <h2 style="color:#68e6b0;">🏆 مزايداتي</h2>
-      <p style="color:#aaa;">جاري تحميل المزادات التي شاركت فيها...</p>
-    </div>
-  `);
-
-  try {
-    const participationMap = new Map();
-
-    // السجل الجديد: يحفظ كل مزاد شارك فيه المستخدم حتى لو تمت المزايدة عليه لاحقاً.
-    const participationQuery = query(
-      collection(db, "auctionParticipations"),
-      where("bidderId", "==", user.uid)
-    );
-
-    const participationSnapshot = await getDocs(participationQuery);
-
-    participationSnapshot.forEach(participationDoc => {
-      const data = participationDoc.data();
-      if (!data.auctionId) return;
-
-      participationMap.set(data.auctionId, {
-        auctionId: data.auctionId,
-        lastBidAmount: Number(data.lastBidAmount || 0),
-        lastBidAt: data.lastBidAt || data.createdAt || null,
-        legacy: false
-      });
-    });
-
-    // توافق مع المزايدات القديمة قبل إضافة سجل مزايداتي.
-    // يمكن استعادة المزادات القديمة التي كان المستخدم آخر مزايد فيها.
-    const legacyQuery = query(
-      collection(db, "auctions"),
-      where("lastBidderId", "==", user.uid)
-    );
-
-    const legacySnapshot = await getDocs(legacyQuery);
-
-    legacySnapshot.forEach(auctionDoc => {
-      if (participationMap.has(auctionDoc.id)) return;
-
-      const auction = auctionDoc.data();
-
-      participationMap.set(auctionDoc.id, {
-        auctionId: auctionDoc.id,
-        lastBidAmount: Number(auction.currentPrice || auction.startPrice || 0),
-        lastBidAt: auction.lastBidAt || auction.updatedAt || auction.createdAt || null,
-        legacy: true,
-        auction: {
-          id: auctionDoc.id,
-          ...auction
-        }
-      });
-    });
-
-    const entries = Array.from(participationMap.values());
-
-    if (entries.length === 0) {
-      showModal(`
-        <div style="direction:rtl;color:white;padding:15px;text-align:center;">
-          <h2 style="color:#68e6b0;">🏆 مزايداتي</h2>
-
-          <div style="background:#222;padding:22px;border-radius:14px;margin:20px 0;">
-            لم تشارك في أي مزاد حتى الآن.
-          </div>
-
-          <button onclick="openLogin()"
-            style="width:100%;padding:14px;background:#28566f;color:white;border:0;border-radius:10px;">
-            👤 الرجوع إلى حسابي
-          </button>
-        </div>
-      `);
-      return;
-    }
-
-    const rows = [];
-
-    for (const entry of entries) {
-      let auction = entry.auction || null;
-
-      if (!auction) {
-        const auctionSnap = await getDoc(doc(db, "auctions", entry.auctionId));
-        if (!auctionSnap.exists()) continue;
-
-        auction = {
-          id: auctionSnap.id,
-          ...auctionSnap.data()
-        };
-      }
-
-      let animal = {};
-
-      if (auction.animalId) {
-        const animalSnap = await getDoc(doc(db, "animals", auction.animalId));
-
-        if (animalSnap.exists()) {
-          animal = {
-            id: animalSnap.id,
-            ...animalSnap.data()
-          };
-        }
-      }
-
-      rows.push({
-        entry,
-        auction,
-        animal
-      });
-    }
-
-    rows.sort((a, b) => {
-      const aTime = timestampToMillis(a.entry.lastBidAt || a.auction.lastBidAt || a.auction.createdAt);
-      const bTime = timestampToMillis(b.entry.lastBidAt || b.auction.lastBidAt || b.auction.createdAt);
-      return bTime - aTime;
-    });
-
-    const cards = rows.map(({ entry, auction, animal }) => {
-      const endMillis = timestampToMillis(auction.endTime);
-      const expired = !endMillis || endMillis <= Date.now();
-      const isHighestBidder = auction.lastBidderId === user.uid;
-      const currentPrice = Number(auction.currentPrice || auction.startPrice || 0);
-      const myLastBid = Number(entry.lastBidAmount || 0);
-
-      let statusText = "🔨 مزاد نشط";
-      let statusColor = "#68e6b0";
-      let statusBackground = "#123c2c";
-      let detailsHtml = "";
-
-      if (auction.status === "sold") {
-        if (isHighestBidder) {
-          statusText = "🎉 فزت بالمزاد";
-          statusColor = "#68e6b0";
-          statusBackground = "#123c2c";
-
-          detailsHtml = `
-            <div style="background:#10271c;padding:14px;border-radius:10px;margin-top:12px;">
-              <div style="color:#68e6b0;font-weight:bold;margin-bottom:8px;">
-                ✅ اعتمد البائع البيع لك
-              </div>
-
-              ${auction.sellerName ? `
-                <p>👤 البائع: <b>${escapeHtml(auction.sellerName)}</b></p>
-              ` : ""}
-
-              ${auction.sellerPhone ? `
-                <p>📱 رقم البائع: <b dir="ltr">${escapeHtml(auction.sellerPhone)}</b></p>
-              ` : ""}
-
-              <p style="color:#aaa;font-size:14px;">
-                تواصل مع البائع لإتمام المعاينة والاستلام والدفع شخصياً.
-              </p>
-            </div>
-          `;
-        } else {
-          statusText = "انتهى المزاد وفاز مزايد آخر";
-          statusColor = "#ddd";
-          statusBackground = "#333";
-        }
-      } else if (auction.status === "not_approved") {
-        statusText = "❌ لم يتم اعتماد البيع";
-        statusColor = "#ff8d8d";
-        statusBackground = "#421d1d";
-      } else if (!expired) {
-        if (isHighestBidder) {
-          statusText = "🏆 أنت أعلى مزايد حالياً";
-          statusColor = "#ffd66b";
-          statusBackground = "#302a16";
-        } else {
-          statusText = "🔄 تمت المزايدة عليك";
-          statusColor = "#ffd66b";
-          statusBackground = "#302a16";
-        }
-
-        detailsHtml = `
-          <div style="color:#ffd66b;text-align:center;margin-top:12px;">
-            ⏱ ${getCountdownText(auction.endTime)}
-          </div>
-        `;
-      } else {
-        if (isHighestBidder) {
-          statusText = "⏳ أعلى مزايد — بانتظار اعتماد البائع";
-          statusColor = "#ffd66b";
-          statusBackground = "#302a16";
-        } else {
-          statusText = "⛔ انتهى المزاد ولم تكن الأعلى";
-          statusColor = "#ddd";
-          statusBackground = "#333";
-        }
-      }
-
-      return `
-        <div style="background:#222;padding:18px;border-radius:16px;margin-bottom:15px;text-align:right;">
-          ${animalPhotoHtml(animal)}
-
-          <h3 style="color:#68e6b0;font-size:22px;margin-bottom:8px;">
-            ${animalIcon(animal.type || "")}
-            ${escapeHtml(animal.name || animal.type || "مزاد حلال")}
-          </h3>
-
-          ${animal.breed ? `
-            <p>السلالة: <b>${escapeHtml(animal.breed)}</b></p>
-          ` : ""}
-
-          <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
-
-          <p>
-            💰 أعلى سعر حالي:
-            <b style="color:#68e6b0;">${money(currentPrice)}</b>
-          </p>
-
-          ${myLastBid > 0 ? `
-            <p>
-              🙋 آخر مزايدة لك:
-              <b>${money(myLastBid)}</b>
-            </p>
-          ` : ""}
-
-          <p style="color:#aaa;font-size:13px;">
-            آخر مشاركة لك: ${formatDate(entry.lastBidAt || auction.lastBidAt)}
-          </p>
-
-          <div style="background:${statusBackground};color:${statusColor};padding:13px;border-radius:10px;text-align:center;font-weight:bold;margin-top:12px;">
-            ${statusText}
-          </div>
-
-          ${detailsHtml}
-        </div>
-      `;
-    }).join("");
-
-    showModal(`
-      <div style="direction:rtl;color:white;padding:12px;">
-        <h2 style="color:#68e6b0;text-align:center;margin-bottom:6px;">
-          🏆 مزايداتي
-        </h2>
-
-        <p style="color:#aaa;text-align:center;margin-top:0;margin-bottom:18px;">
-          المزادات التي شاركت فيها وحالتها الحالية
-        </p>
-
-        <div style="background:#302a16;color:#ffd66b;padding:11px;border-radius:10px;margin-bottom:16px;font-size:13px;text-align:center;">
-          المزايدات الجديدة تُحفظ كاملة. أما المزايدات السابقة قبل تفعيل هذا السجل فقد تظهر فقط إذا كنت آخر مزايد فيها.
-        </div>
-
-        ${cards}
-
-        <button onclick="openLogin()"
-          style="width:100%;padding:14px;background:#28566f;color:white;border:0;border-radius:10px;margin-top:8px;">
-          👤 الرجوع إلى حسابي
-        </button>
-
-        <div style="height:30px;"></div>
-      </div>
-    `);
-  } catch (error) {
-    console.error("LOAD MY BIDS ERROR:", error);
-
-    if (error.code === "permission-denied") {
-      alert("❌ قواعد Firebase الحالية لا تسمح بتحميل سجل مزايداتك. تأكد من نشر القواعد الجديدة.");
-      return;
-    }
-
-    alert("❌ تعذر تحميل مزايداتك.");
   }
 };
 
@@ -2410,20 +2152,33 @@ window.finalizeAuction = async function (auctionId, decision) {
     const ok = confirm(confirmationMessage);
     if (!ok) return;
 
-    // تحديث حالة المزاد فقط.
-    // لا نعدل مستند animals هنا لأن قواعد Firestore الحالية
-    // تسمح للبائع باعتماد/رفض نتيجة المزاد داخل auctions فقط.
+    const animalRef = doc(db, "animals", auction.animalId);
+    const batch = writeBatch(db);
+
     if (decision === "accept") {
-      await setDoc(auctionRef, {
+      batch.set(auctionRef, {
         status: "sold",
         updatedAt: serverTimestamp()
       }, { merge: true });
+
+      batch.set(animalRef, {
+        status: "sold",
+        soldAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
     } else {
-      await setDoc(auctionRef, {
+      batch.set(auctionRef, {
+        status: "not_approved",
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      batch.set(animalRef, {
         status: "not_approved",
         updatedAt: serverTimestamp()
       }, { merge: true });
     }
+
+    await batch.commit();
 
     alert(decision === "accept"
       ? "✅ تم اعتماد البيع بنجاح."
@@ -2852,39 +2607,12 @@ window.placeBid = async function (auctionId) {
         throw new Error("BID_TOO_LOW:" + requiredBid);
       }
 
-      const participationRef = doc(
-        db,
-        "auctionParticipations",
-        auctionId + "_" + auth.currentUser.uid
-      );
-
-      const participationSnap = await transaction.get(participationRef);
-
       transaction.update(auctionRef, {
         currentPrice: bidAmount,
         lastBidAt: serverTimestamp(),
         lastBidderId: auth.currentUser.uid,
         lastBidderPhone: auth.currentUser.phoneNumber || ""
       });
-
-      const participationData = {
-        auctionId,
-        animalId: auction.animalId || "",
-        sellerId: auction.sellerId,
-        bidderId: auth.currentUser.uid,
-        lastBidAmount: bidAmount,
-        lastBidAt: serverTimestamp()
-      };
-
-      if (!participationSnap.exists()) {
-        participationData.createdAt = serverTimestamp();
-      }
-
-      transaction.set(
-        participationRef,
-        participationData,
-        { merge: true }
-      );
     });
 
     alert(
@@ -2967,7 +2695,7 @@ window.saveListing = async function (event) {
         message += "لا يوجد اشتراك بائع فعال.";
       }
 
-      message += "\n\nيرجى تجديد الاشتراك الشهري للمتابعة.";
+      message += "\n\nاشتراك البائع: " + SELLER_SUBSCRIPTION_PRICE_AED + " درهم.\nيرجى تفعيل الاشتراك للمتابعة.";
       alert(message);
       return;
     }
