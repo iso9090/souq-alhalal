@@ -45,6 +45,20 @@ let auctionTimerInterval = null;
 
 const handledExpiredAuctions = new Set();
 
+const ACTIVE_MARKET_COUNTRY_KEY = "souqActiveCountry";
+
+function readActiveMarketCountry() {
+  try {
+    const saved = localStorage.getItem(ACTIVE_MARKET_COUNTRY_KEY);
+    return saved === "AE" || saved === "EG" ? saved : null;
+  } catch (error) {
+    console.error("READ MARKET COUNTRY ERROR:", error);
+    return null;
+  }
+}
+
+let activeMarketCountry = readActiveMarketCountry();
+
 const COUNTRIES = {
   AE: {
     name: "الإمارات العربية المتحدة",
@@ -103,6 +117,52 @@ const COUNTRIES = {
 function effectiveCountry(data) {
   return data?.country === "EG" ? "EG" : "AE";
 }
+
+function updateMarketCountryIndicator() {
+  const button = document.getElementById("marketCountryButton");
+  if (!button) return;
+  button.textContent = activeMarketCountry === "EG" ? "🇪🇬 مصر" : "🇦🇪 الإمارات";
+  button.style.display = activeMarketCountry ? "inline-flex" : "none";
+}
+
+window.openMarketCountrySelector = function () {
+  showModal(`
+    <div style="direction:rtl;color:white;padding:12px;text-align:center;">
+      <h2 style="color:#68e6b0;margin-bottom:8px;">اختر سوق الدولة</h2>
+      <p style="color:#aaa;margin-bottom:18px;">يمكنك تغيير السوق لاحقًا من أعلى الصفحة.</p>
+      <button onclick="selectMarketCountry('AE')"
+        style="width:100%;padding:15px;margin-bottom:10px;background:#28566f;color:white;border:1px solid #68e6b0;border-radius:11px;font-weight:bold;">
+        🇦🇪 الإمارات العربية المتحدة
+      </button>
+      <button onclick="selectMarketCountry('EG')"
+        style="width:100%;padding:15px;background:#28566f;color:white;border:1px solid #d4a84f;border-radius:11px;font-weight:bold;">
+        🇪🇬 جمهورية مصر العربية
+      </button>
+    </div>
+  `);
+};
+
+window.selectMarketCountry = async function (country) {
+  if (country !== "AE" && country !== "EG") return;
+  activeMarketCountry = country;
+  try {
+    localStorage.setItem(ACTIVE_MARKET_COUNTRY_KEY, country);
+  } catch (error) {
+    console.error("SAVE MARKET COUNTRY ERROR:", error);
+  }
+  updateMarketCountryIndicator();
+
+  const listingCountry = document.getElementById("animalCountry");
+  if (listingCountry) {
+    listingCountry.value = country;
+    window.updateListingLocationOptions();
+  }
+
+  const marketArea = document.getElementById("firebase-market");
+  if (marketArea) marketArea.remove();
+  window.closeModal();
+  await loadMarket();
+};
 
 function money(value, country = "AE") {
   const effectiveCode = country === "EG" ? "EG" : "AE";
@@ -186,6 +246,9 @@ window.updateFullLocation = function () {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
+  updateMarketCountryIndicator();
+  const countrySelect = document.getElementById("animalCountry");
+  if (countrySelect) countrySelect.value = activeMarketCountry || "AE";
   window.updateListingLocationOptions();
 
   const form = document.getElementById("listingForm");
@@ -194,7 +257,7 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("reset", () => {
     setTimeout(() => {
       const countrySelect = document.getElementById("animalCountry");
-      if (countrySelect) countrySelect.value = "AE";
+      if (countrySelect) countrySelect.value = activeMarketCountry || "AE";
       window.updateListingLocationOptions();
     }, 0);
   });
@@ -467,7 +530,7 @@ function getAnimalLocationInfo(animal = {}) {
 }
 
 function getMarketFilters() {
-  const country = document.getElementById("marketCountryFilter")?.value || "all";
+  const country = activeMarketCountry;
   const region = document.getElementById("marketRegionFilter")?.value || "all";
   const city = document.getElementById("marketCityFilter")?.value || "all";
   const animalType = document.getElementById("marketAnimalFilter")?.value || "all";
@@ -493,34 +556,30 @@ function animalMatchesMarketFilters(animal, forcedSaleType = "") {
 }
 
 window.updateMarketRegionFilter = function (reload = true) {
-  const countrySelect = document.getElementById("marketCountryFilter");
   const regionSelect = document.getElementById("marketRegionFilter");
-  if (!countrySelect || !regionSelect) return;
+  if (!activeMarketCountry || !regionSelect) return;
 
   regionSelect.innerHTML = `<option value="all">جميع المناطق والمحافظات</option>`;
 
-  if (countrySelect.value !== "all") {
-    Object.keys(COUNTRIES[countrySelect.value]?.regions || {}).forEach(regionName => {
-      const option = document.createElement("option");
-      option.value = regionName;
-      option.textContent = regionName;
-      regionSelect.appendChild(option);
-    });
-  }
+  Object.keys(COUNTRIES[activeMarketCountry]?.regions || {}).forEach(regionName => {
+    const option = document.createElement("option");
+    option.value = regionName;
+    option.textContent = regionName;
+    regionSelect.appendChild(option);
+  });
 
   window.updateMarketCityFilter(reload);
 };
 
 window.updateMarketCityFilter = function (reload = true) {
-  const countrySelect = document.getElementById("marketCountryFilter");
   const regionSelect = document.getElementById("marketRegionFilter");
   const citySelect = document.getElementById("marketCityFilter");
-  if (!countrySelect || !regionSelect || !citySelect) return;
+  if (!activeMarketCountry || !regionSelect || !citySelect) return;
 
   citySelect.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
 
-  if (countrySelect.value !== "all" && regionSelect.value !== "all") {
-    const cities = COUNTRIES[countrySelect.value]?.regions[regionSelect.value] || [];
+  if (regionSelect.value !== "all") {
+    const cities = COUNTRIES[activeMarketCountry]?.regions[regionSelect.value] || [];
     cities.forEach(cityName => {
       const option = document.createElement("option");
       option.value = cityName;
@@ -537,14 +596,12 @@ window.applyMarketFilters = function () {
 };
 
 window.resetMarketFilters = function () {
-  const country = document.getElementById("marketCountryFilter");
   const region = document.getElementById("marketRegionFilter");
   const city = document.getElementById("marketCityFilter");
   const animal = document.getElementById("marketAnimalFilter");
   const saleType = document.getElementById("marketSaleTypeFilter");
 
-  if (country) country.value = "all";
-  if (region) region.innerHTML = `<option value="all">جميع المناطق والمحافظات</option>`;
+  if (region) region.value = "all";
   if (city) city.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
   if (animal) animal.value = "all";
   if (saleType) saleType.value = "all";
@@ -1719,6 +1776,10 @@ onAuthStateChanged(auth, async user => {
 function createFirebaseArea() {
   let area = document.getElementById("firebase-market");
   if (area) return area;
+  if (!activeMarketCountry) {
+    window.openMarketCountrySelector();
+    return null;
+  }
 
   area = document.createElement("section");
   area.id = "firebase-market";
@@ -1727,18 +1788,11 @@ function createFirebaseArea() {
     <div style="max-width:1100px;margin:35px auto;padding:20px;direction:rtl;">
       <h2 style="text-align:center;color:#68e6b0;margin-bottom:7px;">🐪 سوق الحلال</h2>
       <p style="text-align:center;color:#aaa;margin-top:0;">
-        ابحث عن الحلال حسب الدولة والمنطقة والمدينة
+        ابحث داخل سوق ${COUNTRIES[activeMarketCountry].name} حسب المنطقة والمدينة
       </p>
 
       <div id="market-filters"
         style="background:#1d2521;border:1px solid #35443d;border-radius:16px;padding:16px;margin:22px 0 25px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
-
-        <select id="marketCountryFilter" onchange="updateMarketRegionFilter()"
-          style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
-          <option value="all">🌍 جميع الدول</option>
-          <option value="AE">🇦🇪 الإمارات العربية المتحدة</option>
-          <option value="EG">🇪🇬 جمهورية مصر العربية</option>
-        </select>
 
         <select id="marketRegionFilter" onchange="updateMarketCityFilter()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
@@ -1805,6 +1859,11 @@ function createFirebaseArea() {
 window.goToDirectSales = async function (event) {
   if (event) event.preventDefault();
 
+  if (!activeMarketCountry) {
+    await loadMarket();
+    return;
+  }
+
   createFirebaseArea();
 
   const directContainer = document.getElementById("direct-sales");
@@ -1827,6 +1886,11 @@ window.goToDirectSales = async function (event) {
 
 window.goToMarketSearch = function (event) {
   if (event) event.preventDefault();
+
+  if (!activeMarketCountry) {
+    loadMarket();
+    return;
+  }
 
   createFirebaseArea();
 
@@ -1992,6 +2056,12 @@ function auctionActionHtml(auction, expired, isOwner) {
 }
 
 async function loadMarket() {
+  if (!activeMarketCountry) {
+    updateMarketCountryIndicator();
+    window.openMarketCountrySelector();
+    return;
+  }
+
   createFirebaseArea();
 
   const status = document.getElementById("firebase-status");
@@ -2095,6 +2165,7 @@ async function loadMarket() {
 
         return false;
       })
+      .filter(auction => effectiveCountry(auction) === activeMarketCountry)
       .filter(auction => {
         const animal = animals[auction.animalId];
         if (!animal) return false;
