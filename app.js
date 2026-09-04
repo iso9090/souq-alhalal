@@ -1567,6 +1567,22 @@ window.goToDirectSales = async function (event) {
   });
 };
 
+window.goToMarketSearch = function (event) {
+  if (event) event.preventDefault();
+
+  createFirebaseArea();
+
+  requestAnimationFrame(() => {
+    const filters = document.getElementById("market-filters");
+    if (!filters) return;
+
+    filters.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  });
+};
+
 function auctionActionHtml(auction, expired, isOwner) {
   const user = auth.currentUser;
   const hasBid = !!auction.lastBidderId;

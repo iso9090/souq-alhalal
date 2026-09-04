@@ -7,7 +7,7 @@
 
   <title>سوق الحلال الإلكتروني - الإمارات</title>
 
-  <link rel="stylesheet" href="style.css?v=46">
+  <link rel="stylesheet" href="style.css?v=47">
 
   <style>
     /* ترتيب الواجهة الرئيسية: الصورة أولاً ثم النص والأزرار */
@@ -677,7 +677,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script type="module" src="app.js?v=40"></script>
+<script type="module" src="app.js?v=41"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=39"></script>
@@ -688,14 +688,19 @@ document.addEventListener("DOMContentLoaded", function () {
     <span>الرئيسية</span>
   </a>
 
+  <a href="#market-filters" onclick="goToMarketSearch(event)">
+    <span class="bottom-icon"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></span>
+    <span>بحث</span>
+  </a>
+
   <a href="#auction-list">
     <span class="bottom-icon"><svg viewBox="0 0 24 24"><path d="M6 5l5 5m-3-7 7 7m-2-9 5 5-4 4-5-5zM11 10l-7 7m-2 3h12"/></svg></span>
     <span>المزادات</span>
   </a>
 
-  <a href="#sell">
+  <a href="#direct-sales-anchor" onclick="goToDirectSales(event)">
     <span class="bottom-icon"><svg viewBox="0 0 24 24"><path d="M3 5h2l2 10h10l3-7H7m2 11a1.5 1.5 0 1 0 0 .1m8-.1a1.5 1.5 0 1 0 0 .1"/></svg></span>
-    <span>إعلاناتي</span>
+    <span>البيع المباشر</span>
   </a>
 
   <a href="javascript:void(0)" onclick="showMessages()">

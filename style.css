@@ -1475,3 +1475,35 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
   .mobile-sell-button,
   body header .login{padding-inline:8px;font-size:.72rem;}
 }
+
+/* V47 — ستة عناصر واضحة في شريط تنقل الهاتف */
+@media(max-width:768px){
+  body .mobile-bottom-nav{
+    grid-template-columns:repeat(6,minmax(0,1fr)) !important;
+    gap:2px !important;
+    padding:5px 4px !important;
+  }
+
+  body .mobile-bottom-nav a{
+    min-width:0;
+    padding:4px 1px !important;
+    gap:2px !important;
+    font-size:.64rem !important;
+    white-space:nowrap;
+  }
+
+  body .mobile-bottom-nav .bottom-icon svg{
+    width:24px !important;
+    height:24px !important;
+  }
+
+  #market-filters{scroll-margin-top:88px;}
+}
+
+@media(max-width:390px){
+  body .mobile-bottom-nav a{font-size:.58rem !important;}
+  body .mobile-bottom-nav .bottom-icon svg{
+    width:22px !important;
+    height:22px !important;
+  }
+}
