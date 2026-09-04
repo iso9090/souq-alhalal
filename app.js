@@ -3056,12 +3056,10 @@ function ensureMessagesUnreadBadge() {
   let badge = document.getElementById("messagesUnreadBadge");
   if (badge) return badge;
 
-  const navLinks = Array.from(
-    document.querySelectorAll(".mobile-bottom-nav a")
-  );
+  const navLinks = Array.from(document.querySelectorAll("a"));
 
   const messagesLink = navLinks.find(link =>
-    link.textContent.includes("الرسائل")
+    link.textContent && link.textContent.includes("الرسائل")
   );
 
   if (!messagesLink) return null;
