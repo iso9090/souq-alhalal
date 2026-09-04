@@ -93,6 +93,25 @@ function formatDate(timestamp) {
   return date.toLocaleString("ar-AE", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function formatListingDate(timestamp) {
+  const date = timestampToDate(timestamp);
+  if (!date) return "غير متوفر";
+
+  const today = new Date();
+  const isToday =
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  if (isToday) return "اليوم";
+
+  return date.toLocaleDateString("ar-AE", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+}
+
 function getCountdownText(endTime) {
   const end = timestampToMillis(endTime);
   if (!end) return "غير محدد";
@@ -931,8 +950,8 @@ window.showMyListings = async function () {
           ${extraHtml}
 
           <p style="color:#aaa;font-size:13px;margin-top:14px;">
-            تاريخ النشر:
-            ${formatDate(animal.createdAt)}
+            📅 تاريخ الإعلان:
+            ${formatListingDate(animal.createdAt)}
           </p>
 
           <button onclick="manageListing('${animal.id}')"
@@ -1804,6 +1823,8 @@ async function loadMarket() {
           ${animal.birthDate ? `<p>تاريخ الميلاد: ${escapeHtml(animal.birthDate)}</p>` : ""}
           ${animal.animalIdentifier ? `<p>رقم/معرّف الحيوان: ${escapeHtml(animal.animalIdentifier)}</p>` : ""}
 
+          <p>📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}</p>
+
           <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
 
           <div style="font-size:25px;color:#68e6b0;font-weight:bold;margin:15px 0;">
@@ -1913,6 +1934,8 @@ async function loadMarket() {
             ${animal.gender ? `<p>الجنس: ${animal.gender === "male" ? "ذكر" : "أنثى"}</p>` : ""}
             ${animal.birthDate ? `<p>تاريخ الميلاد: ${escapeHtml(animal.birthDate)}</p>` : ""}
             ${animal.animalIdentifier ? `<p>رقم/معرّف الحيوان: ${escapeHtml(animal.animalIdentifier)}</p>` : ""}
+
+            <p>📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}</p>
 
             <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
 
@@ -2124,6 +2147,10 @@ window.manageListing = async function (animalId) {
     showModal(`
       <div style="direction:rtl;color:white;padding:10px;">
         <h2 style="color:#68e6b0;text-align:center;">⚙️ إدارة إعلاني</h2>
+
+        <p style="text-align:center;margin-bottom:18px;">
+          📅 تاريخ الإعلان: <b>${formatListingDate(animal.createdAt)}</b>
+        </p>
 
         <label>نوع الحيوان</label>
         <select id="editAnimalType" style="width:100%;padding:13px;margin-bottom:14px;">
