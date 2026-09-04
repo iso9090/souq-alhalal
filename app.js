@@ -3715,3 +3715,20 @@ window.details = function (name, price) {
 };
 
 loadMarket();
+
+
+// V36: وضوح أزرار اعتماد نتيجة المزاد
+(function addAuctionDecisionButtonTextStyle() {
+  if (document.getElementById("auction-decision-white-text-v36")) return;
+
+  const style = document.createElement("style");
+  style.id = "auction-decision-white-text-v36";
+  style.textContent = `
+    button[onclick*="approveAuctionSale"],
+    button[onclick*="rejectAuctionSale"] {
+      color: #ffffff !important;
+      font-weight: 800 !important;
+    }
+  `;
+  document.head.appendChild(style);
+})();
