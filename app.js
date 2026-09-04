@@ -3154,6 +3154,43 @@ async function ensurePrivateConversationContact(conversationId, conversation) {
   });
 }
 
+async function recoverLegacyDirectConversationContact(
+  conversationId,
+  conversation,
+  messages
+) {
+  const user = auth.currentUser;
+
+  if (!user ||
+      conversation.contextType !== "direct" ||
+      conversation.sellerId !== user.uid ||
+      conversation.contactStatus === "unlocked") {
+    return;
+  }
+
+  const acceptedOffer = [...messages].reverse().find(message =>
+    message.type === "offer" &&
+    message.senderId === conversation.buyerId &&
+    message.status === "accepted" &&
+    message.decidedBy === conversation.sellerId
+  );
+
+  if (!acceptedOffer) return;
+
+  try {
+    await setDoc(doc(db, "conversations", conversationId), {
+      contactStatus: "unlocked",
+      acceptedOfferId: acceptedOffer.id,
+      contactUnlockedAt: serverTimestamp()
+    }, { merge: true });
+
+    conversation.contactStatus = "unlocked";
+    conversation.acceptedOfferId = acceptedOffer.id;
+  } catch (error) {
+    console.error("RECOVER LEGACY CONTACT ERROR:", error);
+  }
+}
+
 window.openDirectConversation = async function (animalId) {
   const user = auth.currentUser;
 
@@ -3634,6 +3671,12 @@ window.showConversation = async function (conversationId) {
       timestampToMillis(b.createdAt)
     );
 
+    await recoverLegacyDirectConversationContact(
+      conversationId,
+      conversation,
+      messages
+    );
+
     const isSeller = conversation.sellerId === user.uid;
     const otherName = isSeller
       ? (conversation.buyerName || "المشتري")
@@ -3669,6 +3712,12 @@ window.showConversation = async function (conversationId) {
             <div style="margin-top:5px;">
               📱 <b dir="ltr">${escapeHtml(contact.phoneNumber || "غير متوفر")}</b>
             </div>
+          </div>
+        `;
+      } else {
+        contactDetailsHtml = `
+          <div style="background:#3b3219;border:1px solid #8a7430;padding:13px;border-radius:11px;margin-bottom:12px;color:#ffd66b;">
+            ⚠️ تم قبول العرض، لكن بيانات تواصل الطرف الآخر لم تُجهّز بعد. اطلب منه فتح المحادثة مرة واحدة.
           </div>
         `;
       }

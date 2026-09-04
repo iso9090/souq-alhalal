@@ -414,6 +414,35 @@ service cloud.firestore {
               /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
             ).data.decidedAt == request.time
           )
+          ||
+          (
+            resource.data.contextType == 'direct'
+            && resource.data.sellerId == request.auth.uid
+            && (
+              !resource.data.keys().hasAny(['contactStatus'])
+              || resource.data.contactStatus != 'unlocked'
+            )
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'contactStatus',
+              'acceptedOfferId',
+              'contactUnlockedAt'
+            ])
+            && request.resource.data.contactStatus == 'unlocked'
+            && request.resource.data.acceptedOfferId is string
+            && request.resource.data.contactUnlockedAt == request.time
+            && get(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.type == 'offer'
+            && get(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.senderId == resource.data.buyerId
+            && get(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.status == 'accepted'
+            && get(
+              /databases/$(database)/documents/conversations/$(conversationId)/messages/$(request.resource.data.acceptedOfferId)
+            ).data.decidedBy == resource.data.sellerId
+          )
         );
 
       allow delete: if false;
@@ -479,7 +508,21 @@ service cloud.firestore {
           ])
           && request.resource.data.status in ['accepted', 'rejected']
           && request.resource.data.decidedBy == request.auth.uid
-          && request.resource.data.decidedAt == request.time;
+          && request.resource.data.decidedAt == request.time
+          && (
+            request.resource.data.status != 'accepted'
+            || (
+              getAfter(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.contactStatus == 'unlocked'
+              && getAfter(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.acceptedOfferId == messageId
+              && getAfter(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.contactUnlockedAt == request.time
+            )
+          );
 
         allow delete: if false;
       }
