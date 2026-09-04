@@ -100,6 +100,11 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.saleType in ['direct', 'auction']
+        && request.resource.data.country in ['AE', 'EG']
+        && request.resource.data.region is string
+        && request.resource.data.region.size() > 0
+        && request.resource.data.city is string
+        && request.resource.data.city.size() > 0
         && (
           request.resource.data.saleType != 'direct'
           || !request.resource.data.keys().hasAny(['sellerPhone'])
@@ -117,6 +122,29 @@ service cloud.firestore {
           'createdAt'
         ])
         && (
+          (
+            resource.data.keys().hasAny(['country'])
+            && request.resource.data.country == resource.data.country
+          )
+          || (
+            !resource.data.keys().hasAny(['country'])
+            && (
+              !request.resource.data.keys().hasAny(['country'])
+              || request.resource.data.country == 'AE'
+            )
+          )
+        )
+        && (
+          !request.resource.data.keys().hasAny(['country'])
+          || (
+            request.resource.data.country in ['AE', 'EG']
+            && request.resource.data.region is string
+            && request.resource.data.region.size() > 0
+            && request.resource.data.city is string
+            && request.resource.data.city.size() > 0
+          )
+        )
+        && (
           request.resource.data.saleType != 'direct'
           || !request.resource.data.keys().hasAny(['sellerPhone'])
         )
@@ -130,6 +158,16 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.country in ['AE', 'EG']
+        && getAfter(
+          /databases/$(database)/documents/animals/$(request.resource.data.animalId)
+        ).data.country == request.resource.data.country
+        && getAfter(
+          /databases/$(database)/documents/animals/$(request.resource.data.animalId)
+        ).data.sellerId == request.auth.uid
+        && getAfter(
+          /databases/$(database)/documents/animals/$(request.resource.data.animalId)
+        ).data.saleType == 'auction'
         && request.resource.data.status == 'active'
         && request.resource.data.startPrice is number
         && request.resource.data.currentPrice == request.resource.data.startPrice
@@ -140,7 +178,21 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
-      allow update: if signedIn() && (
+      allow update: if signedIn()
+        && (
+          (
+            resource.data.keys().hasAny(['country'])
+            && request.resource.data.country == resource.data.country
+          )
+          || (
+            !resource.data.keys().hasAny(['country'])
+            && (
+              !request.resource.data.keys().hasAny(['country'])
+              || request.resource.data.country == 'AE'
+            )
+          )
+        )
+        && (
         (
           resource.data.sellerId != request.auth.uid
           && resource.data.status == 'active'
@@ -168,7 +220,7 @@ service cloud.firestore {
           && request.resource.data.status in ['sold', 'not_approved']
           && request.resource.data.updatedAt == request.time
         )
-      );
+        );
 
       allow delete: if isOwner('sellerId');
     }

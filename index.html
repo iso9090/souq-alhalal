@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <title>سوق الحلال الإلكتروني - الإمارات</title>
+  <title>سوق الحلال الإلكتروني - الإمارات ومصر</title>
 
   <link rel="stylesheet" href="style.css?v=47">
 
@@ -396,7 +396,7 @@
     <h2>حلالك في عِزبتك... بيعه بطريقتك</h2>
 
     <p>
-      منصة تجمع أصحاب الحلال في مختلف إمارات الدولة،
+      منصة تجمع أصحاب الحلال في الإمارات ومصر،
       وتوفر المزاد الإلكتروني العلني والبيع المباشر
       بطريقة سهلة وواضحة.
     </p>
@@ -437,7 +437,7 @@
         <circle cx="32" cy="26" r="6"/>
       </svg>
     </div>
-    <b>متوفر في جميع<br>إمارات الدولة</b>
+    <b>متوفر في<br>الإمارات ومصر</b>
     <small>دعم شامل</small>
   </div>
 
@@ -527,16 +527,12 @@
         <input id="animalVetInspectionDate" type="date" style="width:100%;">
       </div>
 
-      <select id="animalEmirate" required onchange="updateLocationOptions()">
-        <option value="الشارقة" selected>📍 إمارة الشارقة</option>
-        <option value="دبي">📍 إمارة دبي</option>
-        <option value="أبوظبي">📍 إمارة أبوظبي</option>
-        <option value="عجمان">📍 إمارة عجمان</option>
-        <option value="رأس الخيمة">📍 إمارة رأس الخيمة</option>
-        <option value="أم القيوين">📍 إمارة أم القيوين</option>
-        <option value="الفجيرة">📍 إمارة الفجيرة</option>
+      <select id="animalCountry" required onchange="updateListingLocationOptions()">
+        <option value="AE" selected>🇦🇪 الإمارات العربية المتحدة</option>
+        <option value="EG">🇪🇬 جمهورية مصر العربية</option>
       </select>
 
+      <select id="animalRegion" required onchange="updateListingCityOptions()"></select>
       <select id="animalCity" required onchange="updateFullLocation()"></select>
       <input id="animalLocation" type="hidden" value="الذيد - الشارقة">
 
@@ -545,7 +541,7 @@
         <option value="مزاد إلكتروني">🔨 مزاد إلكتروني</option>
       </select>
 
-      <input id="animalPrice" required type="number" min="1" placeholder="سعر البيع بالدرهم">
+      <input id="animalPrice" required type="number" min="1" placeholder="سعر البيع (AED)">
 
       <div id="auctionFields" style="display:none;width:100%;">
         <div style="background:#10271c;border:1px solid #1d6044;border-radius:12px;padding:14px;margin-bottom:14px;color:#68e6b0;text-align:center;">
@@ -569,7 +565,7 @@
 
 <section id="contact" class="contact">
   <h2>تواصل معنا</h2>
-  <p>سوق الحلال الإلكتروني - دولة الإمارات العربية المتحدة</p>
+  <p>سوق الحلال الإلكتروني - الإمارات العربية المتحدة وجمهورية مصر العربية</p>
   <p>
     منصة إلكترونية تربط البائع والمشتري،
     وتتم المعاينة والاستلام والدفع مباشرة بين الطرفين.
@@ -586,70 +582,10 @@
 </div>
 
 <footer>
-  سوق الحلال الإلكتروني • دولة الإمارات العربية المتحدة
+  سوق الحلال الإلكتروني • الإمارات العربية المتحدة وجمهورية مصر العربية
   <br>
   <small>حلالك في عِزبتك... بيعه بطريقتك</small>
 </footer>
-
-<script>
-const emirateLocations = {
-  "الشارقة": ["الذيد","مدينة الشارقة","مليحة","البطائح","المدام","الحمرية","خورفكان","كلباء","دبا الحصن"],
-  "دبي": ["دبي","حتا","الخوانيج","العوير","الليسيلي","مرغم","لهباب"],
-  "أبوظبي": ["أبوظبي","العين","مدينة زايد","ليوا","غياثي","المرفأ","الرويس","السلع","جزيرة دلما"],
-  "عجمان": ["عجمان","مصفوت","المنامة"],
-  "رأس الخيمة": ["رأس الخيمة","الرمس","شعم","غليلة","الجزيرة الحمراء","خت"],
-  "أم القيوين": ["أم القيوين","فلج المعلا"],
-  "الفجيرة": ["الفجيرة","دبا الفجيرة","مسافي","مربح","قدفع","البدية","الطويين"]
-};
-
-function updateLocationOptions() {
-  const emirate = document.getElementById("animalEmirate");
-  const city = document.getElementById("animalCity");
-  if (!emirate || !city) return;
-
-  const locations = emirateLocations[emirate.value] || [];
-  city.innerHTML = "";
-
-  locations.forEach(function (locationName) {
-    const option = document.createElement("option");
-    option.value = locationName;
-    option.textContent = locationName;
-    city.appendChild(option);
-  });
-
-  if (emirate.value === "الشارقة") city.value = "الذيد";
-  updateFullLocation();
-}
-
-function updateFullLocation() {
-  const emirate = document.getElementById("animalEmirate");
-  const city = document.getElementById("animalCity");
-  const fullLocation = document.getElementById("animalLocation");
-  if (!emirate || !city || !fullLocation) return;
-
-  if (!city.value) {
-    fullLocation.value = emirate.value;
-    return;
-  }
-
-  fullLocation.value = city.value + " - " + emirate.value;
-}
-
-document.addEventListener("DOMContentLoaded", function () {
-  updateLocationOptions();
-
-  const form = document.getElementById("listingForm");
-  if (!form) return;
-
-  form.addEventListener("reset", function () {
-    setTimeout(function () {
-      const emirate = document.getElementById("animalEmirate");
-      if (emirate) emirate.value = "الشارقة";
-      updateLocationOptions();
-    }, 0);
-  });
-});
-</script>
 
 <script>
 function toggleAuctionFields() {
@@ -658,17 +594,20 @@ function toggleAuctionFields() {
   const price = document.getElementById("animalPrice");
   const increment = document.getElementById("auctionIncrement");
   const endTime = document.getElementById("auctionEndTime");
+  const currency = typeof window.getSelectedListingCurrency === "function"
+    ? window.getSelectedListingCurrency()
+    : "AED";
 
   if (!method || !auctionFields || !price) return;
 
   if (method.value === "مزاد إلكتروني") {
     auctionFields.style.display = "block";
-    price.placeholder = "سعر بداية المزاد بالدرهم";
+    price.placeholder = "سعر بداية المزاد (" + currency + ")";
     if (increment) increment.required = true;
     if (endTime) endTime.required = true;
   } else {
     auctionFields.style.display = "none";
-    price.placeholder = "سعر البيع بالدرهم";
+    price.placeholder = "سعر البيع (" + currency + ")";
     if (increment) increment.required = false;
     if (endTime) endTime.required = false;
   }
@@ -712,7 +651,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script type="module" src="app.js?v=50"></script>
+<script type="module" src="app.js?v=51"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=40"></script>

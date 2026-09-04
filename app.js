@@ -45,19 +45,160 @@ let auctionTimerInterval = null;
 
 const handledExpiredAuctions = new Set();
 
-const MARKET_EMIRATE_LOCATIONS = {
-  "الشارقة": ["الذيد","مدينة الشارقة","مليحة","البطائح","المدام","الحمرية","خورفكان","كلباء","دبا الحصن"],
-  "دبي": ["دبي","حتا","الخوانيج","العوير","الليسيلي","مرغم","لهباب"],
-  "أبوظبي": ["أبوظبي","العين","مدينة زايد","ليوا","غياثي","المرفأ","الرويس","السلع","جزيرة دلما"],
-  "عجمان": ["عجمان","مصفوت","المنامة"],
-  "رأس الخيمة": ["رأس الخيمة","الرمس","شعم","غليلة","الجزيرة الحمراء","خت"],
-  "أم القيوين": ["أم القيوين","فلج المعلا"],
-  "الفجيرة": ["الفجيرة","دبا الفجيرة","مسافي","مربح","قدفع","البدية","الطويين"]
+const COUNTRIES = {
+  AE: {
+    name: "الإمارات العربية المتحدة",
+    currency: "AED",
+    locale: "ar-AE",
+    defaultRegion: "الشارقة",
+    defaultCity: "الذيد",
+    regions: {
+      "الشارقة": ["الذيد","مدينة الشارقة","مليحة","البطائح","المدام","الحمرية","خورفكان","كلباء","دبا الحصن"],
+      "دبي": ["دبي","حتا","الخوانيج","العوير","الليسيلي","مرغم","لهباب"],
+      "أبوظبي": ["أبوظبي","العين","مدينة زايد","ليوا","غياثي","المرفأ","الرويس","السلع","جزيرة دلما"],
+      "عجمان": ["عجمان","مصفوت","المنامة"],
+      "رأس الخيمة": ["رأس الخيمة","الرمس","شعم","غليلة","الجزيرة الحمراء","خت"],
+      "أم القيوين": ["أم القيوين","فلج المعلا"],
+      "الفجيرة": ["الفجيرة","دبا الفجيرة","مسافي","مربح","قدفع","البدية","الطويين"]
+    }
+  },
+  EG: {
+    name: "جمهورية مصر العربية",
+    currency: "EGP",
+    locale: "ar-EG",
+    defaultRegion: "القاهرة",
+    defaultCity: "القاهرة",
+    regions: {
+      "القاهرة": ["القاهرة","القاهرة الجديدة","مدينة نصر","حلوان"],
+      "الجيزة": ["الجيزة","6 أكتوبر","الشيخ زايد","البدرشين"],
+      "الإسكندرية": ["الإسكندرية","برج العرب","العامرية"],
+      "القليوبية": ["بنها","شبرا الخيمة","قليوب"],
+      "الشرقية": ["الزقازيق","العاشر من رمضان","بلبيس"],
+      "الدقهلية": ["المنصورة","ميت غمر","بلقاس"],
+      "البحيرة": ["دمنهور","كفر الدوار","وادي النطرون"],
+      "الغربية": ["طنطا","المحلة الكبرى","زفتى"],
+      "المنوفية": ["شبين الكوم","السادات","منوف"],
+      "كفر الشيخ": ["كفر الشيخ","دسوق","بلطيم"],
+      "دمياط": ["دمياط","دمياط الجديدة","رأس البر"],
+      "بورسعيد": ["بورسعيد","بورفؤاد"],
+      "الإسماعيلية": ["الإسماعيلية","فايد","القنطرة"],
+      "السويس": ["السويس"],
+      "الفيوم": ["الفيوم","سنورس","إطسا"],
+      "بني سويف": ["بني سويف","الواسطى","الفشن"],
+      "المنيا": ["المنيا","ملوي","سمالوط"],
+      "أسيوط": ["أسيوط","ديروط","أبنوب"],
+      "سوهاج": ["سوهاج","أخميم","جرجا"],
+      "قنا": ["قنا","نجع حمادي","قفط"],
+      "الأقصر": ["الأقصر","إسنا","أرمنت"],
+      "أسوان": ["أسوان","إدفو","كوم أمبو"],
+      "البحر الأحمر": ["الغردقة","سفاجا","القصير"],
+      "الوادي الجديد": ["الخارجة","الداخلة","الفرافرة"],
+      "مطروح": ["مرسى مطروح","الحمام","سيوة"],
+      "شمال سيناء": ["العريش","بئر العبد","الشيخ زويد"],
+      "جنوب سيناء": ["الطور","شرم الشيخ","دهب"]
+    }
+  }
 };
 
-function money(value) {
-  return Number(value || 0).toLocaleString("en-US") + " AED";
+function effectiveCountry(data) {
+  return data?.country === "EG" ? "EG" : "AE";
 }
+
+function money(value, country = "AE") {
+  const effectiveCode = country === "EG" ? "EG" : "AE";
+  return Number(value || 0).toLocaleString("en-US") +
+    " " + COUNTRIES[effectiveCode].currency;
+}
+
+function normalizePhoneNumber(value, country = "AE") {
+  const compact = String(value || "").replace(/[\s()-]/g, "");
+  if (country === "EG") {
+    const normalized = compact.startsWith("01") ? "+20" + compact.substring(1)
+      : compact.startsWith("201") ? "+" + compact : compact;
+    return /^\+201[0125]\d{8}$/.test(normalized) ? normalized : null;
+  }
+  const normalized = compact.startsWith("05") ? "+971" + compact.substring(1)
+    : compact.startsWith("971") ? "+" + compact : compact;
+  return /^\+9715\d{8}$/.test(normalized) ? normalized : null;
+}
+
+window.getSelectedListingCurrency = function () {
+  const country = document.getElementById("animalCountry")?.value || "AE";
+  return COUNTRIES[country]?.currency || COUNTRIES.AE.currency;
+};
+
+window.updateListingLocationOptions = function () {
+  const countrySelect = document.getElementById("animalCountry");
+  const regionSelect = document.getElementById("animalRegion");
+  if (!countrySelect || !regionSelect) return;
+
+  const countryCode = countrySelect.value === "EG" ? "EG" : "AE";
+  const countryConfig = COUNTRIES[countryCode];
+  regionSelect.innerHTML = "";
+
+  Object.keys(countryConfig.regions).forEach(regionName => {
+    const option = document.createElement("option");
+    option.value = regionName;
+    option.textContent = regionName;
+    regionSelect.appendChild(option);
+  });
+
+  regionSelect.value = countryConfig.defaultRegion;
+  window.updateListingCityOptions();
+  if (typeof window.toggleAuctionFields === "function") {
+    window.toggleAuctionFields();
+  }
+};
+
+window.updateListingCityOptions = function () {
+  const countrySelect = document.getElementById("animalCountry");
+  const regionSelect = document.getElementById("animalRegion");
+  const citySelect = document.getElementById("animalCity");
+  if (!countrySelect || !regionSelect || !citySelect) return;
+
+  const countryCode = countrySelect.value === "EG" ? "EG" : "AE";
+  const countryConfig = COUNTRIES[countryCode];
+  const cities = countryConfig.regions[regionSelect.value] || [];
+  citySelect.innerHTML = "";
+
+  cities.forEach(cityName => {
+    const option = document.createElement("option");
+    option.value = cityName;
+    option.textContent = cityName;
+    citySelect.appendChild(option);
+  });
+
+  if (regionSelect.value === countryConfig.defaultRegion) {
+    citySelect.value = countryConfig.defaultCity;
+  }
+  window.updateFullLocation();
+};
+
+window.updateFullLocation = function () {
+  const regionSelect = document.getElementById("animalRegion");
+  const citySelect = document.getElementById("animalCity");
+  const fullLocation = document.getElementById("animalLocation");
+  if (!regionSelect || !citySelect || !fullLocation) return;
+
+  fullLocation.value = citySelect.value
+    ? citySelect.value + " - " + regionSelect.value
+    : regionSelect.value;
+};
+
+document.addEventListener("DOMContentLoaded", () => {
+  window.updateListingLocationOptions();
+
+  const form = document.getElementById("listingForm");
+  if (!form) return;
+
+  form.addEventListener("reset", () => {
+    setTimeout(() => {
+      const countrySelect = document.getElementById("animalCountry");
+      if (countrySelect) countrySelect.value = "AE";
+      window.updateListingLocationOptions();
+    }, 0);
+  });
+});
 
 function animalIcon(type = "") {
   if (type.includes("ناقة") || type.includes("جمل") || type.includes("إبل")) return "🐫";
@@ -298,44 +439,50 @@ function hasActiveSellerSubscription(profile) {
   return endDate.getTime() > Date.now();
 }
 
-function getAnimalLocationInfo(location = "") {
-  const cleanLocation = String(location || "").trim();
+function getAnimalLocationInfo(animal = {}) {
+  const country = effectiveCountry(animal);
+  const countryConfig = COUNTRIES[country];
+  const cleanLocation = String(animal.location || "").trim();
   let city = cleanLocation;
-  let emirate = "";
+  let region = String(animal.region || "").trim();
 
-  if (cleanLocation.includes(" - ")) {
+  if (animal.city) city = String(animal.city).trim();
+
+  if ((!animal.city || !region) && cleanLocation.includes(" - ")) {
     const parts = cleanLocation.split(" - ");
-    city = (parts[0] || "").trim();
-    emirate = (parts[1] || "").trim();
+    if (!animal.city) city = (parts[0] || "").trim();
+    if (!region) region = (parts[1] || "").trim();
   }
 
-  if (!emirate) {
-    for (const [emirateName, cities] of Object.entries(MARKET_EMIRATE_LOCATIONS)) {
+  if (!region) {
+    for (const [regionName, cities] of Object.entries(countryConfig.regions)) {
       if (cities.includes(city)) {
-        emirate = emirateName;
+        region = regionName;
         break;
       }
     }
   }
 
-  return { city, emirate };
+  return { country, region, city };
 }
 
 function getMarketFilters() {
-  const emirate = document.getElementById("marketEmirateFilter")?.value || "all";
+  const country = document.getElementById("marketCountryFilter")?.value || "all";
+  const region = document.getElementById("marketRegionFilter")?.value || "all";
   const city = document.getElementById("marketCityFilter")?.value || "all";
   const animalType = document.getElementById("marketAnimalFilter")?.value || "all";
   const saleType = document.getElementById("marketSaleTypeFilter")?.value || "all";
-  return { emirate, city, animalType, saleType };
+  return { country, region, city, animalType, saleType };
 }
 
 function animalMatchesMarketFilters(animal, forcedSaleType = "") {
   if (!animal) return false;
 
   const filters = getMarketFilters();
-  const locationInfo = getAnimalLocationInfo(animal.location || "");
+  const locationInfo = getAnimalLocationInfo(animal);
 
-  if (filters.emirate !== "all" && locationInfo.emirate !== filters.emirate) return false;
+  if (filters.country !== "all" && locationInfo.country !== filters.country) return false;
+  if (filters.region !== "all" && locationInfo.region !== filters.region) return false;
   if (filters.city !== "all" && locationInfo.city !== filters.city) return false;
   if (filters.animalType !== "all" && animal.type !== filters.animalType) return false;
 
@@ -345,25 +492,44 @@ function animalMatchesMarketFilters(animal, forcedSaleType = "") {
   return true;
 }
 
-window.updateMarketCityFilter = function () {
-  const emirateSelect = document.getElementById("marketEmirateFilter");
-  const citySelect = document.getElementById("marketCityFilter");
-  if (!emirateSelect || !citySelect) return;
+window.updateMarketRegionFilter = function (reload = true) {
+  const countrySelect = document.getElementById("marketCountryFilter");
+  const regionSelect = document.getElementById("marketRegionFilter");
+  if (!countrySelect || !regionSelect) return;
 
-  const emirate = emirateSelect.value;
+  regionSelect.innerHTML = `<option value="all">جميع المناطق والمحافظات</option>`;
+
+  if (countrySelect.value !== "all") {
+    Object.keys(COUNTRIES[countrySelect.value]?.regions || {}).forEach(regionName => {
+      const option = document.createElement("option");
+      option.value = regionName;
+      option.textContent = regionName;
+      regionSelect.appendChild(option);
+    });
+  }
+
+  window.updateMarketCityFilter(reload);
+};
+
+window.updateMarketCityFilter = function (reload = true) {
+  const countrySelect = document.getElementById("marketCountryFilter");
+  const regionSelect = document.getElementById("marketRegionFilter");
+  const citySelect = document.getElementById("marketCityFilter");
+  if (!countrySelect || !regionSelect || !citySelect) return;
+
   citySelect.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
 
-  if (emirate !== "all") {
-    const locations = MARKET_EMIRATE_LOCATIONS[emirate] || [];
-    locations.forEach(locationName => {
+  if (countrySelect.value !== "all" && regionSelect.value !== "all") {
+    const cities = COUNTRIES[countrySelect.value]?.regions[regionSelect.value] || [];
+    cities.forEach(cityName => {
       const option = document.createElement("option");
-      option.value = locationName;
-      option.textContent = locationName;
+      option.value = cityName;
+      option.textContent = cityName;
       citySelect.appendChild(option);
     });
   }
 
-  loadMarket();
+  if (reload) loadMarket();
 };
 
 window.applyMarketFilters = function () {
@@ -371,12 +537,14 @@ window.applyMarketFilters = function () {
 };
 
 window.resetMarketFilters = function () {
-  const emirate = document.getElementById("marketEmirateFilter");
+  const country = document.getElementById("marketCountryFilter");
+  const region = document.getElementById("marketRegionFilter");
   const city = document.getElementById("marketCityFilter");
   const animal = document.getElementById("marketAnimalFilter");
   const saleType = document.getElementById("marketSaleTypeFilter");
 
-  if (emirate) emirate.value = "all";
+  if (country) country.value = "all";
+  if (region) region.innerHTML = `<option value="all">جميع المناطق والمحافظات</option>`;
   if (city) city.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
   if (animal) animal.value = "all";
   if (saleType) saleType.value = "all";
@@ -860,7 +1028,7 @@ window.showMyListings = async function () {
         priceHtml = `
           <p>
             💰 السعر:
-            <b style="color:#68e6b0;">${money(animal.price)}</b>
+            <b style="color:#68e6b0;">${money(animal.price, effectiveCountry(animal))}</b>
           </p>
         `;
 
@@ -894,11 +1062,11 @@ window.showMyListings = async function () {
           priceHtml = `
             <p>
               💰 سعر البداية:
-              <b>${money(auction.startPrice)}</b>
+              <b>${money(auction.startPrice, effectiveCountry(auction))}</b>
             </p>
             <p>
               🏆 السعر الحالي:
-              <b style="color:#68e6b0;">${money(currentPrice)}</b>
+              <b style="color:#68e6b0;">${money(currentPrice, effectiveCountry(auction))}</b>
             </p>
           `;
 
@@ -911,7 +1079,7 @@ window.showMyListings = async function () {
             extraHtml = `
               <div style="background:#10271c;padding:12px;border-radius:10px;margin-top:10px;">
                 السعر النهائي:
-                <b style="color:#68e6b0;">${money(currentPrice)}</b>
+                <b style="color:#68e6b0;">${money(currentPrice, effectiveCountry(auction))}</b>
               </div>
             `;
           } else if (auction.status === "not_approved") {
@@ -954,7 +1122,7 @@ window.showMyListings = async function () {
           priceHtml = `
             <p>
               💰 السعر:
-              <b>${money(animal.price)}</b>
+              <b>${money(animal.price, effectiveCountry(animal))}</b>
             </p>
           `;
         }
@@ -1405,9 +1573,13 @@ window.openLogin = async function () {
   showModal(`
     <div style="direction:rtl;color:white;padding:10px;">
       <h2 style="text-align:center;color:#68e6b0;">تسجيل الدخول</h2>
-      <p style="text-align:center;color:#aaa;">أدخل رقم هاتفك الإماراتي</p>
-
-      <input id="phoneNumber" type="tel" value="+971" placeholder="+971501234567"
+      <p style="text-align:center;color:#aaa;">اختر الدولة ثم أدخل رقم هاتفك</p>
+      <select id="loginCountry" onchange="updateLoginPhoneCountry()"
+        style="width:100%;box-sizing:border-box;padding:14px;margin:10px 0;">
+        <option value="AE" selected>🇦🇪 الإمارات العربية المتحدة (+971)</option>
+        <option value="EG">🇪🇬 جمهورية مصر العربية (+20)</option>
+      </select>
+      <input id="phoneNumber" type="tel" value="+971" placeholder="05xxxxxxxx"
         style="width:100%;box-sizing:border-box;padding:14px;margin:10px 0;">
 
       <div id="recaptcha-container"></div>
@@ -1422,23 +1594,28 @@ window.openLogin = async function () {
   `);
 };
 
+window.updateLoginPhoneCountry = function () {
+  const country = document.getElementById("loginCountry")?.value || "AE";
+  const input = document.getElementById("phoneNumber");
+  if (!input) return;
+  input.placeholder = country === "EG" ? "01xxxxxxxxx" : "05xxxxxxxx";
+  if (!input.value || input.value === "+971" || input.value === "+20") {
+    input.value = country === "EG" ? "+20" : "+971";
+  }
+};
+
 window.sendPhoneCode = async function () {
   const input = document.getElementById("phoneNumber");
   const status = document.getElementById("loginStatus");
   if (!input || !status) return;
 
-  let phone = input.value.replace(/\s+/g, "").replace(/-/g, "");
+  const country = document.getElementById("loginCountry")?.value || "AE";
+  const phone = normalizePhoneNumber(input.value, country);
 
-  if (phone.startsWith("05")) {
-    phone = "+971" + phone.substring(1);
-  }
-
-  if (phone.startsWith("971")) {
-    phone = "+" + phone;
-  }
-
-  if (!phone.startsWith("+9715")) {
-    status.innerHTML = "❌ رقم الهاتف غير صحيح.";
+  if (!phone) {
+    status.innerHTML = country === "EG"
+      ? "❌ أدخل رقمًا مصريًا صحيحًا يبدأ بـ 01 ويتكون من 11 رقمًا."
+      : "❌ أدخل رقمًا إماراتيًا صحيحًا يبدأ بـ 05 ويتكون من 10 أرقام.";
     return;
   }
 
@@ -1550,22 +1727,22 @@ function createFirebaseArea() {
     <div style="max-width:1100px;margin:35px auto;padding:20px;direction:rtl;">
       <h2 style="text-align:center;color:#68e6b0;margin-bottom:7px;">🐪 سوق الحلال</h2>
       <p style="text-align:center;color:#aaa;margin-top:0;">
-        ابحث عن الحلال حسب الإمارة والمنطقة
+        ابحث عن الحلال حسب الدولة والمنطقة والمدينة
       </p>
 
       <div id="market-filters"
         style="background:#1d2521;border:1px solid #35443d;border-radius:16px;padding:16px;margin:22px 0 25px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
 
-        <select id="marketEmirateFilter" onchange="updateMarketCityFilter()"
+        <select id="marketCountryFilter" onchange="updateMarketRegionFilter()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
-          <option value="all">📍 جميع الإمارات</option>
-          <option value="الشارقة">الشارقة</option>
-          <option value="دبي">دبي</option>
-          <option value="أبوظبي">أبوظبي</option>
-          <option value="عجمان">عجمان</option>
-          <option value="رأس الخيمة">رأس الخيمة</option>
-          <option value="أم القيوين">أم القيوين</option>
-          <option value="الفجيرة">الفجيرة</option>
+          <option value="all">🌍 جميع الدول</option>
+          <option value="AE">🇦🇪 الإمارات العربية المتحدة</option>
+          <option value="EG">🇪🇬 جمهورية مصر العربية</option>
+        </select>
+
+        <select id="marketRegionFilter" onchange="updateMarketCityFilter()"
+          style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
+          <option value="all">جميع المناطق والمحافظات</option>
         </select>
 
         <select id="marketCityFilter" onchange="applyMarketFilters()"
@@ -1621,6 +1798,7 @@ function createFirebaseArea() {
   } else {
     (main || document.body).appendChild(area);
   }
+  window.updateMarketRegionFilter(false);
   return area;
 }
 
@@ -1673,7 +1851,7 @@ function auctionActionHtml(auction, expired, isOwner) {
       return `
         <div style="background:#123c2c;color:#68e6b0;padding:16px;border-radius:12px;text-align:center;margin-top:15px;">
           <div style="font-size:20px;font-weight:bold;">✅ تم اعتماد البيع</div>
-          <p>السعر النهائي: <b>${money(auction.currentPrice)}</b></p>
+          <p>السعر النهائي: <b>${money(auction.currentPrice, effectiveCountry(auction))}</b></p>
 
           ${auction.lastBidderPhone ? `
             <p>
@@ -1699,7 +1877,7 @@ function auctionActionHtml(auction, expired, isOwner) {
         <div style="background:#123c2c;color:#68e6b0;padding:16px;border-radius:12px;text-align:center;margin-top:15px;">
           <div style="font-size:21px;font-weight:bold;">🎉 مبروك، فزت بالمزاد</div>
           <p style="color:white;">اعتمد البائع أعلى مزايدة.</p>
-          <p>السعر النهائي: <b>${money(auction.currentPrice)}</b></p>
+          <p>السعر النهائي: <b>${money(auction.currentPrice, effectiveCountry(auction))}</b></p>
 
           ${auction.sellerName ? `
             <p>👤 البائع: <b>${escapeHtml(auction.sellerName)}</b></p>
@@ -1729,7 +1907,7 @@ function auctionActionHtml(auction, expired, isOwner) {
         ✅ انتهى المزاد وتم اعتماد البيع
         <br>
         السعر النهائي:
-        ${money(auction.currentPrice)}
+        ${money(auction.currentPrice, effectiveCountry(auction))}
       </div>
     `;
   }
@@ -1772,7 +1950,7 @@ function auctionActionHtml(auction, expired, isOwner) {
       <div style="background:#302a16;color:#ffd66b;padding:16px;border-radius:12px;text-align:center;margin-bottom:10px;">
         <div style="font-size:19px;font-weight:bold;">🏆 أعلى مزايدة</div>
         <div style="color:#68e6b0;font-size:25px;font-weight:bold;margin:10px 0;">
-          ${money(auction.currentPrice)}
+          ${money(auction.currentPrice, effectiveCountry(auction))}
         </div>
         <div>⏳ المزاد انتهى — بانتظار قرارك</div>
       </div>
@@ -1794,7 +1972,7 @@ function auctionActionHtml(auction, expired, isOwner) {
       <div style="background:#302a16;color:#ffd66b;padding:16px;border-radius:12px;text-align:center;font-weight:bold;">
         🏆 أنت صاحب أعلى مزايدة
         <div style="color:#68e6b0;font-size:24px;margin:10px 0;">
-          ${money(auction.currentPrice)}
+          ${money(auction.currentPrice, effectiveCountry(auction))}
         </div>
         ⏳ بانتظار اعتماد البائع للنتيجة
       </div>
@@ -1806,7 +1984,7 @@ function auctionActionHtml(auction, expired, isOwner) {
       ⏳ انتهى المزاد
       <br><br>
       أعلى مزايدة:
-      <span style="color:#68e6b0;">${money(auction.currentPrice)}</span>
+      <span style="color:#68e6b0;">${money(auction.currentPrice, effectiveCountry(auction))}</span>
       <br><br>
       بانتظار اعتماد البائع
     </div>
@@ -1861,7 +2039,7 @@ async function loadMarket() {
           <h3>${escapeHtml(animal.name || animal.type || "حلال للبيع")}</h3>
 
           <div style="font-size:25px;color:#68e6b0;font-weight:bold;margin:15px 0;">
-            ${money(animal.price)}
+            ${money(animal.price, effectiveCountry(animal))}
           </div>
 
           <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
@@ -1977,7 +2155,7 @@ async function loadMarket() {
             <div style="font-size:27px;color:#68e6b0;font-weight:bold;margin:15px 0;">
               السعر الحالي:
               <br>
-              ${money(currentPrice)}
+              ${money(currentPrice, effectiveCountry(auction))}
             </div>
 
             ${auction.status === "active" ? `
@@ -1997,12 +2175,12 @@ async function loadMarket() {
 
             ${listingAnimalDetailsHtml(animal)}
 
-            <p>سعر البداية: <b>${money(auction.startPrice)}</b></p>
-            <p>أقل زيادة: <b>${money(increment)}</b></p>
+            <p>سعر البداية: <b>${money(auction.startPrice, effectiveCountry(auction))}</b></p>
+            <p>أقل زيادة: <b>${money(increment, effectiveCountry(auction))}</b></p>
             ${auction.status === "active" && !expired ? `
               <p>
                 الحد الأدنى للمزايدة القادمة:
-                <b>${money(minimumNextBid)}</b>
+                <b>${money(minimumNextBid, effectiveCountry(auction))}</b>
               </p>
             ` : ""}
 
@@ -2090,7 +2268,7 @@ window.manageListing = async function (animalId) {
     const directPriceField =
       animal.saleType === "direct"
         ? `
-          <label>السعر بالدرهم</label>
+          <label>السعر (${COUNTRIES[effectiveCountry(animal)].currency})</label>
           <input id="editAnimalPrice" type="number" min="1"
             value="${Number(animal.price || 0)}"
             style="width:100%;box-sizing:border-box;padding:13px;margin-bottom:14px;border-radius:9px;">
@@ -2122,7 +2300,7 @@ window.manageListing = async function (animalId) {
               <h3>✅ تم اعتماد البيع</h3>
               <p>
                 السعر النهائي:
-                <b>${money(auction.currentPrice)}</b>
+                <b>${money(auction.currentPrice, effectiveCountry(auction))}</b>
               </p>
 
               ${auction.lastBidderPhone ? `
@@ -2145,7 +2323,7 @@ window.manageListing = async function (animalId) {
               🔨 المزاد ما زال نشطاً
               <br><br>
               السعر الحالي:
-              <b style="color:#68e6b0;">${money(auction.currentPrice)}</b>
+              <b style="color:#68e6b0;">${money(auction.currentPrice, effectiveCountry(auction))}</b>
               <br><br>
               ⏱ ${getCountdownText(auction.endTime)}
             </div>
@@ -2162,7 +2340,7 @@ window.manageListing = async function (animalId) {
               <h3>🏆 نتيجة المزاد</h3>
               أعلى مزايدة:
               <div style="color:#68e6b0;font-size:28px;font-weight:bold;margin:10px 0;">
-                ${money(auction.currentPrice)}
+                ${money(auction.currentPrice, effectiveCountry(auction))}
               </div>
               ⏳ بانتظار اعتمادك للنتيجة
             </div>
@@ -2353,7 +2531,7 @@ window.finalizeAuction = async function (auctionId, decision) {
       confirmationMessage =
         "هل تؤكد اعتماد أعلى مزايدة؟\n\n" +
         "السعر النهائي: " +
-        money(auction.currentPrice);
+        money(auction.currentPrice, effectiveCountry(auction));
     } else {
       confirmationMessage =
         "هل تؤكد عدم اعتماد البيع؟\n\nسيتم إغلاق المزاد بدون بيع.";
@@ -2711,7 +2889,7 @@ window.requestPurchase = async function (animalId) {
     const ok = confirm(
       "هل تريد إرسال طلب شراء؟\n\n" +
       "النوع: " + (animal.type || "حلال") +
-      "\nالسعر: " + money(animal.price)
+      "\nالسعر: " + money(animal.price, effectiveCountry(animal))
     );
 
     if (!ok) return;
@@ -2749,6 +2927,7 @@ window.placeBid = async function (auctionId) {
   try {
     const auctionRef = doc(db, "auctions", auctionId);
     let minimumBid = 0;
+    let auctionCountry = "AE";
 
     await runTransaction(db, async transaction => {
       const auctionSnap = await transaction.get(auctionRef);
@@ -2756,6 +2935,7 @@ window.placeBid = async function (auctionId) {
       if (!auctionSnap.exists()) throw new Error("AUCTION_NOT_FOUND");
 
       const auction = auctionSnap.data();
+      auctionCountry = effectiveCountry(auction);
 
       if (auction.sellerId === auth.currentUser.uid) {
         throw new Error("OWNER_CANNOT_BID");
@@ -2782,9 +2962,9 @@ window.placeBid = async function (auctionId) {
     });
 
     const enteredValue = prompt(
-      "أدخل مبلغ المزايدة الجديدة بالدرهم\n\n" +
+      "أدخل مبلغ المزايدة الجديدة (" + COUNTRIES[auctionCountry].currency + ")\n\n" +
       "الحد الأدنى المقبول: " +
-      money(minimumBid),
+      money(minimumBid, auctionCountry),
       minimumBid
     );
 
@@ -2846,7 +3026,7 @@ window.placeBid = async function (auctionId) {
     alert(
       "✅ تمت المزايدة بنجاح\n\n" +
       "السعر الجديد: " +
-      money(bidAmount)
+      money(bidAmount, auctionCountry)
     );
 
     await loadMarket();
@@ -2864,7 +3044,7 @@ window.placeBid = async function (auctionId) {
       alert(
         "❌ تم تسجيل مزايدة أعلى قبلك.\n\n" +
         "الحد الأدنى الجديد: " +
-        money(required)
+        money(required, auctionCountry)
       );
 
       await loadMarket();
@@ -2942,12 +3122,22 @@ window.saveListing = async function (event) {
     const vetInspectionDate = vetInspectionStatus === "inspected"
       ? document.getElementById("animalVetInspectionDate")?.value || ""
       : "";
-    const location = document.getElementById("animalLocation")?.value.trim() || "الذيد - الشارقة";
+    const country = document.getElementById("animalCountry")?.value || "AE";
+    const region = document.getElementById("animalRegion")?.value || "";
+    const city = document.getElementById("animalCity")?.value || "";
+    const location = document.getElementById("animalLocation")?.value.trim() ||
+      (city && region ? city + " - " + region : "");
     const method = document.getElementById("method")?.value || "";
     const price = Number(document.getElementById("animalPrice")?.value);
     const description = document.getElementById("animalDescription")?.value.trim() || "";
 
-    if (!type || !gender || !Number.isFinite(price) || price <= 0) {
+    if (!COUNTRIES[country] ||
+        !region ||
+        !city ||
+        !type ||
+        !gender ||
+        !Number.isFinite(price) ||
+        price <= 0) {
       alert("تأكد من نوع الحيوان والجنس والسعر.");
       return;
     }
@@ -2974,6 +3164,9 @@ window.saveListing = async function (event) {
         vaccinationDate,
         vetInspectionStatus,
         vetInspectionDate,
+        country,
+        region,
+        city,
         location,
         saleType: "direct",
         price,
@@ -3030,6 +3223,9 @@ window.saveListing = async function (event) {
         vaccinationDate,
         vetInspectionStatus,
         vetInspectionDate,
+        country,
+        region,
+        city,
         location,
         saleType: "auction",
         price,
@@ -3046,6 +3242,7 @@ window.saveListing = async function (event) {
 
       batch.set(auctionRef, {
         animalId: animalRef.id,
+        country,
         sellerId: user.uid,
         sellerName: profile.displayName || "",
         sellerPhone: user.phoneNumber || "",
@@ -3122,6 +3319,23 @@ async function getConversation(conversationId) {
   const snap = await getDoc(doc(db, "conversations", conversationId));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
+}
+
+async function getConversationCountry(conversation) {
+  if (!conversation) return "AE";
+  try {
+    if (conversation.contextType === "direct" && conversation.animalId) {
+      const animalSnap = await getDoc(doc(db, "animals", conversation.animalId));
+      return animalSnap.exists() ? effectiveCountry(animalSnap.data()) : "AE";
+    }
+    if (conversation.contextType === "auction" && conversation.auctionId) {
+      const auctionSnap = await getDoc(doc(db, "auctions", conversation.auctionId));
+      return auctionSnap.exists() ? effectiveCountry(auctionSnap.data()) : "AE";
+    }
+  } catch (error) {
+    console.error("CONVERSATION COUNTRY ERROR:", error);
+  }
+  return "AE";
 }
 
 async function ensurePrivateConversationContact(conversationId, conversation) {
@@ -3522,6 +3736,10 @@ window.showMessages = async function () {
       });
     });
 
+    await Promise.all(conversations.map(async conversation => {
+      conversation._country = await getConversationCountry(conversation);
+    }));
+
     conversations.sort((a, b) =>
       timestampToMillis(b.updatedAt || b.createdAt) -
       timestampToMillis(a.updatedAt || a.createdAt)
@@ -3557,13 +3775,13 @@ window.showMessages = async function () {
       if (conversation.contextType === "direct") {
         priceLine = `
           <div style="color:#68e6b0;font-weight:bold;margin-top:6px;">
-            السعر المعلن: ${money(conversation.askingPrice)}
+            السعر المعلن: ${money(conversation.askingPrice, conversation._country)}
           </div>
         `;
       } else if (conversation.finalPrice) {
         priceLine = `
           <div style="color:#68e6b0;font-weight:bold;margin-top:6px;">
-            السعر النهائي: ${money(conversation.finalPrice)}
+            السعر النهائي: ${money(conversation.finalPrice, conversation._country)}
           </div>
         `;
       }
@@ -3648,6 +3866,8 @@ window.showConversation = async function (conversationId) {
       alert("غير مصرح لك بفتح هذه المحادثة.");
       return;
     }
+
+    const conversationCountry = await getConversationCountry(conversation);
 
     await ensurePrivateConversationContact(conversationId, conversation);
 
@@ -3749,13 +3969,13 @@ window.showConversation = async function (conversationId) {
             if (offerStatus === "accepted") {
               offerStatusHtml = `
                 <div style="margin-top:9px;color:#68e6b0 !important;font-weight:800;">
-                  ✅ تم قبول العرض بقيمة ${Number(message.offerAmount || 0).toLocaleString("en-US")} درهم
+                  ✅ تم قبول العرض بقيمة ${money(message.offerAmount, conversationCountry)}
                 </div>
               `;
             } else if (offerStatus === "rejected") {
               offerStatusHtml = `
                 <div style="margin-top:9px;color:#ff8d8d !important;font-weight:800;">
-                  ❌ تم رفض العرض بقيمة ${Number(message.offerAmount || 0).toLocaleString("en-US")} درهم
+                  ❌ تم رفض العرض بقيمة ${money(message.offerAmount, conversationCountry)}
                 </div>
               `;
             }
@@ -3783,7 +4003,7 @@ window.showConversation = async function (conversationId) {
                 💰 عرض سعر
               </div>
               <div style="font-size:22px;font-weight:800;color:#ffd66b !important;">
-                ${money(message.offerAmount)}
+                ${money(message.offerAmount, conversationCountry)}
               </div>
               ${message.text ? `
                 <div style="margin-top:8px;color:#ffffff !important;font-size:15px;">
@@ -3841,7 +4061,7 @@ window.showConversation = async function (conversationId) {
         </div>
 
         <input id="chatOfferAmount" type="number" min="1"
-          placeholder="اكتب السعر المقترح بالدرهم"
+          placeholder="اكتب السعر المقترح (${COUNTRIES[conversationCountry].currency})"
           style="width:100%;box-sizing:border-box;padding:13px;border-radius:9px;margin-bottom:8px;">
 
         <input id="chatOfferText" maxlength="1000"
@@ -3874,12 +4094,12 @@ window.showConversation = async function (conversationId) {
         ${conversation.contextType === "direct" ? `
           <div style="background:#123c2c;color:white;padding:11px;border-radius:10px;text-align:center;margin-bottom:12px;">
             السعر المعلن:
-            <b style="color:#68e6b0;">${money(conversation.askingPrice)}</b>
+            <b style="color:#68e6b0;">${money(conversation.askingPrice, conversationCountry)}</b>
           </div>
         ` : `
           <div style="background:#123c2c;color:white;padding:11px;border-radius:10px;text-align:center;margin-bottom:12px;">
             السعر النهائي للمزاد:
-            <b style="color:#68e6b0;">${money(conversation.finalPrice)}</b>
+            <b style="color:#68e6b0;">${money(conversation.finalPrice, conversationCountry)}</b>
           </div>
         `}
 
@@ -4052,6 +4272,8 @@ window.sendConversationOffer = async function (conversationId) {
       return;
     }
 
+    const conversationCountry = await getConversationCountry(conversation);
+
     const messageRef = doc(
       collection(db, "conversations", conversationId, "messages")
     );
@@ -4080,7 +4302,7 @@ window.sendConversationOffer = async function (conversationId) {
     }
 
     batch.set(conversationRef, {
-      lastMessage: "عرض سعر: " + money(offerAmount),
+      lastMessage: "عرض سعر: " + money(offerAmount, conversationCountry),
       lastMessageType: "offer",
       lastOfferAmount: offerAmount,
       lastMessageSenderId: user.uid,
@@ -4145,10 +4367,11 @@ window.decideConversationOffer = async function (conversationId, messageId, deci
       return;
     }
 
-    const amountText = Number(message.offerAmount || 0).toLocaleString("en-US");
+    const conversationCountry = await getConversationCountry(conversation);
+    const amountText = money(message.offerAmount, conversationCountry);
     const summary = decision === "accepted"
-      ? "تم قبول العرض بقيمة " + amountText + " درهم"
-      : "تم رفض العرض بقيمة " + amountText + " درهم";
+      ? "تم قبول العرض بقيمة " + amountText
+      : "تم رفض العرض بقيمة " + amountText;
 
     const batch = writeBatch(db);
 
@@ -4191,8 +4414,8 @@ window.bid = function () {
   alert("استخدم المزاد الحقيقي في سوق الحلال.");
 };
 
-window.details = function (name, price) {
-  alert(name + "\nالسعر: " + price + " AED");
+window.details = function (name, price, country = "AE") {
+  alert(name + "\nالسعر: " + money(price, country));
 };
 
 loadMarket();
