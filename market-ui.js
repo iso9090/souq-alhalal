@@ -492,7 +492,7 @@
         }
 
         #firebase-market > div{
-          width:min(94vw,1500px) !important;
+          width:min(100%,1500px) !important;
           max-width:1500px !important;
           margin-left:auto !important;
           margin-right:auto !important;
