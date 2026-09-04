@@ -3234,19 +3234,28 @@ window.showConversation = async function (conversationId) {
 
           if (message.type === "offer") {
             body = `
-              <div style="font-size:12px;opacity:.85;margin-bottom:5px;">
+              <div style="font-size:12px;color:#f3e6b8 !important;margin-bottom:5px;font-weight:700;">
                 💰 عرض سعر
               </div>
-              <div style="font-size:22px;font-weight:bold;color:#ffd66b;">
+              <div style="font-size:22px;font-weight:800;color:#ffd66b !important;">
                 ${money(message.offerAmount)}
               </div>
               ${message.text ? `
-                <div style="margin-top:8px;">${escapeHtml(message.text)}</div>
+                <div style="margin-top:8px;color:#ffffff !important;font-size:15px;">
+                  ${escapeHtml(message.text)}
+                </div>
               ` : ""}
             `;
           } else {
             body = `
-              <div style="white-space:pre-wrap;word-break:break-word;">
+              <div style="
+                white-space:pre-wrap;
+                word-break:break-word;
+                color:#ffffff !important;
+                font-size:16px;
+                font-weight:600;
+                line-height:1.7;
+              ">
                 ${escapeHtml(message.text || "")}
               </div>
             `;
@@ -3254,10 +3263,23 @@ window.showConversation = async function (conversationId) {
 
           return `
             <div style="display:flex;justify-content:${align};margin-bottom:10px;">
-              <div style="max-width:82%;background:${bubbleBackground};padding:11px 13px;border-radius:14px;color:white;text-align:right;">
-                <div style="font-size:11px;color:#d4ddd8;margin-bottom:4px;">${label}</div>
-                ${body}
-                <div style="font-size:10px;color:#c0c8c4;margin-top:7px;">
+              <div style="
+                max-width:82%;
+                background:${bubbleBackground};
+                padding:10px 12px;
+                border-radius:14px;
+                color:#ffffff !important;
+                text-align:right;
+                line-height:1.6;
+                box-sizing:border-box;
+              ">
+                <div style="font-size:11px;color:#e7f0eb !important;margin-bottom:4px;font-weight:700;">
+                  ${label}
+                </div>
+                <div style="color:#ffffff !important;font-size:16px;font-weight:600;min-height:0;">
+                  ${body}
+                </div>
+                <div style="font-size:10px;color:#d7dfdb !important;margin-top:7px;">
                   ${formatDate(message.createdAt)}
                 </div>
               </div>
