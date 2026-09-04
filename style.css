@@ -1382,7 +1382,23 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
   flex-shrink:0;
 }
 
-.mobile-sell-button{display:none;}
+.mobile-sell-button{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:9px 14px;
+  border:1px solid #c99743;
+  border-radius:12px;
+  color:#84591d;
+  background:#fff8ea;
+  box-shadow:0 5px 14px rgba(157,105,30,.12);
+  font-size:.9rem;
+  font-weight:800;
+  line-height:1;
+  text-decoration:none;
+  white-space:nowrap;
+}
 
 @media(max-width:768px){
   html{scroll-padding-top:88px;}
