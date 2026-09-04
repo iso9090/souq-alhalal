@@ -1544,18 +1544,25 @@ function createFirebaseArea() {
   return area;
 }
 
-window.goToDirectSales = function (event) {
+window.goToDirectSales = async function (event) {
   if (event) event.preventDefault();
 
   createFirebaseArea();
 
-  requestAnimationFrame(() => {
-    const anchor = document.getElementById("direct-sales-anchor");
-    if (!anchor) return;
+  const directContainer = document.getElementById("direct-sales");
+  if (!directContainer || directContainer.childElementCount === 0) {
+    await loadMarket();
+  }
 
-    anchor.scrollIntoView({
-      behavior: "smooth",
-      block: "start"
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const anchor = document.getElementById("direct-sales-anchor");
+      if (!anchor) return;
+
+      anchor.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
     });
   });
 };
