@@ -1553,6 +1553,11 @@ function auctionActionHtml(auction, expired, isOwner) {
           <p style="color:white;font-size:14px;">
             يتم التواصل مع الفائز لإتمام المعاينة والاستلام والدفع شخصياً.
           </p>
+
+          <button onclick="openAuctionConversation('${auction.id}')"
+            style="width:100%;background:#b88624;color:white;border:0;padding:13px;border-radius:10px;margin-top:10px;font-weight:bold;">
+            💬 مراسلة الفائز
+          </button>
         </div>
       `;
     }
@@ -1578,6 +1583,11 @@ function auctionActionHtml(auction, expired, isOwner) {
           <p style="color:white;font-size:14px;">
             تواصل مع البائع لإتمام المعاينة والاستلام والدفع شخصياً.
           </p>
+
+          <button onclick="openAuctionConversation('${auction.id}')"
+            style="width:100%;background:#b88624;color:white;border:0;padding:13px;border-radius:10px;margin-top:10px;font-weight:bold;">
+            💬 مراسلة البائع
+          </button>
         </div>
       `;
     }
@@ -1728,6 +1738,13 @@ async function loadMarket() {
             style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;">
             طلب شراء
           </button>
+
+          ${(!auth.currentUser || animal.sellerId !== auth.currentUser.uid) ? `
+            <button onclick="openDirectConversation('${animal.id}')"
+              style="width:100%;background:#b88624;color:white;border:0;padding:14px;border-radius:10px;margin-top:10px;font-weight:bold;">
+              💬 مراسلة البائع / تقديم عرض
+            </button>
+          ` : ""}
 
           ${ownerManagementButton(animal)}
         </div>
@@ -2841,6 +2858,638 @@ function scrollToMarket() {
     });
   }
 }
+
+
+// =====================================
+// 💬 نظام الرسائل والتفاوض
+// =====================================
+
+function directConversationId(animalId, buyerId) {
+  return "direct_" + animalId + "_" + buyerId;
+}
+
+function auctionConversationId(auctionId, buyerId) {
+  return "auction_" + auctionId + "_" + buyerId;
+}
+
+async function getConversation(conversationId) {
+  const snap = await getDoc(doc(db, "conversations", conversationId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+window.openDirectConversation = async function (animalId) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("يجب تسجيل الدخول أولاً لمراسلة البائع.");
+    window.openLogin();
+    return;
+  }
+
+  try {
+    const animalSnap = await getDoc(doc(db, "animals", animalId));
+
+    if (!animalSnap.exists()) {
+      alert("الإعلان غير موجود.");
+      return;
+    }
+
+    const animal = {
+      id: animalSnap.id,
+      ...animalSnap.data()
+    };
+
+    if (animal.saleType !== "direct") {
+      alert("المراسلة المباشرة متاحة لإعلانات البيع المباشر.");
+      return;
+    }
+
+    if (animal.status && animal.status !== "active") {
+      alert("هذا الإعلان لم يعد متاحاً للتفاوض.");
+      return;
+    }
+
+    if (animal.sellerId === user.uid) {
+      alert("هذا إعلانك. ستظهر رسائل المشترين في قسم الرسائل.");
+      return;
+    }
+
+    const profile = await getUserProfile();
+    const conversationId = directConversationId(animalId, user.uid);
+    const conversationRef = doc(db, "conversations", conversationId);
+    const existing = await getDoc(conversationRef);
+
+    if (!existing.exists()) {
+      await setDoc(conversationRef, {
+        contextType: "direct",
+        animalId,
+        animalName: animal.name || animal.type || "حلال",
+        animalType: animal.type || "",
+        askingPrice: Number(animal.price || 0),
+        sellerId: animal.sellerId,
+        sellerName: animal.sellerName || "البائع",
+        buyerId: user.uid,
+        buyerName: profile?.displayName || "المشتري",
+        participants: [animal.sellerId, user.uid],
+        lastMessage: "",
+        lastMessageType: "",
+        lastMessageSenderId: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    await window.showConversation(conversationId);
+  } catch (error) {
+    console.error("OPEN DIRECT CONVERSATION ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ Firebase رفض إنشاء المحادثة. تأكد من نشر قواعد الرسائل الجديدة.");
+      return;
+    }
+
+    alert("❌ تعذر فتح المحادثة.");
+  }
+};
+
+window.openAuctionConversation = async function (auctionId) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("يجب تسجيل الدخول أولاً.");
+    window.openLogin();
+    return;
+  }
+
+  try {
+    const auctionSnap = await getDoc(doc(db, "auctions", auctionId));
+
+    if (!auctionSnap.exists()) {
+      alert("المزاد غير موجود.");
+      return;
+    }
+
+    const auction = {
+      id: auctionSnap.id,
+      ...auctionSnap.data()
+    };
+
+    if (auction.status !== "sold" || !auction.lastBidderId) {
+      alert("تُفتح الرسائل بعد اعتماد الفائز بالمزاد فقط.");
+      return;
+    }
+
+    const isSeller = auction.sellerId === user.uid;
+    const isWinner = auction.lastBidderId === user.uid;
+
+    if (!isSeller && !isWinner) {
+      alert("هذه المحادثة متاحة فقط للبائع والفائز بالمزاد.");
+      return;
+    }
+
+    const buyerId = auction.lastBidderId;
+    const conversationId = auctionConversationId(auctionId, buyerId);
+    const conversationRef = doc(db, "conversations", conversationId);
+    const existing = await getDoc(conversationRef);
+
+    if (!existing.exists()) {
+      let animalName = "مزاد حلال";
+      let animalType = "";
+
+      if (auction.animalId) {
+        const animalSnap = await getDoc(doc(db, "animals", auction.animalId));
+        if (animalSnap.exists()) {
+          const animal = animalSnap.data();
+          animalName = animal.name || animal.type || animalName;
+          animalType = animal.type || "";
+        }
+      }
+
+      await setDoc(conversationRef, {
+        contextType: "auction",
+        auctionId,
+        animalId: auction.animalId || "",
+        animalName,
+        animalType,
+        finalPrice: Number(auction.currentPrice || auction.startPrice || 0),
+        sellerId: auction.sellerId,
+        sellerName: auction.sellerName || "البائع",
+        buyerId,
+        buyerName: "الفائز بالمزاد",
+        participants: [auction.sellerId, buyerId],
+        lastMessage: "",
+        lastMessageType: "",
+        lastMessageSenderId: "",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    await window.showConversation(conversationId);
+  } catch (error) {
+    console.error("OPEN AUCTION CONVERSATION ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ Firebase رفض فتح محادثة المزاد. تأكد من نشر قواعد الرسائل.");
+      return;
+    }
+
+    alert("❌ تعذر فتح المحادثة.");
+  }
+};
+
+window.showMessages = async function () {
+  const user = auth.currentUser;
+
+  if (!user) {
+    alert("يجب تسجيل الدخول أولاً لعرض الرسائل.");
+    window.openLogin();
+    return;
+  }
+
+  showModal(`
+    <div style="direction:rtl;color:white;padding:14px;text-align:center;">
+      <h2 style="color:#68e6b0;">💬 الرسائل</h2>
+      <p style="color:#aaa;">جاري تحميل محادثاتك...</p>
+    </div>
+  `);
+
+  try {
+    const conversationsQuery = query(
+      collection(db, "conversations"),
+      where("participants", "array-contains", user.uid)
+    );
+
+    const snapshot = await getDocs(conversationsQuery);
+    const conversations = [];
+
+    snapshot.forEach(conversationDoc => {
+      conversations.push({
+        id: conversationDoc.id,
+        ...conversationDoc.data()
+      });
+    });
+
+    conversations.sort((a, b) =>
+      timestampToMillis(b.updatedAt || b.createdAt) -
+      timestampToMillis(a.updatedAt || a.createdAt)
+    );
+
+    if (conversations.length === 0) {
+      showModal(`
+        <div style="direction:rtl;color:white;padding:18px;text-align:center;">
+          <h2 style="color:#68e6b0;">💬 الرسائل</h2>
+          <div style="background:#222;padding:22px;border-radius:14px;margin:20px 0;">
+            لا توجد محادثات حتى الآن.
+            <br><br>
+            في البيع المباشر يمكنك الضغط على
+            <b style="color:#ffd66b;">مراسلة البائع / تقديم عرض</b>.
+          </div>
+        </div>
+      `);
+      return;
+    }
+
+    const cards = conversations.map(conversation => {
+      const isSeller = conversation.sellerId === user.uid;
+      const otherName = isSeller
+        ? (conversation.buyerName || "المشتري")
+        : (conversation.sellerName || "البائع");
+
+      const contextLabel = conversation.contextType === "auction"
+        ? "🔨 نتيجة مزاد"
+        : "🛒 بيع مباشر";
+
+      let priceLine = "";
+
+      if (conversation.contextType === "direct") {
+        priceLine = `
+          <div style="color:#68e6b0;font-weight:bold;margin-top:6px;">
+            السعر المعلن: ${money(conversation.askingPrice)}
+          </div>
+        `;
+      } else if (conversation.finalPrice) {
+        priceLine = `
+          <div style="color:#68e6b0;font-weight:bold;margin-top:6px;">
+            السعر النهائي: ${money(conversation.finalPrice)}
+          </div>
+        `;
+      }
+
+      const lastMessage = conversation.lastMessage
+        ? escapeHtml(conversation.lastMessage)
+        : "ابدأ المحادثة الآن";
+
+      return `
+        <button onclick="showConversation('${conversation.id}')"
+          style="width:100%;text-align:right;background:#222;color:white;border:1px solid #3b4a43;padding:16px;border-radius:15px;margin-bottom:12px;cursor:pointer;">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
+            <b style="color:#68e6b0;font-size:18px;">
+              💬 ${escapeHtml(otherName)}
+            </b>
+            <span style="font-size:12px;color:#ffd66b;">${contextLabel}</span>
+          </div>
+
+          <div style="margin-top:8px;font-weight:bold;">
+            ${escapeHtml(conversation.animalName || "حلال")}
+          </div>
+
+          ${priceLine}
+
+          <div style="margin-top:9px;color:#bbb;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${lastMessage}
+          </div>
+
+          <div style="margin-top:7px;color:#777;font-size:12px;">
+            ${formatDate(conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt)}
+          </div>
+        </button>
+      `;
+    }).join("");
+
+    showModal(`
+      <div style="direction:rtl;color:white;padding:12px;">
+        <h2 style="color:#68e6b0;text-align:center;">💬 الرسائل</h2>
+        <p style="color:#aaa;text-align:center;margin-bottom:18px;">
+          محادثاتك الخاصة داخل سوق الحلال
+        </p>
+        ${cards}
+        <div style="height:25px;"></div>
+      </div>
+    `);
+  } catch (error) {
+    console.error("SHOW MESSAGES ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ قواعد Firebase لا تسمح بتحميل الرسائل. تأكد من نشر القواعد الجديدة.");
+      return;
+    }
+
+    alert("❌ تعذر تحميل الرسائل.");
+  }
+};
+
+window.showConversation = async function (conversationId) {
+  const user = auth.currentUser;
+
+  if (!user) {
+    window.openLogin();
+    return;
+  }
+
+  try {
+    const conversation = await getConversation(conversationId);
+
+    if (!conversation) {
+      alert("المحادثة غير موجودة.");
+      return;
+    }
+
+    if (!Array.isArray(conversation.participants) ||
+        !conversation.participants.includes(user.uid)) {
+      alert("غير مصرح لك بفتح هذه المحادثة.");
+      return;
+    }
+
+    const messagesSnapshot = await getDocs(
+      collection(db, "conversations", conversationId, "messages")
+    );
+
+    const messages = [];
+
+    messagesSnapshot.forEach(messageDoc => {
+      messages.push({
+        id: messageDoc.id,
+        ...messageDoc.data()
+      });
+    });
+
+    messages.sort((a, b) =>
+      timestampToMillis(a.createdAt) -
+      timestampToMillis(b.createdAt)
+    );
+
+    const isSeller = conversation.sellerId === user.uid;
+    const otherName = isSeller
+      ? (conversation.buyerName || "المشتري")
+      : (conversation.sellerName || "البائع");
+
+    const canOffer = conversation.contextType === "direct";
+
+    const messagesHtml = messages.length === 0
+      ? `
+        <div style="text-align:center;color:#aaa;padding:28px 8px;">
+          لا توجد رسائل بعد.<br>
+          ابدأ المحادثة من الأسفل.
+        </div>
+      `
+      : messages.map(message => {
+          const mine = message.senderId === user.uid;
+          const bubbleBackground = mine ? "#0b6847" : "#2b332f";
+          const align = mine ? "flex-start" : "flex-end";
+          const label = mine ? "أنت" : escapeHtml(otherName);
+
+          let body = "";
+
+          if (message.type === "offer") {
+            body = `
+              <div style="font-size:12px;opacity:.85;margin-bottom:5px;">
+                💰 عرض سعر
+              </div>
+              <div style="font-size:22px;font-weight:bold;color:#ffd66b;">
+                ${money(message.offerAmount)}
+              </div>
+              ${message.text ? `
+                <div style="margin-top:8px;">${escapeHtml(message.text)}</div>
+              ` : ""}
+            `;
+          } else {
+            body = `
+              <div style="white-space:pre-wrap;word-break:break-word;">
+                ${escapeHtml(message.text || "")}
+              </div>
+            `;
+          }
+
+          return `
+            <div style="display:flex;justify-content:${align};margin-bottom:10px;">
+              <div style="max-width:82%;background:${bubbleBackground};padding:11px 13px;border-radius:14px;color:white;text-align:right;">
+                <div style="font-size:11px;color:#d4ddd8;margin-bottom:4px;">${label}</div>
+                ${body}
+                <div style="font-size:10px;color:#c0c8c4;margin-top:7px;">
+                  ${formatDate(message.createdAt)}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+    const offerSection = canOffer ? `
+      <div style="background:#302a16;border:1px solid #6c5928;padding:12px;border-radius:12px;margin-top:12px;">
+        <div style="color:#ffd66b;font-weight:bold;margin-bottom:8px;">
+          💰 تقديم عرض سعر
+        </div>
+
+        <input id="chatOfferAmount" type="number" min="1"
+          placeholder="اكتب السعر المقترح بالدرهم"
+          style="width:100%;box-sizing:border-box;padding:13px;border-radius:9px;margin-bottom:8px;">
+
+        <input id="chatOfferText" maxlength="1000"
+          placeholder="ملاحظة اختيارية، مثال: أستطيع الاستلام اليوم"
+          style="width:100%;box-sizing:border-box;padding:13px;border-radius:9px;margin-bottom:8px;">
+
+        <button onclick="sendConversationOffer('${conversationId}')"
+          style="width:100%;background:#b88624;color:white;border:0;padding:13px;border-radius:9px;font-weight:bold;">
+          إرسال عرض السعر
+        </button>
+      </div>
+    ` : "";
+
+    showModal(`
+      <div style="direction:rtl;color:white;padding:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+          <button onclick="showMessages()"
+            style="background:#28566f;color:white;border:0;padding:10px 12px;border-radius:9px;">
+            ← الرسائل
+          </button>
+
+          <div style="text-align:center;flex:1;">
+            <h2 style="color:#68e6b0;margin:0;">💬 ${escapeHtml(otherName)}</h2>
+            <div style="color:#aaa;font-size:13px;margin-top:4px;">
+              ${escapeHtml(conversation.animalName || "حلال")}
+            </div>
+          </div>
+        </div>
+
+        ${conversation.contextType === "direct" ? `
+          <div style="background:#123c2c;color:white;padding:11px;border-radius:10px;text-align:center;margin-bottom:12px;">
+            السعر المعلن:
+            <b style="color:#68e6b0;">${money(conversation.askingPrice)}</b>
+          </div>
+        ` : `
+          <div style="background:#123c2c;color:white;padding:11px;border-radius:10px;text-align:center;margin-bottom:12px;">
+            السعر النهائي للمزاد:
+            <b style="color:#68e6b0;">${money(conversation.finalPrice)}</b>
+          </div>
+        `}
+
+        <div id="conversationMessages"
+          style="background:#171c19;border-radius:14px;padding:12px;min-height:210px;max-height:42vh;overflow-y:auto;">
+          ${messagesHtml}
+        </div>
+
+        <div style="margin-top:12px;">
+          <textarea id="chatMessageText" maxlength="1000" rows="3"
+            placeholder="اكتب رسالتك هنا..."
+            style="width:100%;box-sizing:border-box;padding:13px;border-radius:10px;resize:vertical;"></textarea>
+
+          <button onclick="sendConversationMessage('${conversationId}')"
+            style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;margin-top:8px;font-weight:bold;">
+            إرسال الرسالة
+          </button>
+        </div>
+
+        ${offerSection}
+
+        <div style="height:30px;"></div>
+      </div>
+    `);
+
+    setTimeout(() => {
+      const box = document.getElementById("conversationMessages");
+      if (box) box.scrollTop = box.scrollHeight;
+    }, 0);
+
+  } catch (error) {
+    console.error("SHOW CONVERSATION ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ ليس لديك صلاحية لعرض هذه المحادثة.");
+      return;
+    }
+
+    alert("❌ تعذر تحميل المحادثة.");
+  }
+};
+
+window.sendConversationMessage = async function (conversationId) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const input = document.getElementById("chatMessageText");
+  if (!input) return;
+
+  const text = input.value.trim();
+
+  if (!text) {
+    alert("اكتب الرسالة أولاً.");
+    return;
+  }
+
+  if (text.length > 1000) {
+    alert("الرسالة طويلة جداً.");
+    return;
+  }
+
+  try {
+    const conversation = await getConversation(conversationId);
+
+    if (!conversation ||
+        !Array.isArray(conversation.participants) ||
+        !conversation.participants.includes(user.uid)) {
+      alert("غير مصرح.");
+      return;
+    }
+
+    const messageRef = doc(
+      collection(db, "conversations", conversationId, "messages")
+    );
+
+    const conversationRef = doc(db, "conversations", conversationId);
+    const batch = writeBatch(db);
+
+    batch.set(messageRef, {
+      type: "text",
+      text,
+      senderId: user.uid,
+      createdAt: serverTimestamp()
+    });
+
+    batch.set(conversationRef, {
+      lastMessage: text,
+      lastMessageType: "text",
+      lastMessageSenderId: user.uid,
+      lastMessageAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    await batch.commit();
+    await window.showConversation(conversationId);
+  } catch (error) {
+    console.error("SEND MESSAGE ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ Firebase رفض إرسال الرسالة.");
+      return;
+    }
+
+    alert("❌ تعذر إرسال الرسالة.");
+  }
+};
+
+window.sendConversationOffer = async function (conversationId) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const amountInput = document.getElementById("chatOfferAmount");
+  const textInput = document.getElementById("chatOfferText");
+
+  const offerAmount = Number(amountInput?.value || 0);
+  const text = textInput?.value.trim() || "";
+
+  if (!Number.isFinite(offerAmount) || offerAmount <= 0) {
+    alert("أدخل عرض سعر صحيح.");
+    return;
+  }
+
+  if (text.length > 1000) {
+    alert("الملاحظة طويلة جداً.");
+    return;
+  }
+
+  try {
+    const conversation = await getConversation(conversationId);
+
+    if (!conversation ||
+        conversation.contextType !== "direct" ||
+        !Array.isArray(conversation.participants) ||
+        !conversation.participants.includes(user.uid)) {
+      alert("عرض السعر غير متاح لهذه المحادثة.");
+      return;
+    }
+
+    const messageRef = doc(
+      collection(db, "conversations", conversationId, "messages")
+    );
+
+    const conversationRef = doc(db, "conversations", conversationId);
+    const batch = writeBatch(db);
+
+    const messageData = {
+      type: "offer",
+      offerAmount,
+      senderId: user.uid,
+      createdAt: serverTimestamp()
+    };
+
+    if (text) messageData.text = text;
+
+    batch.set(messageRef, messageData);
+
+    batch.set(conversationRef, {
+      lastMessage: "عرض سعر: " + money(offerAmount),
+      lastMessageType: "offer",
+      lastOfferAmount: offerAmount,
+      lastMessageSenderId: user.uid,
+      lastMessageAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    await batch.commit();
+    await window.showConversation(conversationId);
+  } catch (error) {
+    console.error("SEND OFFER ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ Firebase رفض إرسال عرض السعر.");
+      return;
+    }
+
+    alert("❌ تعذر إرسال عرض السعر.");
+  }
+};
+
 
 window.bid = function () {
   alert("استخدم المزاد الحقيقي في سوق الحلال.");
