@@ -1373,3 +1373,89 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
   .fields{gap:14px;}
   .fields input,.fields select,.fields textarea{font-size:16px;}
 }
+
+/* V43 — زر بيع حلالك في رأس نسخة الهاتف وضبط المراسي */
+.header-actions{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex-shrink:0;
+}
+
+.mobile-sell-button{display:none;}
+
+@media(max-width:768px){
+  html{scroll-padding-top:88px;}
+
+  #sell,
+  #direct-sales,
+  #auction-list{
+    scroll-margin-top:88px;
+  }
+
+  body header{
+    gap:8px;
+    padding:10px 11px;
+  }
+
+  body header .site-logo{
+    width:46px !important;
+    height:46px !important;
+    flex-basis:46px !important;
+    border-radius:10px;
+  }
+
+  body header .brand{min-width:0;gap:7px !important;}
+  body header .brand-text{min-width:0;}
+  body header .brand-text b{
+    max-width:122px;
+    overflow:hidden;
+    font-size:.86rem;
+    line-height:1.35;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+  }
+  body header .brand-text small{display:none !important;}
+
+  .header-actions{gap:6px;}
+
+  .mobile-sell-button{
+    min-height:40px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px 10px;
+    border:1px solid #c99743;
+    border-radius:11px;
+    color:#84591d;
+    background:#fff8ea;
+    box-shadow:0 5px 14px rgba(157,105,30,.12);
+    font-size:.78rem;
+    font-weight:800;
+    line-height:1;
+    text-decoration:none;
+    white-space:nowrap;
+  }
+
+  body header .login{
+    min-height:40px;
+    min-width:0;
+    padding:8px 10px;
+    border-radius:11px;
+    font-size:.78rem;
+    line-height:1;
+    box-shadow:0 5px 14px rgba(157,105,30,.16);
+  }
+}
+
+@media(max-width:390px){
+  body header .site-logo{
+    width:42px !important;
+    height:42px !important;
+    flex-basis:42px !important;
+  }
+
+  body header .brand-text b{max-width:92px;font-size:.78rem;}
+  .mobile-sell-button,
+  body header .login{padding-inline:8px;font-size:.72rem;}
+}
