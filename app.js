@@ -3608,7 +3608,9 @@ window.showConversation = async function (conversationId) {
       ? (conversation.buyerName || "المشتري")
       : (conversation.sellerName || "البائع");
 
-    const canOffer = conversation.contextType === "direct";
+    const canOffer =
+      conversation.contextType === "direct" &&
+      conversation.buyerId === user.uid;
 
     const messagesHtml = messages.length === 0
       ? `
@@ -3626,6 +3628,45 @@ window.showConversation = async function (conversationId) {
           let body = "";
 
           if (message.type === "offer") {
+            const offerStatus = message.status || "pending";
+            let offerStatusHtml = `
+              <div style="margin-top:9px;color:#ffd66b !important;font-weight:800;">
+                ⏳ العرض قيد المراجعة
+              </div>
+            `;
+
+            if (offerStatus === "accepted") {
+              offerStatusHtml = `
+                <div style="margin-top:9px;color:#68e6b0 !important;font-weight:800;">
+                  ✅ تم قبول العرض بقيمة ${Number(message.offerAmount || 0).toLocaleString("en-US")} درهم
+                </div>
+              `;
+            } else if (offerStatus === "rejected") {
+              offerStatusHtml = `
+                <div style="margin-top:9px;color:#ff8d8d !important;font-weight:800;">
+                  ❌ تم رفض العرض بقيمة ${Number(message.offerAmount || 0).toLocaleString("en-US")} درهم
+                </div>
+              `;
+            }
+
+            const offerDecisionButtons =
+              isSeller &&
+              offerStatus === "pending" &&
+              message.senderId === conversation.buyerId
+                ? `
+                  <div style="display:flex;gap:8px;margin-top:10px;">
+                    <button onclick="decideConversationOffer('${conversationId}', '${message.id}', 'accepted')"
+                      style="flex:1;background:#00643e;color:white;border:0;padding:10px;border-radius:9px;font-weight:bold;">
+                      قبول العرض
+                    </button>
+                    <button onclick="decideConversationOffer('${conversationId}', '${message.id}', 'rejected')"
+                      style="flex:1;background:#8b2929;color:white;border:0;padding:10px;border-radius:9px;font-weight:bold;">
+                      رفض العرض
+                    </button>
+                  </div>
+                `
+                : "";
+
             body = `
               <div style="font-size:12px;color:#f3e6b8 !important;margin-bottom:5px;font-weight:700;">
                 💰 عرض سعر
@@ -3638,6 +3679,8 @@ window.showConversation = async function (conversationId) {
                   ${escapeHtml(message.text)}
                 </div>
               ` : ""}
+              ${offerStatusHtml}
+              ${offerDecisionButtons}
             `;
           } else {
             body = `
@@ -3768,7 +3811,9 @@ window.showConversation = async function (conversationId) {
           return;
         }
 
-        if (snapshot.docChanges().some(change => change.type === "added")) {
+        if (snapshot.docChanges().some(change =>
+          change.type === "added" || change.type === "modified"
+        )) {
           window.showConversation(conversationId);
         }
       },
@@ -3904,6 +3949,7 @@ window.sendConversationOffer = async function (conversationId) {
     const messageData = {
       type: "offer",
       offerAmount,
+      status: "pending",
       senderId: user.uid,
       createdAt: serverTimestamp()
     };
@@ -3941,6 +3987,82 @@ window.sendConversationOffer = async function (conversationId) {
     }
 
     alert("❌ تعذر إرسال عرض السعر.");
+  }
+};
+
+window.decideConversationOffer = async function (conversationId, messageId, decision) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  if (decision !== "accepted" && decision !== "rejected") return;
+
+  try {
+    const conversation = await getConversation(conversationId);
+
+    if (!conversation ||
+        conversation.contextType !== "direct" ||
+        conversation.sellerId !== user.uid) {
+      alert("غير مصرح لك باتخاذ القرار على هذا العرض.");
+      return;
+    }
+
+    const messageRef = doc(
+      db,
+      "conversations",
+      conversationId,
+      "messages",
+      messageId
+    );
+    const messageSnap = await getDoc(messageRef);
+
+    if (!messageSnap.exists()) {
+      alert("عرض السعر غير موجود.");
+      return;
+    }
+
+    const message = messageSnap.data();
+    const offerStatus = message.status || "pending";
+
+    if (message.type !== "offer" ||
+        message.senderId !== conversation.buyerId ||
+        offerStatus !== "pending") {
+      alert("تم اتخاذ قرار على هذا العرض مسبقاً أو أنه غير صالح.");
+      return;
+    }
+
+    const amountText = Number(message.offerAmount || 0).toLocaleString("en-US");
+    const summary = decision === "accepted"
+      ? "تم قبول العرض بقيمة " + amountText + " درهم"
+      : "تم رفض العرض بقيمة " + amountText + " درهم";
+
+    const batch = writeBatch(db);
+
+    batch.update(messageRef, {
+      status: decision,
+      decidedBy: user.uid,
+      decidedAt: serverTimestamp()
+    });
+
+    batch.set(doc(db, "conversations", conversationId), {
+      lastMessage: summary,
+      lastMessageType: "text",
+      lastMessageSenderId: user.uid,
+      lastMessageAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      buyerUnread: Number(conversation.buyerUnread || 0) + 1
+    }, { merge: true });
+
+    await batch.commit();
+    await window.showConversation(conversationId);
+  } catch (error) {
+    console.error("DECIDE OFFER ERROR:", error);
+
+    if (error.code === "permission-denied") {
+      alert("❌ Firebase رفض تحديث حالة العرض.");
+      return;
+    }
+
+    alert("❌ تعذر تحديث حالة العرض.");
   }
 };
 

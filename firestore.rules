@@ -386,8 +386,15 @@ service cloud.firestore {
             (
               request.resource.data.type == 'offer'
               && request.resource.data.keys().hasOnly([
-                'type', 'offerAmount', 'text', 'senderId', 'createdAt'
+                'type', 'offerAmount', 'text', 'status', 'senderId', 'createdAt'
               ])
+              && request.resource.data.status == 'pending'
+              && get(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.contextType == 'direct'
+              && get(
+                /databases/$(database)/documents/conversations/$(conversationId)
+              ).data.buyerId == request.auth.uid
               && request.resource.data.offerAmount is number
               && request.resource.data.offerAmount > 0
               && (
@@ -400,7 +407,29 @@ service cloud.firestore {
             )
           );
 
-        allow update, delete: if false;
+        allow update: if conversationIsParticipant(conversationId)
+          && get(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.contextType == 'direct'
+          && get(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.sellerId == request.auth.uid
+          && resource.data.type == 'offer'
+          && resource.data.senderId == get(
+            /databases/$(database)/documents/conversations/$(conversationId)
+          ).data.buyerId
+          && (
+            !resource.data.keys().hasAny(['status'])
+            || resource.data.status == 'pending'
+          )
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'decidedBy', 'decidedAt'
+          ])
+          && request.resource.data.status in ['accepted', 'rejected']
+          && request.resource.data.decidedBy == request.auth.uid
+          && request.resource.data.decidedAt == request.time;
+
+        allow delete: if false;
       }
     }
 
