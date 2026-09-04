@@ -1448,8 +1448,10 @@ onAuthStateChanged(auth, async user => {
   if (user) {
     await ensureUserProfile(user);
     if (loginButton) loginButton.textContent = "✅ حسابي";
+    startUnreadMessagesListener(user);
   } else {
     if (loginButton) loginButton.textContent = "تسجيل الدخول";
+    stopUnreadMessagesListener();
   }
 
   await loadMarket();
@@ -2867,6 +2869,7 @@ function scrollToMarket() {
 
 let activeConversationUnsubscribe = null;
 let activeConversationId = null;
+let unreadMessagesUnsubscribe = null;
 
 
 function directConversationId(animalId, buyerId) {
@@ -2940,6 +2943,8 @@ window.openDirectConversation = async function (animalId) {
         lastMessage: "",
         lastMessageType: "",
         lastMessageSenderId: "",
+        sellerUnread: 0,
+        buyerUnread: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -3026,6 +3031,8 @@ window.openAuctionConversation = async function (auctionId) {
         lastMessage: "",
         lastMessageType: "",
         lastMessageSenderId: "",
+        sellerUnread: 0,
+        buyerUnread: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
@@ -3043,6 +3050,136 @@ window.openAuctionConversation = async function (auctionId) {
     alert("❌ تعذر فتح المحادثة.");
   }
 };
+
+
+function ensureMessagesUnreadBadge() {
+  let badge = document.getElementById("messagesUnreadBadge");
+  if (badge) return badge;
+
+  const navLinks = Array.from(
+    document.querySelectorAll(".mobile-bottom-nav a")
+  );
+
+  const messagesLink = navLinks.find(link =>
+    link.textContent.includes("الرسائل")
+  );
+
+  if (!messagesLink) return null;
+
+  messagesLink.style.position = "relative";
+
+  badge = document.createElement("span");
+  badge.id = "messagesUnreadBadge";
+  badge.style.cssText = [
+    "position:absolute",
+    "top:2px",
+    "left:18%",
+    "min-width:18px",
+    "height:18px",
+    "padding:0 5px",
+    "border-radius:999px",
+    "background:#d62828",
+    "color:#fff",
+    "font-size:11px",
+    "font-weight:800",
+    "line-height:18px",
+    "text-align:center",
+    "display:none",
+    "box-sizing:border-box",
+    "z-index:5",
+    "box-shadow:0 1px 4px rgba(0,0,0,.35)"
+  ].join(";");
+
+  messagesLink.appendChild(badge);
+  return badge;
+}
+
+function updateMessagesUnreadBadge(count) {
+  const badge = ensureMessagesUnreadBadge();
+  if (!badge) return;
+
+  const safeCount = Math.max(0, Number(count || 0));
+
+  if (safeCount <= 0) {
+    badge.style.display = "none";
+    badge.textContent = "";
+    return;
+  }
+
+  badge.textContent = safeCount > 99 ? "99+" : String(safeCount);
+  badge.style.display = "block";
+}
+
+function stopUnreadMessagesListener() {
+  if (unreadMessagesUnsubscribe) {
+    unreadMessagesUnsubscribe();
+    unreadMessagesUnsubscribe = null;
+  }
+
+  updateMessagesUnreadBadge(0);
+}
+
+function startUnreadMessagesListener(user) {
+  stopUnreadMessagesListener();
+
+  if (!user) return;
+
+  const conversationsQuery = query(
+    collection(db, "conversations"),
+    where("participants", "array-contains", user.uid)
+  );
+
+  unreadMessagesUnsubscribe = onSnapshot(
+    conversationsQuery,
+    snapshot => {
+      let totalUnread = 0;
+
+      snapshot.forEach(conversationDoc => {
+        const conversation = conversationDoc.data();
+
+        if (conversation.sellerId === user.uid) {
+          totalUnread += Number(conversation.sellerUnread || 0);
+        } else if (conversation.buyerId === user.uid) {
+          totalUnread += Number(conversation.buyerUnread || 0);
+        }
+      });
+
+      updateMessagesUnreadBadge(totalUnread);
+    },
+    error => {
+      console.error("UNREAD MESSAGES LISTENER ERROR:", error);
+    }
+  );
+}
+
+async function markConversationRead(conversation) {
+  const user = auth.currentUser;
+  if (!user || !conversation) return;
+
+  const conversationRef = doc(db, "conversations", conversation.id);
+
+  if (conversation.sellerId === user.uid) {
+    const unread = Number(conversation.sellerUnread || 0);
+    if (unread > 0) {
+      await setDoc(
+        conversationRef,
+        { sellerUnread: 0 },
+        { merge: true }
+      );
+      conversation.sellerUnread = 0;
+    }
+  } else if (conversation.buyerId === user.uid) {
+    const unread = Number(conversation.buyerUnread || 0);
+    if (unread > 0) {
+      await setDoc(
+        conversationRef,
+        { buyerUnread: 0 },
+        { merge: true }
+      );
+      conversation.buyerUnread = 0;
+    }
+  }
+}
 
 window.showMessages = async function () {
   if (activeConversationUnsubscribe) {
@@ -3208,6 +3345,8 @@ window.showConversation = async function (conversationId) {
       alert("غير مصرح لك بفتح هذه المحادثة.");
       return;
     }
+
+    await markConversationRead(conversation);
 
     const messagesSnapshot = await getDocs(
       collection(db, "conversations", conversationId, "messages")
@@ -3456,12 +3595,21 @@ window.sendConversationMessage = async function (conversationId) {
       createdAt: serverTimestamp()
     });
 
+    const unreadPatch = {};
+
+    if (user.uid === conversation.sellerId) {
+      unreadPatch.buyerUnread = Number(conversation.buyerUnread || 0) + 1;
+    } else if (user.uid === conversation.buyerId) {
+      unreadPatch.sellerUnread = Number(conversation.sellerUnread || 0) + 1;
+    }
+
     batch.set(conversationRef, {
       lastMessage: text,
       lastMessageType: "text",
       lastMessageSenderId: user.uid,
       lastMessageAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      ...unreadPatch
     }, { merge: true });
 
     await batch.commit();
@@ -3527,13 +3675,22 @@ window.sendConversationOffer = async function (conversationId) {
 
     batch.set(messageRef, messageData);
 
+    const unreadPatch = {};
+
+    if (user.uid === conversation.sellerId) {
+      unreadPatch.buyerUnread = Number(conversation.buyerUnread || 0) + 1;
+    } else if (user.uid === conversation.buyerId) {
+      unreadPatch.sellerUnread = Number(conversation.sellerUnread || 0) + 1;
+    }
+
     batch.set(conversationRef, {
       lastMessage: "عرض سعر: " + money(offerAmount),
       lastMessageType: "offer",
       lastOfferAmount: offerAmount,
       lastMessageSenderId: user.uid,
       lastMessageAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      ...unreadPatch
     }, { merge: true });
 
     await batch.commit();
