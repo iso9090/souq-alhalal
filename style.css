@@ -1084,3 +1084,292 @@ footer small{color:#c4d7cf;}
     pointer-events:none !important;
   }
 }
+
+/* =========================================================
+   V42 — الهوية البصرية الفاتحة الفاخرة
+   ========================================================= */
+
+:root{
+  --bg:#f7f1e5;
+  --bg-soft:#efe4d1;
+  --card:#ffffff;
+  --card-2:#fcf8f1;
+  --emerald:#a79b67;
+  --emerald-dark:#766c48;
+  --emerald-light:#c8c09a;
+  --gold:#b9852f;
+  --gold-light:#dfbf79;
+  --ivory:#43382f;
+  --muted:#756a61;
+  --danger:#a94d43;
+  --border:#e3d5bf;
+  --shadow:0 16px 40px rgba(94,70,42,.11);
+}
+
+html{background:#f7f1e5;}
+
+body{
+  min-height:100vh;
+  font-family:"Noto Kufi Arabic","Noto Sans Arabic",Tahoma,Arial,sans-serif;
+  font-size:16px;
+  line-height:1.75;
+  color:#43382f;
+  background:
+    radial-gradient(circle at 88% 4%,rgba(223,191,121,.19),transparent 30rem),
+    linear-gradient(180deg,#fffaf1 0,#f7f1e5 52%,#f1e7d7 100%);
+}
+
+header{
+  padding-top:14px;
+  padding-bottom:14px;
+  background:rgba(255,252,246,.97);
+  border-bottom-color:#e4d5bd;
+  box-shadow:0 7px 24px rgba(96,72,44,.08);
+}
+
+.brand,
+.brand b,
+header .brand-text b{color:#493a2d !important;}
+
+.brand small,
+header .brand-text small{color:#82766b !important;font-size:.78rem !important;}
+
+nav a{color:#5b4d42;font-size:.92rem;font-weight:700;}
+nav a:hover{background:#f3e8d5;color:#93651e;}
+
+button,
+.login,
+.actions a,
+.fields button[type="submit"]{
+  color:#fff !important;
+  background:linear-gradient(135deg,#c4923b,#a87322) !important;
+  box-shadow:0 7px 18px rgba(169,115,34,.20);
+}
+
+button:hover,
+.login:hover{filter:brightness(1.04);}
+
+#home.hero{
+  background:#fffdf9 !important;
+  border-color:#e8dac4 !important;
+  box-shadow:0 18px 46px rgba(91,66,37,.10) !important;
+}
+
+body #home h1{color:#49382b !important;letter-spacing:-.02em;}
+body #home h2{color:#a77525 !important;}
+body #home p{color:#6d6259 !important;font-size:1.05rem;}
+
+body .hero-actions-approved .auction-action,
+body .hero-actions-approved .direct-action{
+  color:#fff !important;
+  background:linear-gradient(135deg,#c99845,#aa7525) !important;
+  border:1px solid rgba(137,91,22,.16);
+  box-shadow:0 9px 20px rgba(161,109,31,.18);
+}
+
+body .hero-actions-approved .action-arrow{
+  background:#fffaf1 !important;
+  color:#9a671e !important;
+}
+
+.home-benefits .benefit-card{
+  background:#fff !important;
+  border-color:#e7d9c3 !important;
+  box-shadow:0 12px 30px rgba(92,68,39,.08) !important;
+}
+
+.home-benefits .benefit-card b{color:#4c4036 !important;}
+.home-benefits .benefit-card small{color:#786d64 !important;}
+.home-benefits .benefit-shield{
+  color:#fff !important;
+  background:linear-gradient(145deg,#c49a4c,#a87524) !important;
+  border-color:#ecd598 !important;
+}
+.home-benefits .benefit-svg{stroke:#a8782c !important;}
+
+.panel,
+.card,
+.contact{
+  background:#fff !important;
+  border-color:#e5d6bf !important;
+  box-shadow:var(--shadow) !important;
+}
+
+.title h2,
+.contact h2,
+.card h3{color:#4a3a2e !important;}
+.title p,
+.contact p,
+.card p{color:#74695f !important;}
+
+.upload{
+  color:#6b5c50;
+  background:#fdf9f2;
+  border-color:#cfb98f;
+}
+.upload b{color:#493d33;}
+.upload small{color:#7d7167;font-size:.82rem;}
+
+.fields input,
+.fields select,
+.fields textarea,
+.upload input[type="file"]{
+  min-height:50px;
+  color:#44382f;
+  background:#fff;
+  border-color:#dacbb5;
+  font-size:1rem;
+}
+.fields input:focus,
+.fields select:focus,
+.fields textarea:focus{
+  border-color:#bd8a34;
+  box-shadow:0 0 0 3px rgba(189,138,52,.14);
+}
+.fields label{color:#57493e;}
+
+#auctionFields > div[style*="background:#10271c"]{
+  color:#78551f !important;
+  background:#fbf3e3 !important;
+  border-color:#ddc28d !important;
+}
+
+#direct-sales > div,
+#auction-list > div{
+  background:#fff !important;
+  color:#493d33 !important;
+  border-color:#e3d5bf !important;
+}
+
+#direct-sales h2,
+#direct-sales h3,
+#auction-list h2,
+#auction-list h3{color:#49382b !important;}
+
+#direct-sales p,
+#auction-list p,
+#direct-sales small,
+#auction-list small{color:#73685e !important;}
+
+#direct-sales [style*="color:#68e6b0"],
+#auction-list [style*="color:#68e6b0"]{color:#9b6a21 !important;}
+
+.tag,
+.price{color:#9b6b24 !important;}
+.tag{background:#f5e5c4 !important;box-shadow:none;}
+
+.contact{background:linear-gradient(135deg,#fff,#fbf5e9) !important;}
+
+footer{
+  color:#5a4a3d;
+  background:#eee1cc;
+  border-top-color:#dcc9aa;
+}
+footer small{color:#78685a;}
+
+#modal.modal{
+  background:rgba(83,67,50,.30) !important;
+  backdrop-filter:blur(8px);
+}
+
+#modal .box{
+  background:#fff !important;
+  color:#44382f !important;
+  border-color:#e1d1ba !important;
+  box-shadow:0 28px 75px rgba(74,54,34,.22) !important;
+}
+
+#modalContent,
+#modalContent > div,
+#modalContent b{color:#44382f !important;}
+
+#modalContent h1,
+#modalContent h2,
+#modalContent h3{color:#49382b !important;}
+
+#modalContent p,
+#modalContent label,
+#modalContent small{color:#74685f !important;}
+
+#modalContent input,
+#modalContent select,
+#modalContent textarea{
+  color:#44382f !important;
+  background:#fff !important;
+  border-color:#dacbb5 !important;
+  font-size:1rem !important;
+}
+
+#modalContent input:focus,
+#modalContent select:focus,
+#modalContent textarea:focus{
+  border-color:#bd8a34 !important;
+  box-shadow:0 0 0 3px rgba(189,138,52,.14) !important;
+}
+
+#modalContent input[disabled]{background:#f5efe5 !important;color:#766b62 !important;}
+
+#modalContent button:not([onclick="logoutUser()"]),
+#modalContent button[onclick="saveProfile()"],
+#modalContent button[onclick="showMyListings()"],
+#modalContent button[onclick="showPurchaseRequests()"],
+#modalContent button[onclick="showMyPurchaseRequests()"],
+#modalContent button[onclick="showMyBids()"]{
+  color:#fff !important;
+  background:linear-gradient(135deg,#c4923b,#a87322) !important;
+}
+
+#modalContent button[onclick="logoutUser()"]{background:#a65348 !important;}
+
+#modalContent div[style*="background:#222"],
+#modalContent div[style*="background:#10271c"],
+#modalContent div[style*="background:#123c2c"],
+#modalContent div[style*="background:#163529"],
+#modalContent div[style*="background:#302a16"],
+#modalContent div[style*="background:#421d1d"],
+#modalContent div[style*="background:#333"]{
+  color:#44382f !important;
+  background:#fcf8f1 !important;
+  border-color:#e5d4b8 !important;
+  box-shadow:0 8px 24px rgba(88,64,37,.07) !important;
+}
+
+#modalContent [style*="color:white"],
+#modalContent [style*="color: white"]{color:#44382f !important;}
+#modalContent [style*="color:#68e6b0"]{color:#9b6a21 !important;}
+#modalContent [style*="color:#ffd66b"]{color:#9b6a21 !important;}
+
+#modal .x,
+#modal .close{
+  color:#6f5947 !important;
+  background:#f7efe3 !important;
+  border-color:#dfcfb7 !important;
+  box-shadow:0 5px 15px rgba(80,59,37,.10) !important;
+}
+
+body .mobile-bottom-nav{
+  background:rgba(255,252,246,.98) !important;
+  border:1px solid #e1d2bb;
+  box-shadow:0 12px 32px rgba(79,58,36,.16) !important;
+}
+
+body .mobile-bottom-nav a{color:#74675d !important;}
+body .mobile-bottom-nav a.active{
+  color:#95651f !important;
+  background:#f5e8cf !important;
+}
+body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
+
+::-webkit-scrollbar-track{background:#f5eee2;}
+::-webkit-scrollbar-thumb{background:#c5aa7d;}
+
+@media(max-width:768px){
+  body{font-size:16px;}
+  main{padding-inline:14px;}
+  #home h1{font-size:2.15rem !important;line-height:1.35 !important;}
+  #home h2{font-size:1.3rem !important;line-height:1.6 !important;}
+  #home p{font-size:1rem !important;line-height:1.9 !important;}
+  .title h2{font-size:1.7rem;}
+  .fields{gap:14px;}
+  .fields input,.fields select,.fields textarea{font-size:16px;}
+}
