@@ -480,28 +480,6 @@ function accountTypeText(type) {
   return "مشتري";
 }
 
-const SELLER_SUBSCRIPTION_PRICE_AED = 100;
-
-// فترة الإطلاق المجانية: حتى نهاية 4 أكتوبر 2026 بتوقيت الإمارات.
-const FREE_LAUNCH_END = new Date("2026-10-04T23:59:59+04:00");
-
-function isLaunchFreePeriodActive() {
-  return Date.now() <= FREE_LAUNCH_END.getTime();
-}
-
-function hasActiveSellerSubscription(profile) {
-  if (!profile) return false;
-  if (profile.accountType !== "seller" && profile.accountType !== "both") return false;
-
-  // خلال فترة الإطلاق المجانية يستطيع البائع النشر وإنشاء المزادات بدون دفع.
-  if (isLaunchFreePeriodActive()) return true;
-
-  if (profile.subscriptionStatus !== "active") return false;
-  const endDate = timestampToDate(profile.subscriptionEnd);
-  if (!endDate) return false;
-  return endDate.getTime() > Date.now();
-}
-
 function getAnimalLocationInfo(animal = {}) {
   const country = effectiveCountry(animal);
   const countryConfig = COUNTRIES[country];
@@ -860,49 +838,19 @@ async function showAccount() {
       `
       : "";
 
-  let subscriptionHtml = "";
+  let planHtml = "";
 
   if (accountType === "seller" || accountType === "both") {
-    const subscriptionActive = hasActiveSellerSubscription(profile);
-    const subscriptionEnd = timestampToDate(profile?.subscriptionEnd);
-
-    if (isLaunchFreePeriodActive()) {
-      subscriptionHtml = `
-        <div style="background:#123c2c;color:#68e6b0;padding:14px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">
-          🎉 فترة الإطلاق المجانية
-          <br>
-          <span style="color:white;font-size:14px;font-weight:normal;">
-            يمكنك إضافة الإعلانات والمزادات مجاناً حتى 4 أكتوبر 2026.
-            <br>
-            بعد انتهاء الفترة: اشتراك البائع ${SELLER_SUBSCRIPTION_PRICE_AED} درهم.
-          </span>
-        </div>
-      `;
-    } else if (subscriptionActive) {
-      subscriptionHtml = `
-        <div style="background:#123c2c;color:#68e6b0;padding:14px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">
-          ✅ اشتراك البائع فعال
-          ${subscriptionEnd ? `
-            <br>
-            <span style="color:white;font-size:14px;">
-              ينتهي: ${formatDate(profile.subscriptionEnd)}
-            </span>
-          ` : ""}
-        </div>
-      `;
-    } else {
-      subscriptionHtml = `
-        <div style="background:#421d1d;color:#ff8d8d;padding:14px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">
-          ⛔ اشتراك البائع غير فعال
-          <br>
-          <span style="color:white;font-size:14px;">
-            اشتراك البائع ${SELLER_SUBSCRIPTION_PRICE_AED} درهم.
-            <br>
-            يجب تفعيل الاشتراك حتى تتمكن من إضافة إعلان أو مزاد.
-          </span>
-        </div>
-      `;
-    }
+    planHtml = `
+      <div style="background:#123c2c;color:#68e6b0;padding:14px;border-radius:10px;margin-bottom:15px;text-align:center;font-weight:bold;">
+        الباقة الحالية
+        <div style="font-size:20px;margin:5px 0;">✅ الباقة المجانية</div>
+        <span style="color:white;font-size:14px;font-weight:normal;">
+          يمكنك البيع وإضافة الحلال والمشاركة في السوق مجانًا.
+        </span>
+        <div style="color:#ffd66b;font-size:13px;margin-top:9px;">البائع المحترف — قريبًا</div>
+      </div>
+    `;
   }
 
   showModal(`
@@ -933,7 +881,7 @@ async function showAccount() {
         <b style="color:#68e6b0;">${accountTypeText(accountType)}</b>
       </p>
 
-      ${subscriptionHtml}
+      ${planHtml}
       <p id="profileStatus"></p>
 
       <button onclick="saveProfile()"
@@ -3157,25 +3105,6 @@ window.saveListing = async function (event) {
       (profile.accountType !== "seller" && profile.accountType !== "both")
     ) {
       alert("يجب أن يكون الحساب بائع أو بائع ومشتري.");
-      return;
-    }
-
-    if (!hasActiveSellerSubscription(profile)) {
-      const endDate = timestampToDate(profile.subscriptionEnd);
-      let message = "⛔ لا يمكنك نشر إعلان أو إنشاء مزاد حالياً.\n\n";
-
-      if (profile.subscriptionStatus !== "active") {
-        message += "اشتراك البائع غير فعال.";
-      } else if (endDate && endDate.getTime() <= Date.now()) {
-        message +=
-          "انتهى اشتراك البائع بتاريخ:\n" +
-          formatDate(profile.subscriptionEnd);
-      } else {
-        message += "لا يوجد اشتراك بائع فعال.";
-      }
-
-      message += "\n\nاشتراك البائع: " + SELLER_SUBSCRIPTION_PRICE_AED + " درهم.\nيرجى تفعيل الاشتراك للمتابعة.";
-      alert(message);
       return;
     }
 
