@@ -1522,6 +1522,7 @@ function createFirebaseArea() {
 
       <p id="firebase-status" style="text-align:center;color:#aaa;"></p>
 
+      <div id="direct-sales-anchor" aria-hidden="true"></div>
       <h2 style="margin-top:40px;color:#68e6b0;">🛒 البيع المباشر</h2>
       <div id="direct-sales"
         style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:20px;"></div>

@@ -1404,6 +1404,7 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
   html{scroll-padding-top:88px;}
 
   #sell,
+  #direct-sales-anchor,
   #direct-sales,
   #auction-list{
     scroll-margin-top:88px;
