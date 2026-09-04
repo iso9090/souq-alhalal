@@ -128,6 +128,22 @@ window.toggleVaccinationDate = function (statusId, fieldId, dateId) {
   if (!showDate && dateInput) dateInput.value = "";
 };
 
+function vetInspectionStatusLabel(status) {
+  if (status === "inspected") return "تم الفحص";
+  if (status === "not_inspected") return "لم يتم الفحص";
+  return "غير محدد";
+}
+
+window.toggleVetInspectionDate = function (statusId, fieldId, dateId) {
+  const status = document.getElementById(statusId)?.value || "unknown";
+  const field = document.getElementById(fieldId);
+  const dateInput = document.getElementById(dateId);
+  const showDate = status === "inspected";
+
+  if (field) field.style.display = showDate ? "block" : "none";
+  if (!showDate && dateInput) dateInput.value = "";
+};
+
 function listingAnimalDetailsHtml(animal = {}) {
   const details = [
     animal.breed ? `السلالة: <b>${escapeHtml(animal.breed)}</b>` : "",
@@ -138,6 +154,10 @@ function listingAnimalDetailsHtml(animal = {}) {
     `حالة التطعيم: <b>${vaccinationStatusLabel(animal.vaccinationStatus)}</b>`,
     animal.vaccinationStatus === "vaccinated" && animal.vaccinationDate
       ? `آخر تطعيم: <b>${escapeHtml(animal.vaccinationDate)}</b>`
+      : "",
+    `الفحص البيطري: <b>${vetInspectionStatusLabel(animal.vetInspectionStatus)}</b>`,
+    animal.vetInspectionStatus === "inspected" && animal.vetInspectionDate
+      ? `تاريخ آخر فحص: <b>${escapeHtml(animal.vetInspectionDate)}</b>`
       : ""
   ].filter(Boolean);
 
@@ -2217,6 +2237,21 @@ window.manageListing = async function (animalId) {
             value="${animal.vaccinationStatus === "vaccinated" ? escapeHtml(animal.vaccinationDate || "") : ""}">
         </div>
 
+        <label>الفحص البيطري</label>
+        <select id="editAnimalVetInspectionStatus"
+          onchange="toggleVetInspectionDate('editAnimalVetInspectionStatus', 'editAnimalVetInspectionDateField', 'editAnimalVetInspectionDate')">
+          <option value="unknown" ${!animal.vetInspectionStatus || animal.vetInspectionStatus === "unknown" ? "selected" : ""}>غير محدد</option>
+          <option value="inspected" ${animal.vetInspectionStatus === "inspected" ? "selected" : ""}>تم الفحص</option>
+          <option value="not_inspected" ${animal.vetInspectionStatus === "not_inspected" ? "selected" : ""}>لم يتم الفحص</option>
+        </select>
+
+        <div id="editAnimalVetInspectionDateField"
+          style="display:${animal.vetInspectionStatus === "inspected" ? "block" : "none"};width:100%;">
+          <label>تاريخ آخر فحص — اختياري</label>
+          <input id="editAnimalVetInspectionDate" type="date"
+            value="${animal.vetInspectionStatus === "inspected" ? escapeHtml(animal.vetInspectionDate || "") : ""}">
+        </div>
+
         <label>الموقع</label>
         <input id="editAnimalLocation" value="${escapeHtml(animal.location || "")}">
 
@@ -2383,6 +2418,10 @@ window.saveListingEdits = async function (animalId) {
     const vaccinationDate = vaccinationStatus === "vaccinated"
       ? document.getElementById("editAnimalVaccinationDate")?.value || ""
       : "";
+    const vetInspectionStatus = document.getElementById("editAnimalVetInspectionStatus")?.value || "unknown";
+    const vetInspectionDate = vetInspectionStatus === "inspected"
+      ? document.getElementById("editAnimalVetInspectionDate")?.value || ""
+      : "";
     const location = document.getElementById("editAnimalLocation")?.value.trim() || "";
     const description = document.getElementById("editAnimalDescription")?.value.trim() || "";
 
@@ -2396,6 +2435,8 @@ window.saveListingEdits = async function (animalId) {
       animalIdentifier,
       vaccinationStatus,
       vaccinationDate,
+      vetInspectionStatus,
+      vetInspectionDate,
       location,
       description,
       updatedAt: serverTimestamp()
@@ -2891,6 +2932,10 @@ window.saveListing = async function (event) {
     const vaccinationDate = vaccinationStatus === "vaccinated"
       ? document.getElementById("animalVaccinationDate")?.value || ""
       : "";
+    const vetInspectionStatus = document.getElementById("animalVetInspectionStatus")?.value || "unknown";
+    const vetInspectionDate = vetInspectionStatus === "inspected"
+      ? document.getElementById("animalVetInspectionDate")?.value || ""
+      : "";
     const location = document.getElementById("animalLocation")?.value.trim() || "الذيد - الشارقة";
     const method = document.getElementById("method")?.value || "";
     const price = Number(document.getElementById("animalPrice")?.value);
@@ -2921,6 +2966,8 @@ window.saveListing = async function (event) {
         animalIdentifier,
         vaccinationStatus,
         vaccinationDate,
+        vetInspectionStatus,
+        vetInspectionDate,
         location,
         saleType: "direct",
         price,
@@ -2976,6 +3023,8 @@ window.saveListing = async function (event) {
         animalIdentifier,
         vaccinationStatus,
         vaccinationDate,
+        vetInspectionStatus,
+        vetInspectionDate,
         location,
         saleType: "auction",
         price,
@@ -3031,6 +3080,9 @@ function resetListingForm(form) {
 
   const vaccinationDateField = document.getElementById("animalVaccinationDateField");
   if (vaccinationDateField) vaccinationDateField.style.display = "none";
+
+  const vetInspectionDateField = document.getElementById("animalVetInspectionDateField");
+  if (vetInspectionDateField) vetInspectionDateField.style.display = "none";
 }
 
 function scrollToMarket() {
