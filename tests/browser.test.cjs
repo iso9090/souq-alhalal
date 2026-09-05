@@ -54,5 +54,3 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
  if(foreign)throw new Error('Unexpected external requests '+foreign);
  await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});
-
-
