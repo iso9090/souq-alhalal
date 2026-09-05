@@ -274,6 +274,8 @@ service cloud.firestore {
           /databases/$(database)/documents/animals/$(request.resource.data.animalId)
         ).data.saleType == 'auction'
         && request.resource.data.status == 'active'
+        && !request.resource.data.keys().hasAny(['lastBidderId', 'lastBidderPhone', 'lastBidAt', 'winnerId', 'winnerPhone'])
+        && request.resource.data.startPrice > 0
         && request.resource.data.startPrice is number
         && request.resource.data.currentPrice == request.resource.data.startPrice
         && request.resource.data.minIncrement is number
@@ -644,6 +646,8 @@ service cloud.firestore {
         && request.auth.uid in resource.data.participants;
 
       allow create: if signedIn()
+        && request.resource.data.contextType == 'direct'
+        && !request.resource.data.keys().hasAny(['contactStatus', 'acceptedOfferId', 'contactUnlockedAt'])
         && request.resource.data.participants is list
         && request.resource.data.participants.size() == 2
         && request.resource.data.sellerId != request.resource.data.buyerId
@@ -865,6 +869,7 @@ service cloud.firestore {
         allow read: if conversationIsParticipant(conversationId);
 
         allow create: if conversationIsParticipant(conversationId)
+          && get(/databases/$(database)/documents/conversations/$(conversationId)).data.contextType == 'direct'
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.createdAt == request.time
           && (

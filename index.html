@@ -5,9 +5,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
+  <meta name="description" content="سوق الحلال الإلكتروني في الإمارات ومصر: بيع مباشر ومزادات مجانية، وخدمات اختيارية للتمييز والرفع والتوثيق.">
+  <link rel="canonical" href="https://iso9090.github.io/souq-alhalal/">
+  <meta property="og:title" content="سوق الحلال الإلكتروني - الإمارات ومصر">
+  <meta property="og:description" content="بيع أساسي ومزادات مجانية للحلال في الإمارات ومصر.">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ar_AE">
+  <meta property="og:url" content="https://iso9090.github.io/souq-alhalal/">
+  <meta property="og:image" content="https://iso9090.github.io/souq-alhalal/logo-souq-alhalal.png">
   <title>سوق الحلال الإلكتروني - الإمارات ومصر</title>
 
   <link rel="stylesheet" href="style.css?v=47">
+  <link rel="stylesheet" href="launch.css?v=1">
 
   <style>
     /* ترتيب الواجهة الرئيسية: الصورة أولاً ثم النص والأزرار */
@@ -585,16 +594,13 @@
 
 <div id="modal" class="modal">
   <div class="box">
-    <button class="x" onclick="closeModal()">×</button>
+    <button type="button" aria-label="إغلاق النافذة" class="x" onclick="closeModal()">×</button>
     <div id="modalContent"></div>
   </div>
 </div>
 
-<footer>
-  سوق الحلال الإلكتروني • الإمارات العربية المتحدة وجمهورية مصر العربية
-  <br>
-  <small>حلالك في عِزبتك... بيعه بطريقتك</small>
-</footer>
+<footer class="launch-footer"><span>سوق الحلال الإلكتروني • الإمارات ومصر • تشغيل تجريبي</span>
+<nav aria-label="روابط المنصة"><a href="about.html">من نحن</a><a href="privacy.html">سياسة الخصوصية</a><a href="terms.html">الشروط والأحكام</a><a href="refund-policy.html">سياسة الإلغاء والاسترجاع</a><a href="index.html#contact">تواصل معنا</a></nav></footer>
 
 <script>
 function toggleAuctionFields() {
@@ -660,7 +666,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script type="module" src="app.js?v=57"></script>
+<script type="module" src="app.js?v=58"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=40"></script>

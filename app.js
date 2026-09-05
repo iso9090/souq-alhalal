@@ -8,6 +8,7 @@ import {
   where,
   doc,
   getDoc,
+  updateDoc,
   setDoc,
   addDoc,
   writeBatch,
@@ -550,6 +551,10 @@ function escapeHtml(value = "") {
     .replace(/'/g, "&#039;");
 }
 
+function inlineArgument(value) {
+  return escapeHtml(JSON.stringify(String(value)));
+}
+
 function accountTypeText(type) {
   if (type === "seller") return "بائع";
   if (type === "both") return "بائع ومشتري";
@@ -741,7 +746,7 @@ async function getListingImages() {
 
 function safeImageData(value) {
   if (typeof value !== "string") return "";
-  if (!value.startsWith("data:image/jpeg;base64,")) return "";
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return "";
   return value;
 }
 
@@ -773,7 +778,7 @@ function ownerManagementButton(animal) {
   if (!user || !animal || animal.sellerId !== user.uid) return "";
 
   return `
-    <button onclick="manageListing('${animal.id}')"
+    <button onclick="manageListing(${inlineArgument(animal.id)})"
       style="width:100%;background:#28566f;color:white;border:0;padding:14px;border-radius:10px;font-size:17px;margin-top:10px;font-weight:bold;">
       ⚙️ إدارة إعلاني
     </button>
@@ -1023,8 +1028,10 @@ window.showMyServices = async function () {
           <div style="margin-top:7px;">الإعلان: ${escapeHtml(targetName)}</div>
           <div>الدولة: ${escapeHtml(countryName)}</div>
           <div>الحالة: <b>${serviceStatusText(request.status)}</b></div>
+          <div>الدفع: ${servicePaymentText(request)}</div>
+          ${demoPaymentLink(request)}
           <div style="color:#888;font-size:12px;">${formatDate(request.createdAt)}</div>
-          ${canCancel ? `<button onclick="cancelServiceRequest('${request.id}')" style="width:100%;margin-top:9px;padding:9px;background:#6d2929;color:white;border:0;border-radius:8px;">إلغاء الطلب</button>` : ""}
+          ${canCancel ? `<button onclick="cancelServiceRequest(${inlineArgument(request.id)})" style="width:100%;margin-top:9px;padding:9px;background:#6d2929;color:white;border:0;border-radius:8px;">إلغاء الطلب</button>` : ""}
         </div>
       `;
     }));
@@ -1139,7 +1146,7 @@ window.openAdminPanel = async function () {
     window.renderAdminServiceRequests();
   } catch (error) {
     console.error("ADMIN PANEL ERROR:", error);
-    alert(error.code === "permission-denied" ? "Firebase رفض فتح لوحة الإدارة." : "تعذر تحميل لوحة الإدارة.");
+    alert(error.code === "permission-denied" ? "لا تملك صلاحية فتح لوحة الإدارة." : "تعذر تحميل لوحة الإدارة.");
   }
 };
 
@@ -1180,9 +1187,9 @@ window.renderAdminServiceRequests = function () {
         ${verificationHtml}
         ${request.status === "pending" ? `
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button onclick="decideServiceRequest('${request.id}','approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
-            ${effectivePaymentStatus(request) === "unpaid" ? `<button onclick="decideServiceRequest('${request.id}','approved_override')" style="flex:1;padding:10px;background:#9a6813;color:white;border:0;border-radius:8px;">اعتماد بدون دفع</button>` : ""}
-            <button onclick="decideServiceRequest('${request.id}','rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
+            <button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
+            ${effectivePaymentStatus(request) === "unpaid" ? `<button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved_override')" style="flex:1;padding:10px;background:#9a6813;color:white;border:0;border-radius:8px;">اعتماد بدون دفع</button>` : ""}
+            <button onclick="decideServiceRequest(${inlineArgument(request.id)},'rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
           </div>
         ` : ""}
       </div>
@@ -1563,7 +1570,7 @@ window.showMyListings = async function () {
             ${formatListingDate(animal.createdAt)}
           </p>
 
-          <button onclick="manageListing('${animal.id}')"
+          <button onclick="manageListing(${inlineArgument(animal.id)})"
             style="width:100%;background:#28566f;color:white;border:0;padding:14px;border-radius:10px;margin-top:12px;font-size:16px;font-weight:bold;">
             ⚙️ إدارة الإعلان
           </button>
@@ -1849,12 +1856,12 @@ window.showPurchaseRequests = async function () {
       const actionButtons =
         request.status === "pending"
           ? `
-            <button onclick="updatePurchaseRequest('${request.id}','accepted')"
+            <button onclick="updatePurchaseRequest(${inlineArgument(request.id)},'accepted')"
               style="width:100%;padding:13px;margin-top:10px;background:#00643e;color:white;border:0;border-radius:9px;">
               ✅ قبول طلب الشراء
             </button>
 
-            <button onclick="updatePurchaseRequest('${request.id}','rejected')"
+            <button onclick="updatePurchaseRequest(${inlineArgument(request.id)},'rejected')"
               style="width:100%;padding:13px;margin-top:8px;background:#8b2929;color:white;border:0;border-radius:9px;">
               ❌ رفض الطلب
             </button>
@@ -1957,7 +1964,7 @@ window.updatePurchaseRequest = async function (requestId, newStatus) {
     console.error("UPDATE PURCHASE REQUEST ERROR:", error);
 
     if (error.code === "permission-denied") {
-      alert("❌ Firebase رفض تحديث الطلب.");
+      alert("تعذر تحديث الطلب. تحقق من صلاحيتك وحالة الطلب.");
       return;
     }
 
@@ -2046,13 +2053,9 @@ window.sendPhoneCode = async function () {
   } catch (error) {
     console.error("SEND PHONE CODE ERROR:", error);
 
-    status.innerHTML =
-      "❌ تعذر إرسال رمز التحقق.<br><br>" +
-      "رمز الخطأ: " +
-      escapeHtml(error.code || "غير معروف") +
-      "<br><br>" +
-      "التفاصيل: " +
-      escapeHtml(error.message || "");
+    status.textContent = error.code === "auth/network-request-failed"
+      ? "تعذر الاتصال. تحقق من الإنترنت وحاول مجددًا."
+      : "تعذر إرسال رمز التحقق. تحقق من رقم الهاتف وحاول لاحقًا.";
   }
 };
 
@@ -2230,6 +2233,12 @@ function servicePaymentText(request) {
   return "غير مدفوع";
 }
 
+function demoPaymentLink(request) {
+  return request?.status === "pending" &&
+    (!Object.hasOwn(request, "paymentStatus") || request.paymentStatus === "unpaid")
+    ? '<a href="payment-demo.html" style="display:inline-block;color:#b88624;padding:10px 0;">الدفع التجريبي</a>' : "";
+}
+
 function serviceRequestId(userId, serviceType, targetType, targetId) {
   return [userId, serviceType, targetType, targetId].join("_");
 }
@@ -2261,6 +2270,14 @@ async function listingServiceRequest(animal, serviceType, userId, requests = nul
 async function listingServicesHtml(animal, userId) {
   const country = effectiveCountry(animal);
   const userRequests = await getUserServiceRequests(userId);
+  let promotion = animal;
+  if (animal.saleType === "auction" && animal.auctionId) {
+    const snapshot = await getDoc(doc(db, "auctions", animal.auctionId));
+    if (snapshot.exists()) promotion = snapshot.data();
+  }
+  const promotionStatus = `<p>التمييز: ${isFeaturedListing(promotion) ? "نشط حتى " + formatDate(promotion.featuredUntil) : "غير نشط"}</p>
+    <p>آخر رفع: ${promotion.bumpedAt ? formatDate(promotion.bumpedAt) : "لم يتم الرفع"}</p>
+    <p>التوثيق: ${isVerifiedListing(animal) ? "معتمد" : "غير معتمد"}</p>`;
   const rows = await Promise.all(Object.keys(SERVICES).map(async serviceType => {
     const service = SERVICES[serviceType];
     const pricing = servicePricing(serviceType, country);
@@ -2275,7 +2292,8 @@ async function listingServicesHtml(animal, userId) {
         </div>
         <div style="color:#bbb;font-size:13px;margin:7px 0;">${service.description}</div>
         <div style="font-size:13px;margin-bottom:8px;">الحالة: <b>${status}</b></div>
-        <button onclick="openListingService('${animal.id}','${serviceType}')" ${disabled ? "disabled" : ""}
+        ${existing ? `<div>الدفع: ${servicePaymentText(existing)}</div>${demoPaymentLink(existing)}` : ""}
+        <button onclick="openListingService(${inlineArgument(animal.id)},${inlineArgument(serviceType)})" ${disabled ? "disabled" : ""}
           style="width:100%;padding:10px;border:0;border-radius:9px;background:${disabled ? "#555" : "#b88624"};color:white;font-weight:bold;">
           ${disabled ? status : "طلب الخدمة"}
         </button>
@@ -2287,6 +2305,7 @@ async function listingServicesHtml(animal, userId) {
     <div style="background:#171c19;padding:14px;border-radius:13px;margin:15px 0;">
       <h3 style="color:#ffd66b;margin-top:0;">خدمات الإعلان</h3>
       <p style="color:#aaa;font-size:13px;">الخدمات اختيارية، ولا تؤثر على البيع المجاني.</p>
+      ${promotionStatus}
       ${rows.join("")}
     </div>
   `;
@@ -2321,7 +2340,7 @@ window.openListingService = async function (animalId, serviceType) {
       <div>الفحص البيطري: ${escapeHtml(animal.vetInspectionStatus || "غير محدد")}</div>
       <div>تاريخ الفحص: ${escapeHtml(animal.vetInspectionDate || "غير محدد")}</div>
     </div>
-    <textarea id="serviceRequestNotes" maxlength="1000" placeholder="ملاحظة اختيارية للمراجعة"
+    <textarea aria-label="ملاحظة اختيارية للمراجعة" id="serviceRequestNotes" maxlength="1000" placeholder="ملاحظة اختيارية للمراجعة"
       style="width:100%;box-sizing:border-box;padding:12px;border-radius:9px;margin-bottom:10px;"></textarea>
   ` : "";
 
@@ -2333,7 +2352,7 @@ window.openListingService = async function (animalId, serviceType) {
       <div style="font-size:23px;color:#ffd66b;font-weight:bold;margin:12px 0;">${money(pricing.price, country)}</div>
       <div style="color:#aaa;font-size:13px;">لا يوجد دفع إلكتروني الآن. سيُرسل الطلب للمراجعة فقط.</div>
       ${verificationDetails}
-      <button onclick="submitListingService('${animal.id}','${serviceType}')"
+      <button onclick="submitListingService(${inlineArgument(animal.id)},${inlineArgument(serviceType)})"
         style="width:100%;padding:13px;background:#b88624;color:white;border:0;border-radius:10px;margin-top:12px;font-weight:bold;">
         ${serviceType === "featured" ? "طلب التمييز" : "إرسال الطلب"}
       </button>
@@ -2396,7 +2415,7 @@ window.submitListingService = async function (animalId, serviceType) {
     window.closeModal();
   } catch (error) {
     console.error("SERVICE REQUEST ERROR:", error);
-    alert(error.code === "permission-denied" ? "❌ Firebase رفض طلب الخدمة." : "❌ تعذر إرسال طلب الخدمة.");
+    alert(error.code === "permission-denied" ? "تعذر إرسال الطلب. تحقق من صلاحية حسابك وعدم وجود طلب سابق." : "❌ تعذر إرسال طلب الخدمة.");
   }
 };
 
@@ -2472,7 +2491,7 @@ function auctionActionHtml(auction, expired, isOwner) {
             يتم التواصل مع الفائز لإتمام المعاينة والاستلام والدفع شخصياً.
           </p>
 
-          <button onclick="openAuctionConversation('${auction.id}')"
+          <button onclick="openAuctionConversation(${inlineArgument(auction.id)})"
             style="width:100%;background:#b88624;color:white;border:0;padding:13px;border-radius:10px;margin-top:10px;font-weight:bold;">
             💬 مراسلة الفائز
           </button>
@@ -2502,7 +2521,7 @@ function auctionActionHtml(auction, expired, isOwner) {
             تواصل مع البائع لإتمام المعاينة والاستلام والدفع شخصياً.
           </p>
 
-          <button onclick="openAuctionConversation('${auction.id}')"
+          <button onclick="openAuctionConversation(${inlineArgument(auction.id)})"
             style="width:100%;background:#b88624;color:white;border:0;padding:13px;border-radius:10px;margin-top:10px;font-weight:bold;">
             💬 مراسلة البائع
           </button>
@@ -2538,7 +2557,7 @@ function auctionActionHtml(auction, expired, isOwner) {
     }
 
     return `
-      <button id="bid-button-${auction.id}" onclick="placeBid('${auction.id}')"
+      <button id="bid-button-${auction.id}" onclick="placeBid(${inlineArgument(auction.id)})"
         style="width:100%;background:#984d00;color:white;border:0;padding:16px;border-radius:10px;">
         زايد الآن
       </button>
@@ -2563,12 +2582,12 @@ function auctionActionHtml(auction, expired, isOwner) {
         <div>⏳ المزاد انتهى — بانتظار قرارك</div>
       </div>
 
-      <button onclick="finalizeAuction('${auction.id}','accept')"
+      <button onclick="finalizeAuction(${inlineArgument(auction.id)},'accept')"
         style="width:100%;background:#00643e;color:white;border:0;padding:16px;border-radius:10px;margin-bottom:10px;font-size:17px;font-weight:bold;">
         ✅ اعتماد البيع لأعلى مزايد
       </button>
 
-      <button onclick="finalizeAuction('${auction.id}','reject')"
+      <button onclick="finalizeAuction(${inlineArgument(auction.id)},'reject')"
         style="width:100%;background:#8b2929;color:white;border:0;padding:16px;border-radius:10px;font-size:17px;font-weight:bold;">
         ❌ عدم اعتماد البيع
       </button>
@@ -2664,13 +2683,13 @@ async function loadMarket() {
             📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
           </p>
 
-          <button onclick="requestPurchase('${animal.id}')"
+          <button onclick="requestPurchase(${inlineArgument(animal.id)})"
             style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;">
             طلب شراء
           </button>
 
           ${(!auth.currentUser || animal.sellerId !== auth.currentUser.uid) ? `
-            <button onclick="openDirectConversation('${animal.id}')"
+            <button onclick="openDirectConversation(${inlineArgument(animal.id)})"
               style="width:100%;background:#b88624;color:white;border:0;padding:14px;border-radius:10px;margin-top:10px;font-weight:bold;">
               💬 مراسلة البائع / تقديم عرض
             </button>
@@ -2867,7 +2886,7 @@ window.manageListing = async function (animalId) {
               <img src="${safe}"
                 style="width:100%;max-height:250px;object-fit:cover;border-radius:12px;">
 
-              <button onclick="removeAnimalImage('${animal.id}', ${index})"
+              <button onclick="removeAnimalImage(${inlineArgument(animal.id)}, ${index})"
                 style="width:100%;padding:10px;margin-top:6px;border:0;border-radius:8px;background:#8b2929;color:white;">
                 ❌ حذف هذه الصورة
               </button>
@@ -2960,12 +2979,12 @@ window.manageListing = async function (animalId) {
               ⏳ بانتظار اعتمادك للنتيجة
             </div>
 
-            <button onclick="finalizeAuction('${auction.id}','accept')"
+            <button onclick="finalizeAuction(${inlineArgument(auction.id)},'accept')"
               style="width:100%;background:#00643e;color:white;border:0;padding:16px;border-radius:10px;margin-bottom:10px;">
               ✅ اعتماد البيع لأعلى مزايد
             </button>
 
-            <button onclick="finalizeAuction('${auction.id}','reject')"
+            <button onclick="finalizeAuction(${inlineArgument(auction.id)},'reject')"
               style="width:100%;background:#8b2929;color:white;border:0;padding:16px;border-radius:10px;margin-bottom:15px;">
               ❌ عدم اعتماد البيع
             </button>
@@ -2974,7 +2993,7 @@ window.manageListing = async function (animalId) {
       }
     } else {
       saleActionHtml = `
-        <button onclick="markListingSold('${animal.id}')"
+        <button onclick="markListingSold(${inlineArgument(animal.id)})"
           style="width:100%;background:#00643e;color:white;border:0;padding:16px;border-radius:10px;margin-bottom:10px;">
           ✅ تم البيع
         </button>
@@ -3059,7 +3078,7 @@ window.manageListing = async function (animalId) {
         <label>الوصف</label>
         <textarea id="editAnimalDescription" rows="4">${escapeHtml(animal.description || "")}</textarea>
 
-        <button onclick="saveListingEdits('${animal.id}')"
+        <button onclick="saveListingEdits(${inlineArgument(animal.id)})"
           style="width:100%;margin:15px 0;">
           💾 حفظ التعديلات
         </button>
@@ -3070,12 +3089,12 @@ window.manageListing = async function (animalId) {
 
         <input id="manageImages" type="file" accept="image/*" multiple>
 
-        <button onclick="replaceAnimalImages('${animal.id}')"
+        <button onclick="replaceAnimalImages(${inlineArgument(animal.id)})"
           style="width:100%;margin:10px 0;">
           🖼️ حفظ الصور الجديدة
         </button>
 
-        <button onclick="removeAllAnimalImages('${animal.id}')"
+        <button onclick="removeAllAnimalImages(${inlineArgument(animal.id)})"
           style="width:100%;margin-bottom:15px;">
           🧹 حذف جميع الصور
         </button>
@@ -3084,7 +3103,7 @@ window.manageListing = async function (animalId) {
 
         ${saleActionHtml}
 
-        <button onclick="deleteListing('${animal.id}')"
+        <button onclick="deleteListing(${inlineArgument(animal.id)})"
           style="width:100%;background:#8b2929;margin-top:10px;">
           🗑️ حذف الإعلان نهائياً
         </button>
@@ -3226,6 +3245,10 @@ window.saveListingEdits = async function (animalId) {
     const location = document.getElementById("editAnimalLocation")?.value.trim() || "";
     const description = document.getElementById("editAnimalDescription")?.value.trim() || "";
 
+    if (breed.length > 120 || age.length > 80 || description.length > 2000 || location.length > 200 || animalIdentifier.length > 120) {
+      alert("اختصر بيانات الإعلان والوصف (2000 حرف كحد أقصى).");
+      return;
+    }
     const updateData = {
       name: type,
       type,
@@ -3740,6 +3763,13 @@ window.saveListing = async function (event) {
       return;
     }
 
+    if (breed.length > 120 || age.length > 80 || description.length > 2000 ||
+        location.length > 200 || animalIdentifier.length > 120 ||
+        !COUNTRIES[country].regions[region]?.includes(city)) {
+      alert("تحقق من المنطقة والمدينة، واختصر بيانات الإعلان والوصف (2000 حرف كحد أقصى).");
+      return;
+    }
+
     let images = [];
 
     try {
@@ -4072,7 +4102,7 @@ window.openDirectConversation = async function (animalId) {
     console.error("OPEN DIRECT CONVERSATION ERROR:", error);
 
     if (error.code === "permission-denied") {
-      alert("❌ Firebase رفض إنشاء المحادثة. تأكد من نشر قواعد الرسائل الجديدة.");
+      alert("تعذر فتح المحادثة. تحقق من تسجيل دخولك وتوفر الإعلان للبيع المباشر.");
       return;
     }
 
@@ -4080,92 +4110,8 @@ window.openDirectConversation = async function (animalId) {
   }
 };
 
-window.openAuctionConversation = async function (auctionId) {
-  const user = auth.currentUser;
-
-  if (!user) {
-    alert("يجب تسجيل الدخول أولاً.");
-    window.openLogin();
-    return;
-  }
-
-  try {
-    const auctionSnap = await getDoc(doc(db, "auctions", auctionId));
-
-    if (!auctionSnap.exists()) {
-      alert("المزاد غير موجود.");
-      return;
-    }
-
-    const auction = {
-      id: auctionSnap.id,
-      ...auctionSnap.data()
-    };
-
-    if (auction.status !== "sold" || !auction.lastBidderId) {
-      alert("تُفتح الرسائل بعد اعتماد الفائز بالمزاد فقط.");
-      return;
-    }
-
-    const isSeller = auction.sellerId === user.uid;
-    const isWinner = auction.lastBidderId === user.uid;
-
-    if (!isSeller && !isWinner) {
-      alert("هذه المحادثة متاحة فقط للبائع والفائز بالمزاد.");
-      return;
-    }
-
-    const buyerId = auction.lastBidderId;
-    const conversationId = auctionConversationId(auctionId, buyerId);
-    const conversationRef = doc(db, "conversations", conversationId);
-    const existing = await getDoc(conversationRef);
-
-    if (!existing.exists()) {
-      let animalName = "مزاد حلال";
-      let animalType = "";
-
-      if (auction.animalId) {
-        const animalSnap = await getDoc(doc(db, "animals", auction.animalId));
-        if (animalSnap.exists()) {
-          const animal = animalSnap.data();
-          animalName = animal.name || animal.type || animalName;
-          animalType = animal.type || "";
-        }
-      }
-
-      await setDoc(conversationRef, {
-        contextType: "auction",
-        auctionId,
-        animalId: auction.animalId || "",
-        animalName,
-        animalType,
-        finalPrice: Number(auction.currentPrice || auction.startPrice || 0),
-        sellerId: auction.sellerId,
-        sellerName: auction.sellerName || "البائع",
-        buyerId,
-        buyerName: "الفائز بالمزاد",
-        participants: [auction.sellerId, buyerId],
-        lastMessage: "",
-        lastMessageType: "",
-        lastMessageSenderId: "",
-        sellerUnread: 0,
-        buyerUnread: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
-    }
-
-    await window.showConversation(conversationId);
-  } catch (error) {
-    console.error("OPEN AUCTION CONVERSATION ERROR:", error);
-
-    if (error.code === "permission-denied") {
-      alert("❌ Firebase رفض فتح محادثة المزاد. تأكد من نشر قواعد الرسائل.");
-      return;
-    }
-
-    alert("❌ تعذر فتح المحادثة.");
-  }
+window.openAuctionConversation = async function () {
+  alert("الرسائل متاحة للبيع المباشر فقط.");
 };
 
 
@@ -4328,6 +4274,7 @@ window.showMessages = async function () {
     const conversations = [];
 
     snapshot.forEach(conversationDoc => {
+      if (conversationDoc.data().contextType !== "direct") return;
       conversations.push({
         id: conversationDoc.id,
         ...conversationDoc.data()
@@ -4389,7 +4336,7 @@ window.showMessages = async function () {
         : "ابدأ المحادثة الآن";
 
       return `
-        <button onclick="showConversation('${conversation.id}')"
+        <button onclick="showConversation(${inlineArgument(conversation.id)})"
           style="width:100%;text-align:right;background:#222;color:white;border:1px solid #3b4a43;padding:16px;border-radius:15px;margin-bottom:12px;cursor:pointer;">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
             <b style="color:#68e6b0;font-size:18px;">
@@ -4454,8 +4401,8 @@ window.showConversation = async function (conversationId) {
   try {
     const conversation = await getConversation(conversationId);
 
-    if (!conversation) {
-      alert("المحادثة غير موجودة.");
+    if (!conversation || conversation.contextType !== "direct") {
+      alert("الرسائل متاحة للبيع المباشر فقط.");
       return;
     }
 
@@ -4584,11 +4531,11 @@ window.showConversation = async function (conversationId) {
               message.senderId === conversation.buyerId
                 ? `
                   <div style="display:flex;gap:8px;margin-top:10px;">
-                    <button onclick="decideConversationOffer('${conversationId}', '${message.id}', 'accepted')"
+                    <button onclick="decideConversationOffer(${inlineArgument(conversationId)}, ${inlineArgument(message.id)}, 'accepted')"
                       style="flex:1;background:#00643e;color:white;border:0;padding:10px;border-radius:9px;font-weight:bold;">
                       قبول العرض
                     </button>
-                    <button onclick="decideConversationOffer('${conversationId}', '${message.id}', 'rejected')"
+                    <button onclick="decideConversationOffer(${inlineArgument(conversationId)}, ${inlineArgument(message.id)}, 'rejected')"
                       style="flex:1;background:#8b2929;color:white;border:0;padding:10px;border-radius:9px;font-weight:bold;">
                       رفض العرض
                     </button>
@@ -4666,7 +4613,7 @@ window.showConversation = async function (conversationId) {
           placeholder="ملاحظة اختيارية، مثال: أستطيع الاستلام اليوم"
           style="width:100%;box-sizing:border-box;padding:13px;border-radius:9px;margin-bottom:8px;">
 
-        <button onclick="sendConversationOffer('${conversationId}')"
+        <button onclick="sendConversationOffer(${inlineArgument(conversationId)})"
           style="width:100%;background:#b88624;color:white;border:0;padding:13px;border-radius:9px;font-weight:bold;">
           إرسال عرض السعر
         </button>
@@ -4709,11 +4656,11 @@ window.showConversation = async function (conversationId) {
         </div>
 
         <div style="margin-top:12px;">
-          <textarea id="chatMessageText" maxlength="1000" rows="3"
+          <textarea aria-label="نص الرسالة" id="chatMessageText" maxlength="1000" rows="3"
             placeholder="اكتب رسالتك هنا..."
             style="width:100%;box-sizing:border-box;padding:13px;border-radius:10px;resize:vertical;"></textarea>
 
-          <button onclick="sendConversationMessage('${conversationId}')"
+          <button onclick="sendConversationMessage(${inlineArgument(conversationId)})"
             style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;margin-top:8px;font-weight:bold;">
             إرسال الرسالة
           </button>
@@ -4788,6 +4735,7 @@ window.sendConversationMessage = async function (conversationId) {
     const conversation = await getConversation(conversationId);
 
     if (!conversation ||
+        conversation.contextType !== "direct" ||
         !Array.isArray(conversation.participants) ||
         !conversation.participants.includes(user.uid)) {
       alert("غير مصرح.");
@@ -4831,7 +4779,7 @@ window.sendConversationMessage = async function (conversationId) {
     console.error("SEND MESSAGE ERROR:", error);
 
     if (error.code === "permission-denied") {
-      alert("❌ Firebase رفض إرسال الرسالة.");
+      alert("تعذر إرسال الرسالة. تحقق من صلاحيتك في المحادثة.");
       return;
     }
 
@@ -4915,7 +4863,7 @@ window.sendConversationOffer = async function (conversationId) {
     console.error("SEND OFFER ERROR:", error);
 
     if (error.code === "permission-denied") {
-      alert("❌ Firebase رفض إرسال عرض السعر.");
+      alert("تعذر إرسال العرض. تحقق من صلاحيتك وحالة المحادثة.");
       return;
     }
 
@@ -4999,7 +4947,7 @@ window.decideConversationOffer = async function (conversationId, messageId, deci
     console.error("DECIDE OFFER ERROR:", error);
 
     if (error.code === "permission-denied") {
-      alert("❌ Firebase رفض تحديث حالة العرض.");
+      alert("تعذر تحديث العرض. تحقق من صلاحيتك وأنه لم يُعالج مسبقًا.");
       return;
     }
 
@@ -5034,3 +4982,22 @@ loadMarket();
   `;
   document.head.appendChild(style);
 })();
+
+// One in-flight submission per action; restored even when validation returns early.
+for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListingService",
+  "sendConversationMessage", "sendConversationOffer", "decideConversationOffer",
+  "decideServiceRequest", "finalizeAuction", "updatePurchaseRequest", "saveListingEdits"]) {
+  const original = window[action];
+  if (typeof original !== "function") continue;
+  let busy = false;
+  window[action] = async function (...args) {
+    args[0]?.preventDefault?.();
+    if (busy) return;
+    busy = true;
+    const buttons = [...document.querySelectorAll(`button[onclick^="${action}("], form button[type="submit"]`)]
+      .filter(button => !button.disabled);
+    buttons.forEach(button => { button.disabled = true; });
+    try { return await original.apply(this, args); }
+    finally { busy = false; buttons.forEach(button => { button.disabled = false; }); }
+  };
+}
