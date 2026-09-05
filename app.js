@@ -1174,11 +1174,14 @@ window.renderAdminServiceRequests = function () {
         <div>البائع: ${escapeHtml(request.sellerName)} <small>(${escapeHtml(request.userId.slice(0, 10))}…)</small></div>
         <div>الدولة: ${effectiveCountry(request) === "EG" ? "مصر" : "الإمارات"}</div>
         <div>الحالة: <b>${serviceStatusText(request.status)}</b></div>
+        <div>الدفع: <b>${servicePaymentText(request)}</b></div>
+        ${request.paymentOverride === true ? `<div style="color:#ffd66b;font-size:12px;">سبب الاعتماد الاستثنائي: ${escapeHtml(request.paymentOverrideReason || "غير محدد")}</div>` : ""}
         <div style="color:#888;font-size:12px;">${formatDate(request.createdAt)}</div>
         ${verificationHtml}
         ${request.status === "pending" ? `
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button onclick="decideServiceRequest('${request.id}','approved')" style="flex:1;padding:10px;background:#00643e;color:white;border:0;border-radius:8px;">اعتماد</button>
+            <button onclick="decideServiceRequest('${request.id}','approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
+            ${effectivePaymentStatus(request) === "unpaid" ? `<button onclick="decideServiceRequest('${request.id}','approved_override')" style="flex:1;padding:10px;background:#9a6813;color:white;border:0;border-radius:8px;">اعتماد بدون دفع</button>` : ""}
             <button onclick="decideServiceRequest('${request.id}','rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
           </div>
         ` : ""}
@@ -1188,15 +1191,26 @@ window.renderAdminServiceRequests = function () {
 };
 
 window.decideServiceRequest = async function (requestId, decision) {
-  if (decision !== "approved" && decision !== "rejected") return;
+  if (!['approved', 'approved_override', 'rejected'].includes(decision)) return;
   if (!await requireAdminClaim(true)) {
     alert("غير مصرح لك بتنفيذ هذا الإجراء.");
     return;
   }
+  const isPaymentOverride = decision === "approved_override";
   const adminNote = decision === "rejected"
     ? prompt("ملاحظة الرفض — اختيارية", "")
     : "";
   if (decision === "rejected" && adminNote === null) return;
+  const allowedOverrideReasons = ['تجريبي', 'مجاني', 'تعويض', 'عرض ترويجي', 'قرار إداري', 'أخرى'];
+  let paymentOverrideReason = "";
+  if (isPaymentOverride) {
+    if (!confirm("سيتم تفعيل الخدمة دون تسجيل دفعة مالية. هل تريد المتابعة باعتماد استثنائي؟")) return;
+    paymentOverrideReason = (prompt("سبب الاعتماد بدون دفع (تجريبي، مجاني، تعويض، عرض ترويجي، قرار إداري، أخرى)", "قرار إداري") || "").trim();
+    if (!allowedOverrideReasons.includes(paymentOverrideReason)) {
+      alert("اختر سببًا صحيحًا من القائمة المحددة.");
+      return;
+    }
+  }
 
   try {
     const requestRef = doc(db, "serviceRequests", requestId);
@@ -1205,6 +1219,7 @@ window.decideServiceRequest = async function (requestId, decision) {
       if (!requestSnap.exists()) throw new Error("SERVICE_REQUEST_NOT_FOUND");
       const request = requestSnap.data();
       if (request.status !== "pending") throw new Error("SERVICE_REQUEST_NOT_PENDING");
+      const paymentStatus = effectivePaymentStatus(request);
 
       if (decision === "rejected") {
         const rejection = {
@@ -1217,6 +1232,9 @@ window.decideServiceRequest = async function (requestId, decision) {
         transaction.update(requestRef, rejection);
         return;
       }
+
+      if (!isPaymentOverride && paymentStatus !== "paid") throw new Error("SERVICE_PAYMENT_REQUIRED");
+      if (isPaymentOverride && paymentStatus !== "unpaid") throw new Error("SERVICE_OVERRIDE_NOT_ALLOWED");
 
       const targetCollection = request.targetType === "auction" ? "auctions" : "animals";
       const targetRef = doc(db, targetCollection, request.targetId);
@@ -1244,22 +1262,37 @@ window.decideServiceRequest = async function (requestId, decision) {
       }
 
       transaction.update(targetRef, targetUpdate);
-      transaction.update(requestRef, {
+      const approval = {
         status: "approved",
         approvedAt: serverTimestamp(),
         approvedBy: auth.currentUser.uid,
         updatedAt: serverTimestamp()
-      });
+      };
+      if (isPaymentOverride) {
+        approval.paymentOverride = true;
+        approval.paymentOverrideBy = auth.currentUser.uid;
+        approval.paymentOverrideAt = serverTimestamp();
+        approval.paymentOverrideReason = paymentOverrideReason;
+      }
+      transaction.update(requestRef, approval);
     });
 
-    alert(decision === "approved" ? "✅ تم اعتماد الطلب." : "تم رفض الطلب.");
+    alert(decision === "rejected"
+      ? "تم رفض الطلب."
+      : isPaymentOverride
+        ? "✅ تم اعتماد الطلب استثنائيًا بدون دفع."
+        : "✅ تم اعتماد الطلب المدفوع.");
     await window.openAdminPanel();
     await loadMarket();
   } catch (error) {
     console.error("ADMIN SERVICE DECISION ERROR:", error);
     alert(error.message === "SERVICE_REQUEST_NOT_PENDING"
       ? "تم اتخاذ قرار على هذا الطلب مسبقًا."
-      : "تعذر تنفيذ قرار الطلب.");
+      : error.message === "SERVICE_PAYMENT_REQUIRED"
+        ? "لا يمكن الاعتماد العادي قبل تأكيد الدفع."
+        : error.message === "SERVICE_OVERRIDE_NOT_ALLOWED"
+          ? "الاعتماد بدون دفع متاح للطلبات غير المدفوعة فقط."
+          : "تعذر تنفيذ قرار الطلب.");
   }
 };
 
@@ -2184,6 +2217,19 @@ function serviceStatusText(status) {
   return "قيد المراجعة";
 }
 
+function effectivePaymentStatus(request) {
+  return request?.paymentStatus || "unpaid";
+}
+
+function servicePaymentText(request) {
+  if (request?.status === "approved" && request?.paymentOverride === true) {
+    return "معتمد استثنائيًا بدون دفع";
+  }
+  if (effectivePaymentStatus(request) === "paid") return "مدفوع";
+  if (effectivePaymentStatus(request) === "refunded") return "مسترد";
+  return "غير مدفوع";
+}
+
 function serviceRequestId(userId, serviceType, targetType, targetId) {
   return [userId, serviceType, targetType, targetId].join("_");
 }
@@ -2329,6 +2375,7 @@ window.submitListingService = async function (animalId, serviceType) {
       country,
       amount: pricing.price,
       currency: pricing.currency,
+      paymentStatus: "unpaid",
       status: "pending",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()

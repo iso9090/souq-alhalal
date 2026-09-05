@@ -94,6 +94,30 @@ service cloud.firestore {
       );
     }
 
+    function effectivePaymentStatus(data) {
+      return data.keys().hasAny(['paymentStatus']) ? data.paymentStatus : 'unpaid';
+    }
+
+    function validPaymentOverrideReason(reason) {
+      return reason in ['تجريبي', 'مجاني', 'تعويض', 'عرض ترويجي', 'قرار إداري', 'أخرى'];
+    }
+
+    function hasValidServiceApprovalPayment(data) {
+      return (
+        effectivePaymentStatus(data) == 'paid'
+        && !data.keys().hasAny([
+          'paymentOverride', 'paymentOverrideBy', 'paymentOverrideAt', 'paymentOverrideReason'
+        ])
+      ) || (
+        effectivePaymentStatus(data) == 'unpaid'
+        && data.paymentOverride == true
+        && data.paymentOverrideBy == request.auth.uid
+        && data.paymentOverrideAt == request.time
+        && data.paymentOverrideReason is string
+        && validPaymentOverrideReason(data.paymentOverrideReason)
+      );
+    }
+
     function conversationIsParticipant(conversationId) {
       return signedIn()
         && request.auth.uid in get(
@@ -206,6 +230,7 @@ service cloud.firestore {
             && request.resource.data.featuredUntil > request.time
             && request.resource.data.featuredUntil <= request.time + duration.value(8, 'd')
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data.status == 'approved'
+            && hasValidServiceApprovalPayment(getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data)
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data.approvedBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data.approvedAt == request.time
           )
@@ -213,6 +238,7 @@ service cloud.firestore {
             changedKeysOnly(['bumpedAt'])
             && request.resource.data.bumpedAt == request.time
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data.status == 'approved'
+            && hasValidServiceApprovalPayment(getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data)
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data.approvedBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data.approvedAt == request.time
           )
@@ -222,6 +248,7 @@ service cloud.firestore {
             && request.resource.data.verifiedAt == request.time
             && request.resource.data.verifiedBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data.status == 'approved'
+            && hasValidServiceApprovalPayment(getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data)
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data.approvedBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data.approvedAt == request.time
           )
@@ -312,6 +339,7 @@ service cloud.firestore {
             && request.resource.data.featuredUntil > request.time
             && request.resource.data.featuredUntil <= request.time + duration.value(8, 'd')
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data.status == 'approved'
+            && hasValidServiceApprovalPayment(getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data)
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data.approvedBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data.approvedAt == request.time
           )
@@ -319,6 +347,7 @@ service cloud.firestore {
             changedKeysOnly(['bumpedAt'])
             && request.resource.data.bumpedAt == request.time
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data.status == 'approved'
+            && hasValidServiceApprovalPayment(getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data)
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data.approvedBy == request.auth.uid
             && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data.approvedAt == request.time
           )
@@ -341,6 +370,7 @@ service cloud.firestore {
           'country',
           'amount',
           'currency',
+          'paymentStatus',
           'status',
           'createdAt',
           'updatedAt',
@@ -363,6 +393,10 @@ service cloud.firestore {
           request.resource.data.currency
         )
         && request.resource.data.status == 'pending'
+        && request.resource.data.paymentStatus == 'unpaid'
+        && !request.resource.data.keys().hasAny([
+          'paymentOverride', 'paymentOverrideBy', 'paymentOverrideAt', 'paymentOverrideReason'
+        ])
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && (
@@ -430,6 +464,66 @@ service cloud.firestore {
           (
             changedKeysOnly(['status', 'approvedAt', 'approvedBy', 'updatedAt'])
             && request.resource.data.status == 'approved'
+            && effectivePaymentStatus(resource.data) == 'paid'
+            && !request.resource.data.keys().hasAny([
+              'paymentOverride', 'paymentOverrideBy', 'paymentOverrideAt', 'paymentOverrideReason'
+            ])
+            && request.resource.data.approvedAt == request.time
+            && request.resource.data.approvedBy == request.auth.uid
+            && (
+              (
+                resource.data.targetType == 'animal'
+                && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.sellerId == resource.data.userId
+                && effectiveDocumentCountry(getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data) == resource.data.country
+                && (
+                  (
+                    resource.data.serviceType == 'featured'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.featuredAt == request.time
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.featuredUntil > request.time
+                  )
+                  || (
+                    resource.data.serviceType == 'bump'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.bumpedAt == request.time
+                  )
+                  || (
+                    resource.data.serviceType == 'verification'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.verificationStatus == 'verified'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.verifiedAt == request.time
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.verifiedBy == request.auth.uid
+                  )
+                )
+              )
+              || (
+                resource.data.targetType == 'auction'
+                && resource.data.serviceType in ['featured', 'bump']
+                && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.sellerId == resource.data.userId
+                && effectiveDocumentCountry(getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data) == resource.data.country
+                && (
+                  (
+                    resource.data.serviceType == 'featured'
+                    && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.featuredAt == request.time
+                    && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.featuredUntil > request.time
+                  )
+                  || (
+                    resource.data.serviceType == 'bump'
+                    && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.bumpedAt == request.time
+                  )
+                )
+              )
+            )
+          )
+          || (
+            changedKeysOnly([
+              'status', 'approvedAt', 'approvedBy', 'updatedAt',
+              'paymentOverride', 'paymentOverrideBy', 'paymentOverrideAt', 'paymentOverrideReason'
+            ])
+            && request.resource.data.status == 'approved'
+            && effectivePaymentStatus(resource.data) == 'unpaid'
+            && request.resource.data.paymentOverride == true
+            && request.resource.data.paymentOverrideBy == request.auth.uid
+            && request.resource.data.paymentOverrideAt == request.time
+            && request.resource.data.paymentOverrideReason is string
+            && validPaymentOverrideReason(request.resource.data.paymentOverrideReason)
             && request.resource.data.approvedAt == request.time
             && request.resource.data.approvedBy == request.auth.uid
             && (
