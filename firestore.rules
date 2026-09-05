@@ -50,6 +50,46 @@ service cloud.firestore {
       ]);
     }
 
+    function hasNoPromotionFields(data) {
+      return !data.keys().hasAny([
+        'featuredAt',
+        'featuredUntil',
+        'bumpedAt'
+      ]);
+    }
+
+    function promotionFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'featuredAt',
+        'featuredUntil',
+        'bumpedAt'
+      ]);
+    }
+
+    function effectiveDocumentCountry(data) {
+      return data.keys().hasAny(['country']) ? data.country : 'AE';
+    }
+
+    function validServicePrice(serviceType, country, amount, currency) {
+      return (
+        country == 'AE'
+        && currency == 'AED'
+        && (
+          (serviceType == 'featured' && amount == 15)
+          || (serviceType == 'bump' && amount == 7)
+          || (serviceType == 'verification' && amount == 25)
+        )
+      ) || (
+        country == 'EG'
+        && currency == 'EGP'
+        && (
+          (serviceType == 'featured' && amount == 200)
+          || (serviceType == 'bump' && amount == 100)
+          || (serviceType == 'verification' && amount == 350)
+        )
+      );
+    }
+
     function conversationIsParticipant(conversationId) {
       return signedIn()
         && request.auth.uid in get(
@@ -112,7 +152,8 @@ service cloud.firestore {
         && request.resource.data.status == 'active'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
-        && hasNoVerificationFields(request.resource.data);
+        && hasNoVerificationFields(request.resource.data)
+        && hasNoPromotionFields(request.resource.data);
 
       allow update: if isOwner('sellerId')
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
@@ -148,7 +189,8 @@ service cloud.firestore {
           request.resource.data.saleType != 'direct'
           || !request.resource.data.keys().hasAny(['sellerPhone'])
         )
-        && verificationFieldsUnchanged();
+        && verificationFieldsUnchanged()
+        && promotionFieldsUnchanged();
 
       allow delete: if isOwner('sellerId');
     }
@@ -176,7 +218,9 @@ service cloud.firestore {
         && request.resource.data.endTime is timestamp
         && request.resource.data.endTime > request.time
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && hasNoVerificationFields(request.resource.data)
+        && hasNoPromotionFields(request.resource.data);
 
       allow update: if signedIn()
         && (
@@ -223,6 +267,103 @@ service cloud.firestore {
         );
 
       allow delete: if isOwner('sellerId');
+    }
+
+    match /serviceRequests/{requestId} {
+      allow read: if signedIn()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly([
+          'userId',
+          'serviceType',
+          'targetType',
+          'targetId',
+          'country',
+          'amount',
+          'currency',
+          'status',
+          'createdAt',
+          'updatedAt',
+          'notes',
+          'details'
+        ])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.serviceType in ['featured', 'bump', 'verification']
+        && request.resource.data.targetType in ['animal', 'auction']
+        && request.resource.data.targetId is string
+        && request.resource.data.targetId.size() > 0
+        && requestId == request.auth.uid + '_' + request.resource.data.serviceType
+          + '_' + request.resource.data.targetType + '_' + request.resource.data.targetId
+        && request.resource.data.country in ['AE', 'EG']
+        && request.resource.data.amount is number
+        && validServicePrice(
+          request.resource.data.serviceType,
+          request.resource.data.country,
+          request.resource.data.amount,
+          request.resource.data.currency
+        )
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            request.resource.data.serviceType != 'verification'
+            && !request.resource.data.keys().hasAny(['notes', 'details'])
+          )
+          || (
+            request.resource.data.serviceType == 'verification'
+            && request.resource.data.targetType == 'animal'
+            && request.resource.data.notes is string
+            && request.resource.data.notes.size() <= 1000
+            && request.resource.data.details is map
+            && request.resource.data.details.keys().hasOnly([
+              'animalIdentifier',
+              'vaccinationStatus',
+              'vaccinationDate',
+              'vetInspectionStatus',
+              'vetInspectionDate'
+            ])
+            && request.resource.data.details.animalIdentifier is string
+            && request.resource.data.details.vaccinationStatus is string
+            && request.resource.data.details.vaccinationDate is string
+            && request.resource.data.details.vetInspectionStatus is string
+            && request.resource.data.details.vetInspectionDate is string
+          )
+        )
+        && (
+          (
+            request.resource.data.targetType == 'animal'
+            && exists(/databases/$(database)/documents/animals/$(request.resource.data.targetId))
+            && get(/databases/$(database)/documents/animals/$(request.resource.data.targetId)).data.sellerId == request.auth.uid
+            && (
+              request.resource.data.serviceType == 'verification'
+              || get(/databases/$(database)/documents/animals/$(request.resource.data.targetId)).data.saleType == 'direct'
+            )
+            && effectiveDocumentCountry(
+              get(/databases/$(database)/documents/animals/$(request.resource.data.targetId)).data
+            ) == request.resource.data.country
+          )
+          || (
+            request.resource.data.targetType == 'auction'
+            && request.resource.data.serviceType in ['featured', 'bump']
+            && exists(/databases/$(database)/documents/auctions/$(request.resource.data.targetId))
+            && get(/databases/$(database)/documents/auctions/$(request.resource.data.targetId)).data.sellerId == request.auth.uid
+            && effectiveDocumentCountry(
+              get(/databases/$(database)/documents/auctions/$(request.resource.data.targetId)).data
+            ) == request.resource.data.country
+          )
+        );
+
+      allow update: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'pending'
+        && changedKeysOnly(['status', 'cancelledAt', 'updatedAt'])
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.cancelledAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
     }
 
     match /purchaseRequests/{requestId} {

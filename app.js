@@ -114,8 +114,80 @@ const COUNTRIES = {
   }
 };
 
+const SERVICES = {
+  featured: {
+    label: "تمييز الإعلان",
+    description: "إظهار الإعلان بلمسة ذهبية وترتيبه ضمن الإعلانات المميزة بعد الاعتماد.",
+    durationDays: 7,
+    AE: { price: 15, currency: "AED" },
+    EG: { price: 200, currency: "EGP" }
+  },
+  bump: {
+    label: "رفع الإعلان للأعلى",
+    description: "رفع الإعلان فوق الإعلانات العادية بعد اعتماد الطلب دون تغيير تاريخ نشره.",
+    AE: { price: 7, currency: "AED" },
+    EG: { price: 100, currency: "EGP" }
+  },
+  verification: {
+    label: "طلب توثيق الحيوان",
+    description: "مراجعة بيانات الحيوان الصحية والتعريفية قبل منحه شارة موثق.",
+    AE: { price: 25, currency: "AED" },
+    EG: { price: 350, currency: "EGP" }
+  }
+};
+
 function effectiveCountry(data) {
   return data?.country === "EG" ? "EG" : "AE";
+}
+
+function servicePricing(serviceType, country) {
+  const effectiveCode = country === "EG" ? "EG" : "AE";
+  return SERVICES[serviceType]?.[effectiveCode] || null;
+}
+
+function isServiceApproved(request) {
+  return request?.status === "approved";
+}
+
+function isFeaturedListing(data, now = Date.now()) {
+  return timestampToMillis(data?.featuredUntil) > now;
+}
+
+function isBumpedListing(data) {
+  return timestampToMillis(data?.bumpedAt) > 0;
+}
+
+function isVerifiedListing(data) {
+  return data?.verificationStatus === "verified";
+}
+
+function marketplaceSort(a, b) {
+  const aFeatured = isFeaturedListing(a);
+  const bFeatured = isFeaturedListing(b);
+  if (aFeatured !== bFeatured) return aFeatured ? -1 : 1;
+
+  if (aFeatured && bFeatured) {
+    const featuredDifference = timestampToMillis(b.featuredAt) - timestampToMillis(a.featuredAt);
+    if (featuredDifference) return featuredDifference;
+  }
+
+  const aBumped = isBumpedListing(a);
+  const bBumped = isBumpedListing(b);
+  if (aBumped !== bBumped) return aBumped ? -1 : 1;
+
+  if (aBumped && bBumped) {
+    const bumpDifference = timestampToMillis(b.bumpedAt) - timestampToMillis(a.bumpedAt);
+    if (bumpDifference) return bumpDifference;
+  }
+
+  return timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt);
+}
+
+function listingServiceBadges(primary, animal = primary) {
+  return `
+    ${isFeaturedListing(primary) ? `<span style="display:inline-block;background:#b88624;color:white;padding:5px 9px;border-radius:16px;font-size:12px;font-weight:bold;margin:0 0 8px 6px;">⭐ مميز</span>` : ""}
+    ${isVerifiedListing(animal) ? `<span style="display:inline-block;background:#176b52;color:white;padding:5px 9px;border-radius:16px;font-size:12px;font-weight:bold;margin:0 0 8px 6px;">✓ موثق</span>` : ""}
+  `;
 }
 
 function updateMarketCountryIndicator() {
@@ -835,6 +907,11 @@ async function showAccount() {
           style="width:100%;padding:15px;background:#28566f;color:white;border:0;border-radius:10px;margin-bottom:10px;font-size:17px;font-weight:bold;">
           📩 طلبات الشراء
         </button>
+
+        <button onclick="showMyServices()"
+          style="width:100%;padding:15px;background:#b88624;color:white;border:0;border-radius:10px;margin-bottom:10px;font-size:17px;font-weight:bold;">
+          ⭐ خدماتي
+        </button>
       `
       : "";
 
@@ -849,6 +926,7 @@ async function showAccount() {
           يمكنك البيع وإضافة الحلال والمشاركة في السوق مجانًا.
         </span>
         <div style="color:#ffd66b;font-size:13px;margin-top:9px;">البائع المحترف — قريبًا</div>
+        <div style="color:#bbb;font-size:12px;margin-top:4px;font-weight:normal;">مزايا إضافية للبائعين النشطين ستتوفر لاحقًا.</div>
       </div>
     `;
   }
@@ -899,6 +977,81 @@ async function showAccount() {
     </div>
   `);
 }
+
+window.showMyServices = async function () {
+  const user = auth.currentUser;
+  if (!user) return window.openLogin();
+
+  showModal(`<div style="direction:rtl;color:white;padding:16px;text-align:center;"><h2 style="color:#68e6b0;">⭐ خدماتي</h2><p>جاري التحميل...</p></div>`);
+  try {
+    const requestsQuery = query(
+      collection(db, "serviceRequests"),
+      where("userId", "==", user.uid)
+    );
+    const snapshot = await getDocs(requestsQuery);
+    const requests = snapshot.docs.map(requestDoc => ({ id: requestDoc.id, ...requestDoc.data() }));
+    requests.sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
+
+    const cards = await Promise.all(requests.map(async request => {
+      let targetName = request.targetId;
+      try {
+        if (request.targetType === "animal") {
+          const targetSnap = await getDoc(doc(db, "animals", request.targetId));
+          if (targetSnap.exists()) targetName = targetSnap.data().name || targetSnap.data().type || request.targetId;
+        } else {
+          const auctionSnap = await getDoc(doc(db, "auctions", request.targetId));
+          if (auctionSnap.exists()) {
+            const animalSnap = await getDoc(doc(db, "animals", auctionSnap.data().animalId));
+            if (animalSnap.exists()) targetName = animalSnap.data().name || animalSnap.data().type || request.targetId;
+          }
+        }
+      } catch (error) {
+        console.error("SERVICE TARGET ERROR:", error);
+      }
+      const countryName = COUNTRIES[effectiveCountry(request)].name;
+      const canCancel = request.status === "pending";
+      return `
+        <div style="background:#222;padding:14px;border-radius:12px;margin-bottom:11px;text-align:right;">
+          <div style="display:flex;justify-content:space-between;gap:8px;">
+            <b style="color:#68e6b0;">${SERVICES[request.serviceType]?.label || "خدمة"}</b>
+            <b style="color:#ffd66b;">${Number(request.amount || 0).toLocaleString("en-US")} ${escapeHtml(request.currency || "")}</b>
+          </div>
+          <div style="margin-top:7px;">الإعلان: ${escapeHtml(targetName)}</div>
+          <div>الدولة: ${escapeHtml(countryName)}</div>
+          <div>الحالة: <b>${serviceStatusText(request.status)}</b></div>
+          <div style="color:#888;font-size:12px;">${formatDate(request.createdAt)}</div>
+          ${canCancel ? `<button onclick="cancelServiceRequest('${request.id}')" style="width:100%;margin-top:9px;padding:9px;background:#6d2929;color:white;border:0;border-radius:8px;">إلغاء الطلب</button>` : ""}
+        </div>
+      `;
+    }));
+
+    showModal(`
+      <div style="direction:rtl;color:white;padding:14px;">
+        <h2 style="text-align:center;color:#68e6b0;">⭐ خدماتي</h2>
+        ${cards.length ? cards.join("") : `<div style="background:#222;padding:20px;border-radius:12px;text-align:center;">لا توجد خدمات مطلوبة حتى الآن.</div>`}
+      </div>
+    `);
+  } catch (error) {
+    console.error("LOAD SERVICES ERROR:", error);
+    alert("تعذر تحميل خدماتك.");
+  }
+};
+
+window.cancelServiceRequest = async function (requestId) {
+  const user = auth.currentUser;
+  if (!user || !confirm("هل تريد إلغاء طلب الخدمة؟")) return;
+  try {
+    await updateDoc(doc(db, "serviceRequests", requestId), {
+      status: "cancelled",
+      cancelledAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    await window.showMyServices();
+  } catch (error) {
+    console.error("CANCEL SERVICE ERROR:", error);
+    alert("تعذر إلغاء الطلب.");
+  }
+};
 
 window.saveProfile = async function () {
   const user = auth.currentUser;
@@ -1804,6 +1957,172 @@ function createFirebaseArea() {
   return area;
 }
 
+function serviceStatusText(status) {
+  if (status === "approved") return "تم الاعتماد";
+  if (status === "rejected") return "مرفوض";
+  if (status === "cancelled") return "ملغي";
+  return "قيد المراجعة";
+}
+
+function serviceRequestId(userId, serviceType, targetType, targetId) {
+  return [userId, serviceType, targetType, targetId].join("_");
+}
+
+function listingServiceTarget(animal, serviceType) {
+  if (serviceType === "verification" || animal.saleType !== "auction") {
+    return { targetType: "animal", targetId: animal.id };
+  }
+  return { targetType: "auction", targetId: animal.auctionId || "" };
+}
+
+async function listingServiceRequest(animal, serviceType, userId) {
+  const target = listingServiceTarget(animal, serviceType);
+  if (!target.targetId) return null;
+  const requestId = serviceRequestId(userId, serviceType, target.targetType, target.targetId);
+  const requestSnap = await getDoc(doc(db, "serviceRequests", requestId));
+  return requestSnap.exists() ? { id: requestSnap.id, ...requestSnap.data() } : null;
+}
+
+async function listingServicesHtml(animal, userId) {
+  const country = effectiveCountry(animal);
+  const rows = await Promise.all(Object.keys(SERVICES).map(async serviceType => {
+    const service = SERVICES[serviceType];
+    const pricing = servicePricing(serviceType, country);
+    const existing = await listingServiceRequest(animal, serviceType, userId);
+    const status = existing ? serviceStatusText(existing.status) : "متاح للطلب";
+    const disabled = !!existing;
+    return `
+      <div style="background:#202925;border:1px solid #3b4a43;padding:12px;border-radius:11px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
+          <b style="color:#68e6b0;">${service.label}</b>
+          <b style="color:#ffd66b;">${money(pricing.price, country)}</b>
+        </div>
+        <div style="color:#bbb;font-size:13px;margin:7px 0;">${service.description}</div>
+        <div style="font-size:13px;margin-bottom:8px;">الحالة: <b>${status}</b></div>
+        <button onclick="openListingService('${animal.id}','${serviceType}')" ${disabled ? "disabled" : ""}
+          style="width:100%;padding:10px;border:0;border-radius:9px;background:${disabled ? "#555" : "#b88624"};color:white;font-weight:bold;">
+          ${disabled ? status : "طلب الخدمة"}
+        </button>
+      </div>
+    `;
+  }));
+
+  return `
+    <div style="background:#171c19;padding:14px;border-radius:13px;margin:15px 0;">
+      <h3 style="color:#ffd66b;margin-top:0;">خدمات الإعلان</h3>
+      <p style="color:#aaa;font-size:13px;">الخدمات اختيارية، ولا تؤثر على البيع المجاني.</p>
+      ${rows.join("")}
+    </div>
+  `;
+}
+
+window.openListingService = async function (animalId, serviceType) {
+  const user = auth.currentUser;
+  const service = SERVICES[serviceType];
+  if (!user || !service) return;
+
+  const animalSnap = await getDoc(doc(db, "animals", animalId));
+  if (!animalSnap.exists() || animalSnap.data().sellerId !== user.uid) {
+    alert("غير مصرح لك بطلب خدمة لهذا الإعلان.");
+    return;
+  }
+  const animal = { id: animalSnap.id, ...animalSnap.data() };
+  const country = effectiveCountry(animal);
+  const pricing = servicePricing(serviceType, country);
+  const existing = await listingServiceRequest(animal, serviceType, user.uid);
+  if (existing) {
+    alert(existing.status === "pending"
+      ? "لديك طلب لهذه الخدمة قيد المراجعة بالفعل."
+      : "هذه الخدمة لديها طلب سابق ولا يمكن تكراره حاليًا.");
+    return;
+  }
+
+  const verificationDetails = serviceType === "verification" ? `
+    <div style="background:#202925;padding:11px;border-radius:9px;text-align:right;font-size:13px;margin:10px 0;">
+      <div>رقم الحيوان: ${escapeHtml(animal.animalIdentifier || "غير محدد")}</div>
+      <div>حالة التطعيم: ${escapeHtml(animal.vaccinationStatus || "غير محدد")}</div>
+      <div>تاريخ التطعيم: ${escapeHtml(animal.vaccinationDate || "غير محدد")}</div>
+      <div>الفحص البيطري: ${escapeHtml(animal.vetInspectionStatus || "غير محدد")}</div>
+      <div>تاريخ الفحص: ${escapeHtml(animal.vetInspectionDate || "غير محدد")}</div>
+    </div>
+    <textarea id="serviceRequestNotes" maxlength="1000" placeholder="ملاحظة اختيارية للمراجعة"
+      style="width:100%;box-sizing:border-box;padding:12px;border-radius:9px;margin-bottom:10px;"></textarea>
+  ` : "";
+
+  showModal(`
+    <div style="direction:rtl;color:white;padding:12px;text-align:center;">
+      <h2 style="color:#68e6b0;">${service.label}</h2>
+      <p><b>${escapeHtml(animal.name || animal.type || "حلال")}</b></p>
+      <p style="color:#bbb;">${service.description}</p>
+      <div style="font-size:23px;color:#ffd66b;font-weight:bold;margin:12px 0;">${money(pricing.price, country)}</div>
+      <div style="color:#aaa;font-size:13px;">لا يوجد دفع إلكتروني الآن. سيُرسل الطلب للمراجعة فقط.</div>
+      ${verificationDetails}
+      <button onclick="submitListingService('${animal.id}','${serviceType}')"
+        style="width:100%;padding:13px;background:#b88624;color:white;border:0;border-radius:10px;margin-top:12px;font-weight:bold;">
+        ${serviceType === "featured" ? "طلب التمييز" : "إرسال الطلب"}
+      </button>
+    </div>
+  `);
+};
+
+window.submitListingService = async function (animalId, serviceType) {
+  const user = auth.currentUser;
+  const service = SERVICES[serviceType];
+  if (!user || !service) return;
+
+  try {
+    const animalSnap = await getDoc(doc(db, "animals", animalId));
+    if (!animalSnap.exists() || animalSnap.data().sellerId !== user.uid) {
+      alert("غير مصرح لك بطلب هذه الخدمة.");
+      return;
+    }
+    const animal = { id: animalSnap.id, ...animalSnap.data() };
+    const country = effectiveCountry(animal);
+    const pricing = servicePricing(serviceType, country);
+    const target = listingServiceTarget(animal, serviceType);
+    if (!target.targetId) throw new Error("SERVICE_TARGET_NOT_FOUND");
+    const requestId = serviceRequestId(user.uid, serviceType, target.targetType, target.targetId);
+    const requestRef = doc(db, "serviceRequests", requestId);
+    const existing = await getDoc(requestRef);
+    if (existing.exists()) {
+      alert(existing.data().status === "pending"
+        ? "لديك طلب لهذه الخدمة قيد المراجعة بالفعل."
+        : "لا يمكن تكرار هذا الطلب حاليًا.");
+      return;
+    }
+
+    const requestData = {
+      userId: user.uid,
+      serviceType,
+      targetType: target.targetType,
+      targetId: target.targetId,
+      country,
+      amount: pricing.price,
+      currency: pricing.currency,
+      status: "pending",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    if (serviceType === "verification") {
+      requestData.notes = document.getElementById("serviceRequestNotes")?.value.trim() || "";
+      requestData.details = {
+        animalIdentifier: animal.animalIdentifier || "",
+        vaccinationStatus: animal.vaccinationStatus || "unknown",
+        vaccinationDate: animal.vaccinationDate || "",
+        vetInspectionStatus: animal.vetInspectionStatus || "unknown",
+        vetInspectionDate: animal.vetInspectionDate || ""
+      };
+    }
+
+    await setDoc(requestRef, requestData);
+    alert("✅ تم إرسال طلب الخدمة للمراجعة.");
+    window.closeModal();
+  } catch (error) {
+    console.error("SERVICE REQUEST ERROR:", error);
+    alert(error.code === "permission-denied" ? "❌ Firebase رفض طلب الخدمة." : "❌ تعذر إرسال طلب الخدمة.");
+  }
+};
+
 window.goToDirectSales = async function (event) {
   if (event) event.preventDefault();
 
@@ -2039,9 +2358,7 @@ async function loadMarket() {
       .filter(animal =>
         animalMatchesMarketFilters(animal, "direct")
       )
-      .sort((a, b) =>
-        timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt)
-      );
+      .sort(marketplaceSort);
 
     if (directAnimals.length === 0) {
       directContainer.innerHTML = `
@@ -2051,7 +2368,8 @@ async function loadMarket() {
       `;
     } else {
       directContainer.innerHTML = directAnimals.map(animal => `
-        <div style="background:#222;color:white;padding:20px;border-radius:18px;">
+        <div style="background:#222;color:white;padding:20px;border-radius:18px;${isFeaturedListing(animal) ? "border:1px solid #b88624;box-shadow:0 0 0 1px rgba(184,134,36,.18);" : ""}">
+          ${listingServiceBadges(animal)}
           ${animalPhotoHtml(animal)}
 
           <h3>${escapeHtml(animal.name || animal.type || "حلال للبيع")}</h3>
@@ -2119,9 +2437,7 @@ async function loadMarket() {
         if (!animal) return false;
         return animalMatchesMarketFilters(animal, "auction");
       })
-      .sort((a, b) =>
-        timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt)
-      );
+      .sort(marketplaceSort);
 
     if (visibleAuctions.length === 0) {
       auctionContainer.innerHTML = `
@@ -2161,7 +2477,8 @@ async function loadMarket() {
         }
 
         return `
-          <div style="background:#222;color:white;padding:20px;border-radius:18px;">
+          <div style="background:#222;color:white;padding:20px;border-radius:18px;${isFeaturedListing(auction) ? "border:1px solid #b88624;box-shadow:0 0 0 1px rgba(184,134,36,.18);" : ""}">
+            ${listingServiceBadges(auction, animal)}
             ${animalPhotoHtml(animal)}
 
             <div id="auction-tag-${auction.id}"
@@ -2258,6 +2575,8 @@ window.manageListing = async function (animalId) {
       alert("لا يمكنك إدارة إعلان مستخدم آخر.");
       return;
     }
+
+    const servicesHtml = await listingServicesHtml(animal, user.uid);
 
     const images = Array.isArray(animal.images) ? animal.images : [];
 
@@ -2483,6 +2802,8 @@ window.manageListing = async function (animalId) {
           style="width:100%;margin-bottom:15px;">
           🧹 حذف جميع الصور
         </button>
+
+        ${servicesHtml}
 
         ${saleActionHtml}
 
