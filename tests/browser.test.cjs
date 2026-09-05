@@ -31,7 +31,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
  });
  for(const width of [360,1280]){
   await page.setViewportSize({width,height:900});
-  for(const file of ['about','privacy','terms','refund-policy','payment-demo']){
+  for(const file of ['about','privacy','terms','refund-policy','delete-account','payment-demo']){
    await page.goto('http://launch.test/'+file+'.html');
    if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw new Error('Overflow '+file+' '+width);
    if(file==='payment-demo')await page.getByText('يرجى تسجيل الدخول من سوق الحلال الإلكتروني أولًا.').waitFor();

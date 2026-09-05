@@ -7,3 +7,6 @@
 - `node --check app.js`, `node --check market-ui.js`, `node --check payment-demo.js`; `git diff --check`.
 
 No SMS, live service requests, live data edits, credentials, or real payment calls are used. Auth behavior in browser checks is mocked; real Phone Auth delivery and production deployment of Rules are not tested.
+
+- `node tests/auth-browser.test.cjs` (same Playwright setup): all Firebase APIs mocked; real auth/create/reset endpoints cannot be reached. Tests Email signup/login/reset/fallback, no-phone direct/auction/bid/purchase/services, accepted offers and continued messaging, UID deletion deduplication, privacy and both responsive widths. No credentials are persisted or logged by the mock.
+- Updated complete Rules suite additionally exercises email-only seller/buyer contact acceptance and deletion request owner/admin isolation.

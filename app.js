@@ -22,6 +22,9 @@ import {
   getAuth,
   RecaptchaVerifier,
   signInWithPhoneNumber,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   getIdTokenResult,
   onAuthStateChanged,
   signOut
@@ -785,31 +788,35 @@ function ownerManagementButton(animal) {
   `;
 }
 
-async function ensureUserProfile(user) {
-  if (!user) return;
-
+async function ensureUserProfile(user, initialDisplayName = "") {
+  if (!user) return false;
   try {
     const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists()) {
-      await setDoc(userRef, {
-        uid: user.uid,
-        phoneNumber: user.phoneNumber || "",
-        displayName: "",
-        accountType: "buyer",
-        status: "active",
-        createdAt: serverTimestamp(),
+    await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(userRef);
+      const phone = typeof user.phoneNumber === "string" ? user.phoneNumber : "";
+      const values = {
+        ...(phone ? { phoneNumber: phone } : {}),
         lastLoginAt: serverTimestamp()
-      });
-    } else {
-      await setDoc(userRef, {
-        phoneNumber: user.phoneNumber || "",
-        lastLoginAt: serverTimestamp()
-      }, { merge: true });
-    }
+      };
+      if (!snapshot.exists()) {
+        transaction.set(userRef, {
+          uid: user.uid, displayName: initialDisplayName,
+          accountType: initialDisplayName ? "both" : "buyer", status: "active",
+          createdAt: serverTimestamp(), ...values
+        });
+      } else {
+        // Signup and the Auth observer may arrive in either order; never erase a name/phone.
+        transaction.update(userRef, {
+          ...values,
+          ...(initialDisplayName ? { displayName: initialDisplayName, accountType: "both" } : {})
+        });
+      }
+    });
+    return true;
   } catch (error) {
-    console.error("USER PROFILE ERROR:", error);
+    console.error("USER PROFILE ERROR:", error.code || "unknown");
+    return false;
   }
 }
 
@@ -893,6 +900,8 @@ async function showAccount() {
   const displayName = profile?.displayName || "";
   const accountType = profile?.accountType || "buyer";
   const phone = user.phoneNumber || profile?.phoneNumber || "";
+  const emailMethod = user.providerData?.some(provider => provider.providerId === "password") || !!user.email;
+  const ownerIdentity = emailMethod ? user.email || "" : phone;
 
   const buyerButtons =
     (accountType === "buyer" || accountType === "both")
@@ -952,8 +961,9 @@ async function showAccount() {
         value="${escapeHtml(displayName)}"
         style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0 16px;border-radius:10px;">
 
-      <label>رقم الهاتف</label>
-      <input value="${escapeHtml(phone)}" disabled dir="ltr"
+      <p>طريقة تسجيل الدخول: <b>${emailMethod ? "البريد الإلكتروني" : "رقم الهاتف"}</b></p>
+      <label>${emailMethod ? "البريد الإلكتروني — يظهر لك فقط" : "رقم الهاتف"}</label>
+      <input value="${escapeHtml(ownerIdentity)}" aria-label="هوية حسابك الخاصة" disabled dir="ltr"
         style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0 16px;border-radius:10px;text-align:left;">
 
       <label>استخدام الحساب</label>
@@ -979,6 +989,7 @@ async function showAccount() {
       ${buyerButtons}
       ${sellerButtons}
 
+      <button type="button" onclick="openAccountDeletion()" style="width:100%;margin:12px 0;">حذف الحساب</button>
       <button onclick="logoutUser()"
         style="width:100%;padding:15px;background:#8b2929;color:white;border:0;border-radius:10px;">
         تسجيل الخروج
@@ -1324,7 +1335,7 @@ window.saveProfile = async function () {
     await setDoc(doc(db, "users", user.uid), {
       displayName,
       accountType,
-      phoneNumber: user.phoneNumber || "",
+      ...(user.phoneNumber ? { phoneNumber: user.phoneNumber } : {}),
       updatedAt: serverTimestamp()
     }, { merge: true });
 
@@ -1972,6 +1983,163 @@ window.updatePurchaseRequest = async function (requestId, newStatus) {
   }
 };
 
+function authMethodButtons(selected) {
+  return `<div class="auth-methods" role="group" aria-label="طريقة تسجيل الدخول">
+    <button type="button" aria-pressed="${selected === "phone"}" onclick="openLogin()">رقم الهاتف</button>
+    <button type="button" aria-pressed="${selected === "email"}" onclick="openEmailAuth()">البريد الإلكتروني</button>
+  </div>`;
+}
+
+function authErrorText(code) {
+  const messages = {
+    "auth/email-already-in-use": "هذا البريد الإلكتروني مسجل بالفعل.",
+    "auth/invalid-email": "يرجى إدخال بريد إلكتروني صحيح.",
+    "auth/weak-password": "كلمة المرور ضعيفة. استخدم كلمة مرور أقوى.",
+    "auth/password-does-not-meet-requirements": "كلمة المرور ضعيفة. استخدم كلمة مرور أقوى.",
+    "auth/wrong-password": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    "auth/invalid-credential": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    "auth/user-not-found": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+    "auth/too-many-requests": "تم إجراء محاولات كثيرة. يرجى المحاولة لاحقًا.",
+    "auth/network-request-failed": "تعذر الاتصال بالشبكة. تحقق من الإنترنت وحاول مرة أخرى.",
+    "auth/user-disabled": "هذا الحساب موقوف. يرجى التواصل مع الدعم.",
+    "auth/operation-not-allowed": "تسجيل الدخول بهذه الطريقة غير متاح حاليًا. يرجى التواصل مع الدعم.",
+    "auth/requires-recent-login": "يرجى تسجيل الدخول مجددًا ثم إعادة المحاولة."
+  };
+  return messages[code] || "تعذر إتمام الطلب. يرجى المحاولة مرة أخرى.";
+}
+
+function validateEmailForm(mode, email, password = "", confirmation = "", name = "") {
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "يرجى إدخال بريد إلكتروني صحيح.";
+  if (mode === "reset") return "";
+  if (!password || password.length > 4096) return "يرجى إدخال كلمة مرور صحيحة.";
+  if (mode === "signup") {
+    if (name.length < 2 || name.length > 50) return "يرجى إدخال اسم من حرفين إلى 50 حرفًا.";
+    if (password.length < 6) return "كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.";
+    if (password !== confirmation) return "تأكيد كلمة المرور غير مطابق.";
+  }
+  return "";
+}
+
+let emailAuthBusy = false;
+window.openEmailAuth = function (mode = "login") {
+  if (emailAuthBusy) return;
+  if (auth.currentUser) return showAccount();
+  if (!["login", "signup", "reset"].includes(mode)) mode = "login";
+  const title = mode === "signup" ? "إنشاء حساب جديد" : mode === "reset" ? "نسيت كلمة المرور؟" : "تسجيل الدخول";
+  showModal(`<div class="email-auth" dir="rtl">
+    <h2>${title}</h2>${authMethodButtons("email")}
+    <form id="emailAuthForm" onsubmit="submitEmailAuth(event, '${mode}')" novalidate>
+      ${mode === "signup" ? '<label for="emailDisplayName">الاسم</label><input id="emailDisplayName" autocomplete="name" maxlength="50" required>' : ""}
+      <label for="authEmail">البريد الإلكتروني</label>
+      <input id="authEmail" type="email" dir="ltr" autocomplete="username" maxlength="254" required>
+      ${mode !== "reset" ? `<label for="authPassword">كلمة المرور</label>
+        <input id="authPassword" type="password" autocomplete="${mode === "signup" ? "new-password" : "current-password"}" maxlength="4096" required>` : ""}
+      ${mode === "signup" ? '<label for="authPasswordConfirm">تأكيد كلمة المرور</label><input id="authPasswordConfirm" type="password" autocomplete="new-password" maxlength="4096" required><p>لا تحتاج رقم هاتف أو SMS. يمكنك استخدام حسابك للبيع والشراء.</p>' : ""}
+      <p id="emailAuthStatus" role="status" aria-live="polite"></p>
+      <button type="submit">${mode === "reset" ? "إرسال رابط إعادة التعيين" : title}</button>
+      ${mode === "login" ? '<button type="button" onclick="openEmailAuth(\'signup\')">إنشاء حساب جديد</button><button type="button" onclick="openEmailAuth(\'reset\')">نسيت كلمة المرور؟</button>' : '<button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>'}
+    </form></div>`);
+};
+
+window.submitEmailAuth = async function (event, mode) {
+  event.preventDefault();
+  if (emailAuthBusy || !["login", "signup", "reset"].includes(mode)) return;
+  const form = document.getElementById("emailAuthForm");
+  const status = document.getElementById("emailAuthStatus");
+  if (!form || !status) return;
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword")?.value || "";
+  const confirmation = document.getElementById("authPasswordConfirm")?.value || "";
+  const name = document.getElementById("emailDisplayName")?.value.trim() || "";
+  const invalid = validateEmailForm(mode, email, password, confirmation, name);
+  if (invalid) { status.textContent = invalid; return; }
+  emailAuthBusy = true;
+  const buttons = [...form.querySelectorAll("button")];
+  buttons.forEach(button => { button.disabled = true; });
+  status.textContent = "جاري تنفيذ الطلب…";
+  const resetMessage = "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني إذا كان الحساب مسجلاً لدينا.";
+  try {
+    if (mode === "reset") {
+      await sendPasswordResetEmail(auth, email);
+      status.textContent = resetMessage;
+    } else {
+      const result = mode === "signup"
+        ? await createUserWithEmailAndPassword(auth, email, password)
+        : await signInWithEmailAndPassword(auth, email, password);
+      const saved = await ensureUserProfile(result.user, mode === "signup" ? name : "");
+      if (!saved) {
+        status.textContent = "تم تسجيل الدخول، لكن تعذر حفظ بيانات الحساب. افتح حسابي وأكمل الاسم عند عودة الاتصال.";
+      } else if (form.isConnected) {
+        await showAccount();
+      }
+    }
+  } catch (error) {
+    // Never log Auth errors or credentials; some SDK error objects carry email details.
+    status.textContent = mode === "reset" && error.code === "auth/user-not-found"
+      ? resetMessage : authErrorText(error.code);
+  } finally {
+    form.querySelectorAll('input[type="password"]').forEach(input => { input.value = ""; });
+    emailAuthBusy = false;
+    buttons.forEach(button => { button.disabled = false; });
+  }
+};
+
+let deletionRequestBusy = false;
+window.openAccountDeletion = async function () {
+  const user = auth.currentUser;
+  if (!user) return window.openLogin();
+  showModal(`<div class="email-auth" dir="rtl"><h2>حذف الحساب</h2>
+    <p>يمكنك طلب حذف حسابك وبياناتك المرتبطة به من سوق الحلال الإلكتروني. قد يتم الاحتفاظ ببعض البيانات لفترة محدودة عندما يكون ذلك ضروريًا لأغراض أمنية أو لمنع الاحتيال أو معالجة النزاعات أو الالتزام بالمتطلبات القانونية.</p>
+    <p>هذا طلب للمراجعة، ولا يحذف الحساب أو البيانات فورًا. يبقى حسابك متاحًا حتى إتمام المعالجة.</p>
+    <p><a href="delete-account.html">سياسة طلب حذف الحساب</a> · <a href="mailto:soqalhalal9@gmail.com">التواصل مع الدعم</a></p>
+    <p id="deletionStatus" role="status" aria-live="polite">جاري التحقق من حالة الطلب…</p>
+    <button id="requestDeletionButton" type="button" onclick="confirmAccountDeletion()" disabled>طلب حذف حسابي</button>
+    <button type="button" onclick="openLogin()">إلغاء</button></div>`);
+  const status = document.getElementById("deletionStatus");
+  const button = document.getElementById("requestDeletionButton");
+  try {
+    const snapshot = await getDoc(doc(db, "accountDeletionRequests", user.uid));
+    if (snapshot.exists()) {
+      status.textContent = deletionStatusText(snapshot.data().status);
+    } else {
+      status.textContent = "لم يتم إرسال طلب حذف بعد.";
+      button.disabled = false;
+    }
+  } catch {
+    status.textContent = "تعذر التحقق من الطلب. حاول لاحقًا أو تواصل مع الدعم.";
+  }
+};
+
+function deletionStatusText(status) {
+  if (status === "completed") return "تم تسجيل اكتمال معالجة طلب الحذف بواسطة الإدارة. تواصل مع الدعم للاستفسار عن البيانات المحتفظ بها.";
+  if (status === "in_review") return "طلب حذف الحساب قيد المراجعة. لم تُؤكد عملية الحذف بعد.";
+  return "تم إرسال طلب حذف الحساب بنجاح وسيتم التعامل معه وفق سياسة حذف الحساب. الطلب قيد الانتظار، ولم يُحذف الحساب بعد.";
+}
+
+window.confirmAccountDeletion = async function () {
+  const user = auth.currentUser;
+  if (!user || deletionRequestBusy) return;
+  if (!confirm("هل أنت متأكد؟ سيؤدي حذف الحساب إلى فقدان إمكانية الوصول إلى حسابك وبياناتك المرتبطة به بعد إتمام عملية الحذف.")) return;
+  const status = document.getElementById("deletionStatus");
+  const button = document.getElementById("requestDeletionButton");
+  if (!status || !button) return;
+  deletionRequestBusy = true;
+  button.disabled = true;
+  try {
+    const ref = doc(db, "accountDeletionRequests", user.uid);
+    const result = await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(ref);
+      if (snapshot.exists()) return snapshot.data().status;
+      transaction.set(ref, { userId: user.uid, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      return "pending";
+    });
+    status.textContent = deletionStatusText(result);
+  } catch {
+    status.textContent = "تعذر إرسال طلب الحذف. حاول مرة أخرى أو تواصل مع الدعم.";
+    button.disabled = false;
+  } finally { deletionRequestBusy = false; }
+};
+
 window.openLogin = async function () {
   if (auth.currentUser) {
     await showAccount();
@@ -1981,13 +2149,14 @@ window.openLogin = async function () {
   showModal(`
     <div style="direction:rtl;color:white;padding:10px;">
       <h2 style="text-align:center;color:#68e6b0;">تسجيل الدخول</h2>
+      ${authMethodButtons("phone")}
       <p style="text-align:center;color:#aaa;">اختر الدولة ثم أدخل رقم هاتفك</p>
-      <select id="loginCountry" onchange="updateLoginPhoneCountry()"
+      <select aria-label="دولة رقم الهاتف" id="loginCountry" onchange="updateLoginPhoneCountry()"
         style="width:100%;box-sizing:border-box;padding:14px;margin:10px 0;">
         <option value="AE" selected>🇦🇪 الإمارات العربية المتحدة (+971)</option>
         <option value="EG">🇪🇬 جمهورية مصر العربية (+20)</option>
       </select>
-      <input id="phoneNumber" type="tel" value="+971" placeholder="05xxxxxxxx"
+      <input aria-label="رقم الهاتف" id="phoneNumber" type="tel" value="+971" placeholder="05xxxxxxxx"
         style="width:100%;box-sizing:border-box;padding:14px;margin:10px 0;">
 
       <div id="recaptcha-container"></div>
@@ -2051,11 +2220,16 @@ window.sendPhoneCode = async function () {
 
     showCodeScreen(phone);
   } catch (error) {
-    console.error("SEND PHONE CODE ERROR:", error);
-
-    status.textContent = error.code === "auth/network-request-failed"
-      ? "تعذر الاتصال. تحقق من الإنترنت وحاول مجددًا."
-      : "تعذر إرسال رمز التحقق. تحقق من رقم الهاتف وحاول لاحقًا.";
+    status.textContent = error.code === "auth/billing-not-enabled"
+      ? "تسجيل الدخول برقم الهاتف غير متاح مؤقتًا. يمكنك استخدام البريد الإلكتروني بدلًا من ذلك."
+      : authErrorText(error.code);
+    if (error.code === "auth/billing-not-enabled") {
+      const fallback = document.createElement("button");
+      fallback.type = "button";
+      fallback.textContent = "استخدم البريد الإلكتروني بدلًا من ذلك";
+      fallback.addEventListener("click", () => window.openEmailAuth());
+      status.append(document.createElement("br"), fallback);
+    }
   }
 };
 
@@ -2094,8 +2268,7 @@ window.verifyPhoneCode = async function () {
     closeModal();
     window.location.hash = "#home";
   } catch (error) {
-    console.error(error);
-    status.innerHTML = "❌ رمز التحقق غير صحيح.";
+    status.textContent = "❌ رمز التحقق غير صحيح.";
   }
 };
 
@@ -3541,7 +3714,6 @@ window.requestPurchase = async function (animalId) {
       price: Number(animal.price || 0),
       sellerId: animal.sellerId,
       sellerName: animal.sellerName || "",
-      sellerPhone: animal.sellerPhone || "",
       buyerId: user.uid,
       buyerName: profile?.displayName || "",
       buyerPhone: user.phoneNumber || "",
@@ -3659,7 +3831,7 @@ window.placeBid = async function (auctionId) {
         currentPrice: bidAmount,
         lastBidAt: serverTimestamp(),
         lastBidderId: auth.currentUser.uid,
-        lastBidderPhone: auth.currentUser.phoneNumber || ""
+        lastBidderPhone: ""
       });
     });
 
@@ -3861,7 +4033,6 @@ window.saveListing = async function (event) {
         images,
         sellerId: user.uid,
         sellerName: profile.displayName || "",
-        sellerPhone: user.phoneNumber || "",
         status: "active",
         auctionId: auctionRef.id,
         createdAt: serverTimestamp(),
@@ -3873,7 +4044,6 @@ window.saveListing = async function (event) {
         country,
         sellerId: user.uid,
         sellerName: profile.displayName || "",
-        sellerPhone: user.phoneNumber || "",
         startPrice: price,
         currentPrice: price,
         minIncrement: increment,
@@ -3991,7 +4161,7 @@ async function ensurePrivateConversationContact(conversationId, conversation) {
   await setDoc(contactRef, {
     uid: user.uid,
     displayName: profile?.displayName || "",
-    phoneNumber: profile?.phoneNumber || "",
+    ...(profile?.phoneNumber ? { phoneNumber: profile.phoneNumber } : {}),
     createdAt: serverTimestamp()
   });
 }
@@ -4475,7 +4645,7 @@ window.showConversation = async function (conversationId) {
             </div>
             <div>👤 ${escapeHtml(contact.displayName || "مستخدم")}</div>
             <div style="margin-top:5px;">
-              📱 <b dir="ltr">${escapeHtml(contact.phoneNumber || "غير متوفر")}</b>
+              ${contact.phoneNumber ? `📱 <b dir="ltr">${escapeHtml(contact.phoneNumber)}</b>` : "لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة."}
             </div>
           </div>
         `;
@@ -4986,7 +5156,7 @@ loadMarket();
 // One in-flight submission per action; restored even when validation returns early.
 for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListingService",
   "sendConversationMessage", "sendConversationOffer", "decideConversationOffer",
-  "decideServiceRequest", "finalizeAuction", "updatePurchaseRequest", "saveListingEdits"]) {
+  "decideServiceRequest", "finalizeAuction", "updatePurchaseRequest", "saveListingEdits", "sendPhoneCode", "verifyPhoneCode"]) {
   const original = window[action];
   if (typeof original !== "function") continue;
   let busy = false;

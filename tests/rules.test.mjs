@@ -301,5 +301,74 @@ await check('user cannot self-grant admin or forge payment audit fields',async()
     await assertFails(updateDoc(doc(seller,'serviceRequests/seller_bump_auction_auction-EG'),patch));
 });
 
+
+for (const noPhone of ['seller', 'buyer']) {
+  await check(`email-only ${noPhone}: marketplace and accepted offer retain contact privacy`, async()=>{
+    const sid=`seller-${noPhone}`, bid=`buyer-${noPhone}`;
+    const sdb=env.authenticatedContext(sid,{firebase:{sign_in_provider:noPhone==='seller'?'password':'phone'}}).firestore();
+    const bdb=env.authenticatedContext(bid,{firebase:{sign_in_provider:noPhone==='buyer'?'password':'phone'}}).firestore();
+    for (const [db,uid,role] of [[sdb,sid,'seller'],[bdb,bid,'buyer']]) {
+      const profile={uid,displayName:role,accountType:'both',status:'active',createdAt:serverTimestamp(),lastLoginAt:serverTimestamp(),...(role===noPhone?{}:{phoneNumber:'+971500000000'})};
+      await assertSucceeds(setDoc(doc(db,'users',uid),profile));
+      await assertFails(updateDoc(doc(db,'users',uid),{email:'private@example.test'}));
+    }
+    const animalId=`email-direct-${noPhone}`;
+    await assertSucceeds(setDoc(doc(sdb,'animals',animalId),{...animalData('AE'),sellerId:sid,price:500}));
+    await assertSucceeds(updateDoc(doc(sdb,'animals',animalId),{description:'edited',updatedAt:serverTimestamp()}));
+    await assertSucceeds(setDoc(doc(bdb,'purchaseRequests',animalId),{animalId,sellerId:sid,buyerId:bid,price:500,status:'pending',createdAt:serverTimestamp(),updatedAt:serverTimestamp()}));
+    const auctionId=`email-auction-${noPhone}`;
+    const ab=writeBatch(sdb);
+    ab.set(doc(sdb,'animals',auctionId),{...animalData('AE','auction'),sellerId:sid});
+    ab.set(doc(sdb,'auctions',auctionId),{...auctionData(auctionId,'AE'),sellerId:sid});
+    await assertSucceeds(ab.commit());
+    await assertSucceeds(updateDoc(doc(bdb,'auctions',auctionId),{currentPrice:110,lastBidAt:serverTimestamp(),lastBidderId:bid,lastBidderPhone:''}));
+    await assertSucceeds(setDoc(doc(sdb,'serviceRequests',`${sid}_featured_animal_${animalId}`),{...serviceData('featured','animal',animalId,'AE',15,'AED'),userId:sid}));
+    const cid=`direct_${animalId}_${bid}`;
+    await assertSucceeds(setDoc(doc(bdb,'conversations',cid),{contextType:'direct',animalId,sellerId:sid,buyerId:bid,participants:[sid,bid],askingPrice:500,createdAt:serverTimestamp(),updatedAt:serverTimestamp(),lastMessage:'',lastMessageType:'',lastMessageSenderId:'',sellerUnread:0,buyerUnread:0}));
+    for (const [db,uid,role] of [[sdb,sid,'seller'],[bdb,bid,'buyer']]) {
+      const contact={uid,displayName:role,createdAt:serverTimestamp(),...(role===noPhone?{}:{phoneNumber:'+971500000000'})};
+      await assertFails(setDoc(doc(db,'conversations',cid,'privateContacts',uid),{...contact,email:'private@example.test'}));
+      await assertSucceeds(setDoc(doc(db,'conversations',cid,'privateContacts',uid),contact));
+    }
+    await assertFails(getDoc(doc(bdb,'conversations',cid,'privateContacts',sid)));
+    await assertSucceeds(setDoc(doc(bdb,'conversations',cid,'messages','offer'),{type:'offer',offerAmount:450,status:'pending',senderId:bid,createdAt:serverTimestamp()}));
+    const batch=writeBatch(sdb);
+    batch.update(doc(sdb,'conversations',cid,'messages','offer'),{status:'accepted',decidedBy:sid,decidedAt:serverTimestamp()});
+    batch.update(doc(sdb,'conversations',cid),{lastMessage:'accepted',lastMessageType:'text',lastMessageSenderId:sid,lastMessageAt:serverTimestamp(),updatedAt:serverTimestamp(),buyerUnread:1,contactStatus:'unlocked',acceptedOfferId:'offer',contactUnlockedAt:serverTimestamp()});
+    await assertSucceeds(batch.commit());
+    const ownerDb=noPhone==='seller'?bdb:sdb, contactUid=noPhone==='seller'?sid:bid;
+    const contact=(await assertSucceeds(getDoc(doc(ownerDb,'conversations',cid,'privateContacts',contactUid)))).data();
+    if ('phoneNumber' in contact || 'email' in contact) throw Error('Unexpected private contact fields');
+    await assertFails(getDoc(doc(third,'conversations',cid,'privateContacts',contactUid)));
+    await assertSucceeds(setDoc(doc(bdb,'conversations',cid,'messages','continued'),{type:'text',text:'continue here',senderId:bid,createdAt:serverTimestamp()}));
+  });
+}
+await check('deletion request own UID create/read; forged UID/status/extra keys denied',async()=>{
+  const data={userId:'buyer',status:'pending',createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
+  await assertSucceeds(getDoc(doc(buyer,'accountDeletionRequests/buyer')));
+  await assertFails(setDoc(doc(anon,'accountDeletionRequests/buyer'),data));
+  await assertFails(setDoc(doc(buyer,'accountDeletionRequests/seller'),data));
+  await assertFails(setDoc(doc(buyer,'accountDeletionRequests/buyer'),{...data,userId:'seller'}));
+  await assertFails(setDoc(doc(buyer,'accountDeletionRequests/buyer'),{...data,status:'completed'}));
+  await assertFails(setDoc(doc(buyer,'accountDeletionRequests/buyer'),{...data,email:'not-stored@example.test'}));
+  await assertSucceeds(setDoc(doc(buyer,'accountDeletionRequests/buyer'),data));
+  await assertSucceeds(getDoc(doc(buyer,'accountDeletionRequests/buyer')));
+  await assertFails(getDoc(doc(third,'accountDeletionRequests/buyer')));
+  await assertFails(getDoc(doc(anon,'accountDeletionRequests/buyer')));
+  await assertFails(getDocs(collection(buyer,'accountDeletionRequests')));
+  await assertSucceeds(getDocs(query(collection(buyer,'accountDeletionRequests'),where('userId','==','buyer'))));
+  await assertSucceeds(getDocs(collection(admin,'accountDeletionRequests')));
+});
+await check('deletion processing restricted to claim admin and preserves request identity',async()=>{
+  const patch={status:'in_review',updatedAt:serverTimestamp(),processedAt:serverTimestamp(),processedBy:'admin'};
+  await assertFails(updateDoc(doc(buyer,'accountDeletionRequests/buyer'),patch));
+  await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,userId:'seller'}));
+  await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,processedBy:'buyer'}));
+  await assertSucceeds(updateDoc(doc(admin,'accountDeletionRequests/buyer'),patch));
+  await assertSucceeds(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,status:'completed'}));
+  await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,status:'pending'}));
+  for(const db of [buyer,admin]) { const batch=writeBatch(db);batch.delete(doc(db,'accountDeletionRequests/buyer'));await assertFails(batch.commit()); }
+});
+
 console.log(`SUMMARY | ${results.length}/${results.length} passed`);
 await env.cleanup();

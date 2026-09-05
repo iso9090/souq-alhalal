@@ -1,5 +1,7 @@
 # CURRENT AUDIT — 2026-09-05
 
+Latest batch: Email/Password authentication and secure UID account-deletion requests added; support email soqalhalal9@gmail.com and WAL DIGITAL identity published. See AUTH_AND_DELETION_NOTES.md for current behavior and Play documentation addendum. The earlier counts below describe the launch-essentials baseline, not the new authentication tests.
+
 ## Existing and preserved
 Reviewed app.js, index.html, style.css, market-ui.js, firestore.rules, firebase.json, admin-tools, README, monetization plan and latest six commits. main started clean at 1021af3. No in-repository test setup existed; prior local country/payment/rules checks were found in the OS temp directory and preserved as reproducible tests.
 
@@ -25,9 +27,9 @@ Phone Auth, AE/EG country isolation (legacy defaults AE), country-independent ac
 ## Deliberately deferred / launch limits
 Real payments, professional seller pricing, auction commission, backend/webhooks, Android/Google Play, production migrations and live SMS testing remain excluded.
 
-Rules are changed in source and tested locally, NOT deployed to production. GitHub Pages does not deploy Firestore rules. Existing public legacy listing phone fields cannot be hidden at field level by read rules; no live data cleanup was performed. Auction phone fields remain part of the existing auction flow. A separate reviewed privacy/data migration is needed before claiming full public phone confidentiality.
+Launch-essentials rules were subsequently deployed successfully in the dedicated rules synchronization step. This auth/deletion batch requires its own tested rules release; GitHub Pages does not deploy Firestore rules. Existing public legacy listing phone fields cannot be hidden at field level by read rules; no live data cleanup was performed. Auction phone fields remain part of the existing auction flow. A separate reviewed privacy/data migration is needed before claiming full public phone confidentiality.
 
-A real support/contact channel is not published in the existing project. Footer links to the existing contact section; no email/company/license was invented. Publish a support channel, retention/deletion process, and obtain applicable legal review before general launch. The legal pages describe the present trial state, not a claim of full regulatory compliance. Reference context: [UAE government data protection](https://u.ae/ar/about-the-uae/digital-uae/data/data-protection-laws) and [Egypt PDPC](https://www.pdpc.gov.eg/).
+Official support is now soqalhalal9@gmail.com. Account and external deletion-request paths are implemented; trusted staff must process cleanup and retention explicitly. No company registration/license was invented. Obtain applicable legal review before general launch. The legal pages describe the present trial state, not a claim of full regulatory compliance. Reference context: [UAE government data protection](https://u.ae/ar/about-the-uae/digital-uae/data/data-protection-laws) and [Egypt PDPC](https://www.pdpc.gov.eg/).
 
 Duplicate-click protection is local to an open page; purchase request IDs are preserved, so cross-tab/server-level idempotency remains future work. Auction closing remains the existing atomic batch guarded by active/end-time rules; no auction engine rewrite. Production Auth, indexes, actual deployed rules and end-to-end real accounts have not been exercised.
 

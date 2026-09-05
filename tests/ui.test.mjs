@@ -91,4 +91,17 @@ test('image attributes reject quote injection',security.safeImageData('data:imag
 test('jpeg compressed data remains accepted',security.safeImageData('data:image/jpeg;base64,YWJj')==='data:image/jpeg;base64,YWJj');
 test('HTML user text is escaped',security.escapeHtml('<img onerror="x">').includes('&lt;'));
 test('demo link only for missing or unpaid pending',!!security.demoPaymentLink({status:'pending'})&&!!security.demoPaymentLink({status:'pending',paymentStatus:'unpaid'})&&!security.demoPaymentLink({status:'pending',paymentStatus:'paid'})&&!security.demoPaymentLink({status:'approved',paymentStatus:'unpaid'})&&!security.demoPaymentLink({status:'pending',paymentStatus:null}));
+vm.runInContext(['authErrorText','validateEmailForm','deletionStatusText'].map(extractFunction).join('\n')+';globalThis.authChecks={authErrorText,validateEmailForm,deletionStatusText};',context);
+const checks=context.authChecks;
+test('signup accepts email without phone',checks.validateEmailForm('signup','owner@example.test','long-password','long-password','اسم')==='');
+test('signup rejects mismatched confirmation',checks.validateEmailForm('signup','owner@example.test','long-password','different','اسم').includes('غير مطابق'));
+test('signup rejects blank name',!!checks.validateEmailForm('signup','owner@example.test','long-password','long-password',''));
+test('signup rejects weak password',!!checks.validateEmailForm('signup','owner@example.test','short','short','اسم'));
+test('invalid email rejected',!!checks.validateEmailForm('login','invalid','anything'));
+test('reset requires only valid email',checks.validateEmailForm('reset','owner@example.test')==='');
+for(const code of ['invalid-email','email-already-in-use','weak-password','invalid-credential','wrong-password','too-many-requests','network-request-failed','user-disabled','user-not-found'])test('Arabic auth error '+code,!checks.authErrorText('auth/'+code).includes('auth/'));
+test('deletion status does not claim immediate erasure',checks.deletionStatusText('pending').includes('لم يُحذف'));
+test('no automatic auth linking or deletion',!source.includes('linkWithCredential')&&!source.includes('deleteUser('));
+test('phone billing fallback retains SDK and country prefixes',source.includes('signInWithPhoneNumber')&&source.includes('auth/billing-not-enabled')&&source.includes('استخدم البريد الإلكتروني بدلًا من ذلك')&&source.includes('+971')&&source.includes('+20'));
+test('private contact data has optional phone and no email',source.slice(source.indexOf('async function ensurePrivateConversationContact'),source.indexOf('async function recoverLegacyDirectConversationContact')).includes('...(profile?.phoneNumber ? { phoneNumber: profile.phoneNumber } : {})')&&!source.slice(source.indexOf('async function ensurePrivateConversationContact'),source.indexOf('async function recoverLegacyDirectConversationContact')).includes('email'));
 console.log(`SUMMARY | ${results.length}/${results.length} passed`);

@@ -8,4 +8,4 @@ A future trusted backend must authenticate ownership, calculate the service pric
 
 Current payment-demo reads only the signed-in user's serviceRequests. Its button changes DOM only. There is no payment SDK, card capture, backend, webhook, secret, or payment activation. Payment overrides remain trusted admin exceptions and do not change unpaid into paid.
 
-Before activation: establish required business arrangements, publish support contact and final payment/refund terms, and test the backend in an isolated provider sandbox.
+Before activation: establish required business arrangements, review final payment/refund terms (support contact is now published: soqalhalal9@gmail.com), and test the backend in an isolated provider sandbox.
