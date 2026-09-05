@@ -896,6 +896,8 @@ async function showAccount() {
   `);
 
   await ensureUserProfile(user);
+  const deletion = await readOwnDeletionRequest(user);
+  if (auth.currentUser?.uid !== user.uid) return;
   const profile = await getUserProfile();
   const displayName = profile?.displayName || "";
   const accountType = profile?.accountType || "buyer";
@@ -989,7 +991,8 @@ async function showAccount() {
       ${buyerButtons}
       ${sellerButtons}
 
-      <button type="button" onclick="openAccountDeletion()" style="width:100%;margin:12px 0;">حذف الحساب</button>
+      <div id="accountDeletionNotice" role="status">${deletion?.status === "pending" || deletion?.status === "in_review" ? "<p><b>طلب حذف حسابك قيد المراجعة.</b></p><p>تم استلام طلب حذف الحساب. سيبقى الحساب متاحًا مؤقتًا إلى حين اكتمال المعالجة.</p>" : deletion?.status === "completed" ? `<p>${deletionStatusText("completed")}</p>` : deletion?.unavailable ? "<p>تعذر التحقق من حالة طلب الحذف. حاول لاحقًا.</p>" : ""}</div>
+      <button id="accountDeletionButton" type="button" onclick="openAccountDeletion()" style="width:100%;margin:12px 0;" ${deletion?.status ? "disabled" : ""}>${deletion?.status === "completed" ? "سُجّل اكتمال معالجة الطلب" : deletion?.status ? "طلب الحذف قيد المراجعة" : "حذف الحساب"}</button>
       <button onclick="logoutUser()"
         style="width:100%;padding:15px;background:#8b2929;color:white;border:0;border-radius:10px;">
         تسجيل الخروج
@@ -1152,13 +1155,79 @@ window.openAdminPanel = async function () {
           </select>
         </div>
         <div id="adminServiceRequestsList"></div>
+        <section style="border-top:1px solid #b88a32;margin-top:24px;padding-top:16px;">
+          <h3>طلبات حذف الحسابات</h3>
+          <p>هذه الشاشة لمتابعة الحالة فقط. معالجة البيانات تتم خارجها وفق إجراءات الإدارة.</p>
+          <label for="adminDeletionFilter">حالة طلب الحذف</label>
+          <select id="adminDeletionFilter" onchange="renderAdminDeletionRequests()" style="width:100%;box-sizing:border-box;">
+            <option value="all">كل الحالات</option><option value="active">قيد المراجعة</option><option value="completed">تم التنفيذ</option>
+          </select>
+          <div id="adminDeletionRequestsList" aria-live="polite"></div>
+        </section>
       </div>
     `);
     window.renderAdminServiceRequests();
+    await window.loadAdminDeletionRequests();
   } catch (error) {
     console.error("ADMIN PANEL ERROR:", error);
     alert(error.code === "permission-denied" ? "لا تملك صلاحية فتح لوحة الإدارة." : "تعذر تحميل لوحة الإدارة.");
   }
+};
+
+let adminDeletionRequests = [];
+let adminDeletionBusy = false;
+window.loadAdminDeletionRequests = async function () {
+  const container = document.getElementById("adminDeletionRequestsList");
+  if (!container || !await requireAdminClaim(true)) return;
+  container.textContent = "جاري تحميل طلبات الحذف…";
+  try {
+    const snapshot = await getDocs(collection(db, "accountDeletionRequests"));
+    adminDeletionRequests = snapshot.docs.map(item => {
+      const data = item.data();
+      return { id: item.id, userId: data.userId, status: data.status, createdAt: data.createdAt, processedAt: data.processedAt };
+    }).sort((a,b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
+    await Promise.all(adminDeletionRequests.map(async item => {
+      try {
+        const profile = await getDoc(doc(db, "users", item.userId));
+        if (profile.exists()) item.displayName = profile.data().displayName || "";
+      } catch { /* UID remains usable when a profile is unavailable. */ }
+    }));
+    window.renderAdminDeletionRequests();
+  } catch { container.textContent = "تعذر تحميل طلبات الحذف. أعد فتح لوحة الإدارة للمحاولة مجددًا."; }
+};
+window.renderAdminDeletionRequests = function () {
+  const container = document.getElementById("adminDeletionRequestsList");
+  if (!container || !currentUserIsAdmin) return;
+  const filter = document.getElementById("adminDeletionFilter")?.value || "all";
+  const requests = adminDeletionRequests.filter(item => filter === "all" || (filter === "active" ? ["pending", "in_review"].includes(item.status) : item.status === "completed"));
+  container.innerHTML = requests.length ? requests.map(item => `<article style="border:1px solid #b88a32;padding:12px;margin:12px 0;border-radius:12px;overflow-wrap:anywhere;">
+    <p>معرّف الحساب: <b dir="ltr">${escapeHtml(item.userId || item.id)}</b></p>
+    ${item.displayName ? `<p>الاسم: ${escapeHtml(item.displayName)}</p>` : ""}
+    <p>تاريخ الطلب: ${escapeHtml(formatDate(item.createdAt))}</p>
+    <p>الحالة: ${item.status === "pending" ? "بانتظار المراجعة" : item.status === "in_review" ? "قيد المراجعة" : item.status === "completed" ? "تم التنفيذ" : "حالة غير معروفة"}</p>
+    ${item.processedAt ? `<p>آخر معالجة: ${escapeHtml(formatDate(item.processedAt))}</p>` : ""}
+    ${["pending", "in_review"].includes(item.status) ? `<button type="button" style="width:100%;box-sizing:border-box;white-space:normal;" onclick="processDeletionRequest(${escapeHtml(JSON.stringify(item.id))}, ${escapeHtml(JSON.stringify(item.status === "pending" ? "in_review" : "completed"))})">${item.status === "pending" ? "بدء المراجعة" : "تم التنفيذ"}</button>` : ""}
+  </article>`).join("") : "<p>لا توجد طلبات بهذه الحالة.</p>";
+};
+window.processDeletionRequest = async function (uid, nextStatus) {
+  if (adminDeletionBusy || !["in_review", "completed"].includes(nextStatus) || !await requireAdminClaim(true)) return;
+  if (adminDeletionBusy) return;
+  if (nextStatus === "completed" && !confirm("لا تضغط تم التنفيذ إلا بعد إتمام معالجة حذف/إخفاء البيانات المطلوبة خارج هذه الشاشة وفق إجراءات الإدارة. هل تؤكد اكتمال المعالجة؟")) return;
+  adminDeletionBusy = true;
+  try {
+    const user = auth.currentUser;
+    const ref = doc(db, "accountDeletionRequests", uid);
+    const changed = await runTransaction(db, async transaction => {
+      const snapshot = await transaction.get(ref);
+      const expected = nextStatus === "in_review" ? "pending" : "in_review";
+      if (!snapshot.exists() || snapshot.data().status !== expected) return false;
+      transaction.update(ref, { status: nextStatus, updatedAt: serverTimestamp(), processedAt: serverTimestamp(), processedBy: user.uid });
+      return true;
+    });
+    if (!changed) alert("تغيّرت حالة الطلب. تم تحديث القائمة.");
+    await window.loadAdminDeletionRequests();
+  } catch { alert("تعذر تحديث حالة طلب الحذف. تحقق من صلاحياتك والاتصال ثم حاول مجددًا."); }
+  finally { adminDeletionBusy = false; }
 };
 
 window.renderAdminServiceRequests = function () {
@@ -1903,8 +1972,7 @@ window.showPurchaseRequests = async function () {
           </p>
 
           <p>
-            📱 رقم المشتري:
-            <b dir="ltr">${escapeHtml(request.buyerPhone || "غير متوفر")}</b>
+            ${request.buyerPhone ? `📱 رقم المشتري: <b dir="ltr">${escapeHtml(request.buyerPhone)}</b>` : "لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة."}
           </p>
 
           <p>
@@ -2084,6 +2152,13 @@ window.submitEmailAuth = async function (event, mode) {
   }
 };
 
+async function readOwnDeletionRequest(user) {
+  try {
+    const snapshot = await getDoc(doc(db, "accountDeletionRequests", user.uid));
+    return snapshot.exists() ? { status: snapshot.data().status } : null;
+  } catch { return { unavailable: true }; }
+}
+
 let deletionRequestBusy = false;
 window.openAccountDeletion = async function () {
   const user = auth.currentUser;
@@ -2129,11 +2204,20 @@ window.confirmAccountDeletion = async function () {
     const ref = doc(db, "accountDeletionRequests", user.uid);
     const result = await runTransaction(db, async transaction => {
       const snapshot = await transaction.get(ref);
-      if (snapshot.exists()) return snapshot.data().status;
+      if (snapshot.exists()) return { created: false, status: snapshot.data().status };
       transaction.set(ref, { userId: user.uid, status: "pending", createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      return "pending";
+      return { created: true, status: "pending" };
     });
-    status.textContent = deletionStatusText(result);
+    if (!result.created) {
+      status.textContent = deletionStatusText(result.status);
+      return;
+    }
+    window.closeModal();
+    try {
+      await window.logoutUser();
+      alert("تم إرسال طلب حذف حسابك بنجاح.");
+    }
+    catch { alert("تم حفظ طلب الحذف، لكن تعذر تسجيل الخروج. يرجى تسجيل الخروج من حسابي."); }
   } catch {
     status.textContent = "تعذر إرسال طلب الحذف. حاول مرة أخرى أو تواصل مع الدعم.";
     button.disabled = false;
@@ -2285,6 +2369,8 @@ onAuthStateChanged(auth, async user => {
 
   if (user) {
     await ensureUserProfile(user);
+    await readOwnDeletionRequest(user);
+    if (auth.currentUser?.uid !== user.uid) return;
     try {
       const tokenResult = await getIdTokenResult(user);
       currentUserIsAdmin = tokenResult.claims.admin === true;

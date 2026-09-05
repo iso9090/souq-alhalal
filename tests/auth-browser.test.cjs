@@ -11,9 +11,10 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  const browser = await chromium.launch({ channel: 'msedge', headless: true });
  try {
  const page = await browser.newPage();
- const errors = [], external = [];
+ const errors = [], external = [], dialogs = [];
+ let rejectConfirmation = false;
  page.on('pageerror', e => errors.push(e.message));
- page.on('dialog', d => d.accept(d.type() === 'prompt' ? '110' : undefined));
+ page.on('dialog', d => {dialogs.push(d.message());return d.type()==='confirm' && rejectConfirmation ? d.dismiss() : d.accept(d.type() === 'prompt' ? '110' : undefined)});
  await page.addInitScript(() => {
    const docs = new Map(), calls = [], observers = [];
    let sequence = 0, queue = Promise.resolve();
@@ -146,9 +147,25 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.evaluate(async()=>Promise.all([window.confirmAccountDeletion(),window.confirmAccountDeletion()]));
  assert.equal(await page.evaluate(()=>window.__mock.calls.filter(c=>c.kind==='write'&&c.path==='accountDeletionRequests/owner').length),1);
  assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'pending');
- assert.match(await page.locator('#deletionStatus').innerText(),/لم يُحذف/);
+ assert.equal(await page.evaluate(()=>window.__mock.api.getAuth().currentUser),null);
+ assert.equal(await page.locator('#deletionStatus').isVisible(),false);
+ assert.ok(dialogs.includes('تم إرسال طلب حذف حسابك بنجاح.'));
+ pass('deletion success feedback closes modal and signs out');
+ await page.evaluate(()=>window.openEmailAuth());
+ await page.locator('#authEmail').fill('owner@example.test');await page.locator('#authPassword').fill('sample-password');
+ await page.locator('#emailAuthForm button[type=submit]').click();await page.locator('#accountDeletionNotice').waitFor();
+ assert.match(await page.locator('#accountDeletionNotice').innerText(),/طلب حذف حسابك قيد المراجعة/);
+ assert.equal(await page.locator('#accountDeletionButton').isDisabled(),true);
+ await page.evaluate(()=>window.openAdminPanel());
+ assert.equal(await page.locator('#adminDeletionRequestsList').count(),0);
+ await page.evaluate(()=>window.processDeletionRequest('owner','completed'));
+ assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'pending');
+ pass('pending re-login account warning, disabled action and non-admin denied');
  await page.evaluate(()=>window.openAccountDeletion());assert.equal(await page.locator('#requestDeletionButton').isDisabled(),true);
- pass('confirmed deletion request is pending and deduplicated, not Auth deletion');
+ await page.evaluate(()=>window.confirmAccountDeletion());
+ assert.equal(await page.evaluate(()=>window.__mock.calls.filter(c=>c.kind==='write'&&c.path==='accountDeletionRequests/owner').length),1);
+ assert.equal(await page.evaluate(()=>window.__mock.api.getAuth().currentUser.uid),'owner');
+ pass('existing request handled without write or logout');
  await page.evaluate(async()=>{window.closeModal();await window.selectMarketCountry('AE')});
  await page.evaluate(async()=>{
    document.getElementById('animalType').value='غنم';document.getElementById('animalGender').value='male';
@@ -206,7 +223,40 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  assert.equal(await page.locator('#adminPanelButton').isVisible(),true);
  await page.evaluate(()=>window.openAdminPanel());await page.locator('#adminServiceRequestsList').waitFor();
  pass('no credential persistence; custom-claim admin preserved');
+ assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/owner/);
+ assert.equal(await page.locator('#adminServiceRequestsList').count(),1);
+ await page.evaluate(()=>window.processDeletionRequest('owner','in_review'));
+ assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'in_review');
+ assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').processedBy),'buyer');
+ rejectConfirmation=true;
+ await page.evaluate(()=>window.processDeletionRequest('owner','completed'));
+ assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'in_review');
+ rejectConfirmation=false;
+ await page.evaluate(()=>window.processDeletionRequest('owner','completed'));
+ assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'completed');
+ assert.ok(dialogs.some(t=>t.includes('لا تضغط تم التنفيذ إلا بعد')));
+ assert.equal(await page.locator('#adminDeletionRequestsList button').count(),0);
+ await page.locator('#adminDeletionFilter').selectOption('active');
+ assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/لا توجد طلبات/);
+ await page.locator('#adminDeletionFilter').selectOption('completed');
+ assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/owner/);
+ pass('admin list, sequential audit transitions, completion cancellation/confirmation and filters');
  for(const width of [360,1280]) {
+   await page.setViewportSize({width,height:900});
+   const restoredUser=await page.evaluate(()=>window.__mock.api.getAuth().currentUser);
+   await page.evaluate(()=>window.__mock.docs.delete('accountDeletionRequests/buyer'));
+   await page.evaluate(()=>window.openAccountDeletion());
+   await page.locator('#requestDeletionButton').click();
+   await page.waitForFunction(()=>window.__mock.api.getAuth().currentUser===null);
+   assert.equal(await page.locator('#deletionStatus').isVisible(),false);
+   await page.evaluate(user=>window.__mock.setUser(user),restoredUser);
+   await page.evaluate(()=>window.openLogin());
+   assert.match(await page.locator('#accountDeletionNotice').innerText(),/طلب حذف حسابك قيد المراجعة/);
+   pass('submit, close, logout and restored pending account '+width);
+   await page.evaluate(async()=>{
+     window.__mock.docs.set('accountDeletionRequests/buyer',{userId:'buyer',status:'in_review',createdAt:new Date(),updatedAt:new Date()});
+     await window.__mock.setUser(window.__mock.api.getAuth().currentUser);
+   });
    await page.setViewportSize({width,height:900});
    for(const screen of ['account','deletion','messages','admin']) {
      await page.evaluate(async({screen,cid})=>{
@@ -218,10 +268,29 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,(typeof screen === "undefined" ? "auth" : screen)+" document overflow "+width);
      assert.equal(await page.evaluate(()=>{const el=document.getElementById('modalContent');return el.scrollWidth>el.clientWidth+1}),false,screen+" modal overflow "+width);
    }
+   await page.evaluate(()=>window.openLogin());
+   assert.match(await page.locator('#accountDeletionNotice').innerText(),/طلب حذف حسابك قيد المراجعة/);
+   assert.equal(await page.locator('#accountDeletionButton').isDisabled(),true);
+   if(width===360){await page.locator('#accountDeletionNotice').scrollIntoViewIfNeeded();await page.screenshot({path:process.env.TEMP+'/souq-pending-review.png'});}
+   await page.evaluate(()=>window.openAdminPanel());
+   if(width===360){await page.locator('#adminDeletionRequestsList').scrollIntoViewIfNeeded();await page.screenshot({path:process.env.TEMP+'/souq-deletion-admin.png'});}
    await page.evaluate(async()=>{window.closeModal();await window.selectMarketCountry('EG')});
    assert.equal(await page.evaluate(()=>window.__mock.api.getAuth().currentUser.uid),'buyer');
    pass('account/deletion/messages/admin responsive and country switch preserves session '+width);
  }
+ await page.evaluate(async()=>{
+   const mock=window.__mock;
+   mock.admin=false;
+   await mock.setUser({uid:'owner',email:'owner@example.test',phoneNumber:null,providerData:[{providerId:'password'}]});
+   for(const [key,value] of mock.docs)if(key.startsWith('purchaseRequests/'))mock.docs.set(key,{...value,status:'accepted'});
+   await window.openLogin();
+ });
+ assert.match(await page.locator('#accountDeletionNotice').innerText(),/اكتمال معالجة/);
+ assert.equal(await page.locator('#accountDeletionButton').isDisabled(),true);
+ await page.evaluate(()=>window.showPurchaseRequests());
+ assert.match(await page.locator('#modalContent').innerText(),/لم يضف المستخدم رقم هاتف للتواصل/);
+ assert.equal((await page.locator('#modalContent').innerText()).includes('buyer@example.test'),false);
+ pass('completed remains truthful; accepted purchase request without phone has messaging guidance');
  assert.deepEqual(await page.evaluate(()=>window.__mock.failures),[]);
  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
  console.log(`SUMMARY | ${count}/${count} passed; all Firebase traffic mocked`);

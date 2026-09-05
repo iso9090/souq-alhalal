@@ -10,3 +10,5 @@ No SMS, live service requests, live data edits, credentials, or real payment cal
 
 - `node tests/auth-browser.test.cjs` (same Playwright setup): all Firebase APIs mocked; real auth/create/reset endpoints cannot be reached. Tests Email signup/login/reset/fallback, no-phone direct/auction/bid/purchase/services, accepted offers and continued messaging, UID deletion deduplication, privacy and both responsive widths. No credentials are persisted or logged by the mock.
 - Updated complete Rules suite additionally exercises email-only seller/buyer contact acceptance and deletion request owner/admin isolation.
+
+- Deletion follow-up: browser checks cover automatic logout/modal closure, pending/restored/completed Account states, graceful duplicates, non-admin denial, admin list/filter/audited transitions and completion cancellation. Rules assertions also reject owner completion and a forged processed timestamp. All data remains local.

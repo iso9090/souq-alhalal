@@ -104,4 +104,6 @@ test('deletion status does not claim immediate erasure',checks.deletionStatusTex
 test('no automatic auth linking or deletion',!source.includes('linkWithCredential')&&!source.includes('deleteUser('));
 test('phone billing fallback retains SDK and country prefixes',source.includes('signInWithPhoneNumber')&&source.includes('auth/billing-not-enabled')&&source.includes('استخدم البريد الإلكتروني بدلًا من ذلك')&&source.includes('+971')&&source.includes('+20'));
 test('private contact data has optional phone and no email',source.slice(source.indexOf('async function ensurePrivateConversationContact'),source.indexOf('async function recoverLegacyDirectConversationContact')).includes('...(profile?.phoneNumber ? { phoneNumber: profile.phoneNumber } : {})')&&!source.slice(source.indexOf('async function ensurePrivateConversationContact'),source.indexOf('async function recoverLegacyDirectConversationContact')).includes('email'));
+test('completed deletion wording reports administrative record not automatic erasure',checks.deletionStatusText('completed').includes('تم تسجيل اكتمال معالجة')&&checks.deletionStatusText('completed').includes('الدعم'));
+test('in-review deletion wording remains truthful',checks.deletionStatusText('in_review').includes('لم تُؤكد'));
 console.log(`SUMMARY | ${results.length}/${results.length} passed`);

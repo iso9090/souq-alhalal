@@ -364,6 +364,8 @@ await check('deletion processing restricted to claim admin and preserves request
   await assertFails(updateDoc(doc(buyer,'accountDeletionRequests/buyer'),patch));
   await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,userId:'seller'}));
   await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,processedBy:'buyer'}));
+  await assertFails(updateDoc(doc(buyer,'accountDeletionRequests/buyer'),{...patch,status:'completed',processedBy:'buyer'}));
+  await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,processedAt:new Date(0)}));
   await assertSucceeds(updateDoc(doc(admin,'accountDeletionRequests/buyer'),patch));
   await assertSucceeds(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,status:'completed'}));
   await assertFails(updateDoc(doc(admin,'accountDeletionRequests/buyer'),{...patch,status:'pending'}));
