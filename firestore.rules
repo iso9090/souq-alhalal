@@ -6,6 +6,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
     function isOwner(fieldName) {
       return signedIn() && resource.data[fieldName] == request.auth.uid;
     }
@@ -98,7 +102,7 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
 
       allow create: if signedIn()
         && request.auth.uid == uid
@@ -155,7 +159,8 @@ service cloud.firestore {
         && hasNoVerificationFields(request.resource.data)
         && hasNoPromotionFields(request.resource.data);
 
-      allow update: if isOwner('sellerId')
+      allow update: if (
+        isOwner('sellerId')
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'sellerId',
           'saleType',
@@ -190,7 +195,38 @@ service cloud.firestore {
           || !request.resource.data.keys().hasAny(['sellerPhone'])
         )
         && verificationFieldsUnchanged()
-        && promotionFieldsUnchanged();
+        && promotionFieldsUnchanged()
+      ) || (
+        isAdmin()
+        && (
+          (
+            changedKeysOnly(['featuredAt', 'featuredUntil'])
+            && request.resource.data.featuredAt == request.time
+            && request.resource.data.featuredUntil is timestamp
+            && request.resource.data.featuredUntil > request.time
+            && request.resource.data.featuredUntil <= request.time + duration.value(8, 'd')
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data.status == 'approved'
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data.approvedBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_animal_' + animalId)).data.approvedAt == request.time
+          )
+          || (
+            changedKeysOnly(['bumpedAt'])
+            && request.resource.data.bumpedAt == request.time
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data.status == 'approved'
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data.approvedBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_animal_' + animalId)).data.approvedAt == request.time
+          )
+          || (
+            changedKeysOnly(['verificationStatus', 'verifiedAt', 'verifiedBy'])
+            && request.resource.data.verificationStatus == 'verified'
+            && request.resource.data.verifiedAt == request.time
+            && request.resource.data.verifiedBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data.status == 'approved'
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data.approvedBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_verification_animal_' + animalId)).data.approvedAt == request.time
+          )
+        )
+      );
 
       allow delete: if isOwner('sellerId');
     }
@@ -222,7 +258,8 @@ service cloud.firestore {
         && hasNoVerificationFields(request.resource.data)
         && hasNoPromotionFields(request.resource.data);
 
-      allow update: if signedIn()
+      allow update: if (
+        signedIn()
         && (
           (
             resource.data.keys().hasAny(['country'])
@@ -264,14 +301,36 @@ service cloud.firestore {
           && request.resource.data.status in ['sold', 'not_approved']
           && request.resource.data.updatedAt == request.time
         )
-        );
+        )
+      ) || (
+        isAdmin()
+        && (
+          (
+            changedKeysOnly(['featuredAt', 'featuredUntil'])
+            && request.resource.data.featuredAt == request.time
+            && request.resource.data.featuredUntil is timestamp
+            && request.resource.data.featuredUntil > request.time
+            && request.resource.data.featuredUntil <= request.time + duration.value(8, 'd')
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data.status == 'approved'
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data.approvedBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_featured_auction_' + auctionId)).data.approvedAt == request.time
+          )
+          || (
+            changedKeysOnly(['bumpedAt'])
+            && request.resource.data.bumpedAt == request.time
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data.status == 'approved'
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data.approvedBy == request.auth.uid
+            && getAfter(/databases/$(database)/documents/serviceRequests/$(resource.data.sellerId + '_bump_auction_' + auctionId)).data.approvedAt == request.time
+          )
+        )
+      );
 
       allow delete: if isOwner('sellerId');
     }
 
     match /serviceRequests/{requestId} {
       allow read: if signedIn()
-        && resource.data.userId == request.auth.uid;
+        && (resource.data.userId == request.auth.uid || isAdmin());
 
       allow create: if signedIn()
         && request.resource.data.keys().hasOnly([
@@ -355,13 +414,81 @@ service cloud.firestore {
           )
         );
 
-      allow update: if signedIn()
+      allow update: if (
+        signedIn()
         && resource.data.userId == request.auth.uid
         && resource.data.status == 'pending'
         && changedKeysOnly(['status', 'cancelledAt', 'updatedAt'])
         && request.resource.data.status == 'cancelled'
         && request.resource.data.cancelledAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+      ) || (
+        isAdmin()
+        && resource.data.status == 'pending'
+        && request.resource.data.updatedAt == request.time
+        && (
+          (
+            changedKeysOnly(['status', 'approvedAt', 'approvedBy', 'updatedAt'])
+            && request.resource.data.status == 'approved'
+            && request.resource.data.approvedAt == request.time
+            && request.resource.data.approvedBy == request.auth.uid
+            && (
+              (
+                resource.data.targetType == 'animal'
+                && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.sellerId == resource.data.userId
+                && effectiveDocumentCountry(getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data) == resource.data.country
+                && (
+                  (
+                    resource.data.serviceType == 'featured'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.featuredAt == request.time
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.featuredUntil > request.time
+                  )
+                  || (
+                    resource.data.serviceType == 'bump'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.bumpedAt == request.time
+                  )
+                  || (
+                    resource.data.serviceType == 'verification'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.verificationStatus == 'verified'
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.verifiedAt == request.time
+                    && getAfter(/databases/$(database)/documents/animals/$(resource.data.targetId)).data.verifiedBy == request.auth.uid
+                  )
+                )
+              )
+              || (
+                resource.data.targetType == 'auction'
+                && resource.data.serviceType in ['featured', 'bump']
+                && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.sellerId == resource.data.userId
+                && effectiveDocumentCountry(getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data) == resource.data.country
+                && (
+                  (
+                    resource.data.serviceType == 'featured'
+                    && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.featuredAt == request.time
+                    && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.featuredUntil > request.time
+                  )
+                  || (
+                    resource.data.serviceType == 'bump'
+                    && getAfter(/databases/$(database)/documents/auctions/$(resource.data.targetId)).data.bumpedAt == request.time
+                  )
+                )
+              )
+            )
+          )
+          || (
+            changedKeysOnly(['status', 'rejectedAt', 'rejectedBy', 'updatedAt', 'adminNote'])
+            && request.resource.data.status == 'rejected'
+            && request.resource.data.rejectedAt == request.time
+            && request.resource.data.rejectedBy == request.auth.uid
+            && (
+              !request.resource.data.keys().hasAny(['adminNote'])
+              || (
+                request.resource.data.adminNote is string
+                && request.resource.data.adminNote.size() <= 1000
+              )
+            )
+          )
+        )
+      );
 
       allow delete: if false;
     }

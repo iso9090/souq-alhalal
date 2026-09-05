@@ -378,6 +378,10 @@
   </nav>
 
   <div class="header-actions">
+    <button id="adminPanelButton" type="button" onclick="openAdminPanel()"
+      style="display:none;white-space:nowrap;padding:7px 9px;border-radius:18px;border:1px solid #176b52;background:#eefaf5;color:#14523f;font-size:12px;font-weight:bold;">
+      لوحة الإدارة
+    </button>
     <button id="marketCountryButton" type="button" onclick="openMarketCountrySelector()"
       aria-label="تغيير سوق الدولة"
       style="display:none;align-items:center;white-space:nowrap;padding:7px 9px;border-radius:18px;border:1px solid #b88624;background:#fff8e9;color:#66490d;font-size:12px;font-weight:bold;">
@@ -656,7 +660,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<script type="module" src="app.js?v=55"></script>
+<script type="module" src="app.js?v=56"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=40"></script>

@@ -12,6 +12,7 @@ import {
   addDoc,
   writeBatch,
   runTransaction,
+  Timestamp,
   serverTimestamp,
   onSnapshot
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js";
@@ -20,6 +21,7 @@ import {
   getAuth,
   RecaptchaVerifier,
   signInWithPhoneNumber,
+  getIdTokenResult,
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js";
@@ -42,6 +44,8 @@ auth.languageCode = "ar";
 let confirmationResult = null;
 let recaptchaVerifier = null;
 let auctionTimerInterval = null;
+let currentUserIsAdmin = false;
+let adminServiceRequests = [];
 
 const handledExpiredAuctions = new Set();
 
@@ -1053,6 +1057,212 @@ window.cancelServiceRequest = async function (requestId) {
   }
 };
 
+async function requireAdminClaim(forceRefresh = false) {
+  const user = auth.currentUser;
+  if (!user) return false;
+  try {
+    const tokenResult = await getIdTokenResult(user, forceRefresh);
+    const allowed = tokenResult.claims.admin === true;
+    currentUserIsAdmin = allowed;
+    const button = document.getElementById("adminPanelButton");
+    if (button) button.style.display = allowed ? "inline-flex" : "none";
+    return allowed;
+  } catch (error) {
+    console.error("ADMIN TOKEN ERROR:", error);
+    return false;
+  }
+}
+
+async function enrichAdminServiceRequest(request) {
+  let targetName = request.targetId;
+  let sellerName = request.userId.slice(0, 10);
+  try {
+    const userSnap = await getDoc(doc(db, "users", request.userId));
+    if (userSnap.exists()) sellerName = userSnap.data().displayName || sellerName;
+
+    if (request.targetType === "animal") {
+      const animalSnap = await getDoc(doc(db, "animals", request.targetId));
+      if (animalSnap.exists()) targetName = animalSnap.data().name || animalSnap.data().type || targetName;
+    } else {
+      const auctionSnap = await getDoc(doc(db, "auctions", request.targetId));
+      if (auctionSnap.exists()) {
+        const animalSnap = await getDoc(doc(db, "animals", auctionSnap.data().animalId));
+        if (animalSnap.exists()) targetName = animalSnap.data().name || animalSnap.data().type || targetName;
+      }
+    }
+  } catch (error) {
+    console.error("ADMIN REQUEST DETAILS ERROR:", error);
+  }
+  return { ...request, targetName, sellerName };
+}
+
+window.openAdminPanel = async function () {
+  if (!await requireAdminClaim(true)) {
+    alert("غير مصرح لك بفتح لوحة الإدارة.");
+    return;
+  }
+
+  showModal(`<div style="direction:rtl;color:white;padding:16px;text-align:center;"><h2 style="color:#68e6b0;">لوحة الإدارة</h2><p>جاري تحميل طلبات الخدمات...</p></div>`);
+  try {
+    const snapshot = await getDocs(collection(db, "serviceRequests"));
+    const requests = snapshot.docs.map(requestDoc => ({ id: requestDoc.id, ...requestDoc.data() }));
+    adminServiceRequests = await Promise.all(requests.map(enrichAdminServiceRequest));
+    adminServiceRequests.sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
+
+    showModal(`
+      <div style="direction:rtl;color:white;padding:12px;">
+        <h2 style="text-align:center;color:#68e6b0;">لوحة الإدارة</h2>
+        <h3 style="color:#ffd66b;">طلبات الخدمات</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;">
+          <select id="adminServiceStatusFilter" onchange="renderAdminServiceRequests()">
+            <option value="all">كل الحالات</option>
+            <option value="pending">قيد المراجعة</option>
+            <option value="approved">تم الاعتماد</option>
+            <option value="rejected">مرفوض</option>
+            <option value="cancelled">ملغي</option>
+          </select>
+          <select id="adminServiceCountryFilter" onchange="renderAdminServiceRequests()">
+            <option value="all">كل الدول</option>
+            <option value="AE">الإمارات</option>
+            <option value="EG">مصر</option>
+          </select>
+          <select id="adminServiceTypeFilter" onchange="renderAdminServiceRequests()">
+            <option value="all">كل الخدمات</option>
+            <option value="featured">تمييز الإعلان</option>
+            <option value="bump">رفع الإعلان</option>
+            <option value="verification">توثيق الحيوان</option>
+          </select>
+        </div>
+        <div id="adminServiceRequestsList"></div>
+      </div>
+    `);
+    window.renderAdminServiceRequests();
+  } catch (error) {
+    console.error("ADMIN PANEL ERROR:", error);
+    alert(error.code === "permission-denied" ? "Firebase رفض فتح لوحة الإدارة." : "تعذر تحميل لوحة الإدارة.");
+  }
+};
+
+window.renderAdminServiceRequests = function () {
+  const container = document.getElementById("adminServiceRequestsList");
+  if (!container || !currentUserIsAdmin) return;
+  const status = document.getElementById("adminServiceStatusFilter")?.value || "all";
+  const country = document.getElementById("adminServiceCountryFilter")?.value || "all";
+  const serviceType = document.getElementById("adminServiceTypeFilter")?.value || "all";
+  const filtered = adminServiceRequests.filter(request =>
+    (status === "all" || request.status === status) &&
+    (country === "all" || effectiveCountry(request) === country) &&
+    (serviceType === "all" || request.serviceType === serviceType)
+  );
+
+  container.innerHTML = filtered.length ? filtered.map(request => {
+    const verificationHtml = request.serviceType === "verification" && request.details ? `
+      <div style="background:#171c19;padding:9px;border-radius:8px;margin-top:8px;font-size:12px;">
+        رقم الحيوان: ${escapeHtml(request.details.animalIdentifier || "غير محدد")}<br>
+        التطعيم: ${escapeHtml(request.details.vaccinationStatus || "غير محدد")} — ${escapeHtml(request.details.vaccinationDate || "غير محدد")}<br>
+        الفحص البيطري: ${escapeHtml(request.details.vetInspectionStatus || "غير محدد")} — ${escapeHtml(request.details.vetInspectionDate || "غير محدد")}<br>
+        ${request.notes ? `ملاحظة: ${escapeHtml(request.notes)}` : ""}
+      </div>
+    ` : "";
+    return `
+      <div style="background:#222;padding:14px;border-radius:12px;margin-bottom:11px;">
+        <div style="display:flex;justify-content:space-between;gap:8px;">
+          <b style="color:#68e6b0;">${SERVICES[request.serviceType]?.label || "خدمة"}</b>
+          <b style="color:#ffd66b;">${Number(request.amount || 0).toLocaleString("en-US")} ${escapeHtml(request.currency || "")}</b>
+        </div>
+        <div>الإعلان: ${escapeHtml(request.targetName)}</div>
+        <div>البائع: ${escapeHtml(request.sellerName)} <small>(${escapeHtml(request.userId.slice(0, 10))}…)</small></div>
+        <div>الدولة: ${effectiveCountry(request) === "EG" ? "مصر" : "الإمارات"}</div>
+        <div>الحالة: <b>${serviceStatusText(request.status)}</b></div>
+        <div style="color:#888;font-size:12px;">${formatDate(request.createdAt)}</div>
+        ${verificationHtml}
+        ${request.status === "pending" ? `
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button onclick="decideServiceRequest('${request.id}','approved')" style="flex:1;padding:10px;background:#00643e;color:white;border:0;border-radius:8px;">اعتماد</button>
+            <button onclick="decideServiceRequest('${request.id}','rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }).join("") : `<div style="background:#222;padding:20px;border-radius:12px;text-align:center;">لا توجد طلبات مطابقة.</div>`;
+};
+
+window.decideServiceRequest = async function (requestId, decision) {
+  if (decision !== "approved" && decision !== "rejected") return;
+  if (!await requireAdminClaim(true)) {
+    alert("غير مصرح لك بتنفيذ هذا الإجراء.");
+    return;
+  }
+  const adminNote = decision === "rejected"
+    ? prompt("ملاحظة الرفض — اختيارية", "")
+    : "";
+  if (decision === "rejected" && adminNote === null) return;
+
+  try {
+    const requestRef = doc(db, "serviceRequests", requestId);
+    await runTransaction(db, async transaction => {
+      const requestSnap = await transaction.get(requestRef);
+      if (!requestSnap.exists()) throw new Error("SERVICE_REQUEST_NOT_FOUND");
+      const request = requestSnap.data();
+      if (request.status !== "pending") throw new Error("SERVICE_REQUEST_NOT_PENDING");
+
+      if (decision === "rejected") {
+        const rejection = {
+          status: "rejected",
+          rejectedAt: serverTimestamp(),
+          rejectedBy: auth.currentUser.uid,
+          updatedAt: serverTimestamp()
+        };
+        if (adminNote.trim()) rejection.adminNote = adminNote.trim().slice(0, 1000);
+        transaction.update(requestRef, rejection);
+        return;
+      }
+
+      const targetCollection = request.targetType === "auction" ? "auctions" : "animals";
+      const targetRef = doc(db, targetCollection, request.targetId);
+      const targetSnap = await transaction.get(targetRef);
+      if (!targetSnap.exists()) throw new Error("SERVICE_TARGET_NOT_FOUND");
+      const target = targetSnap.data();
+      if (target.sellerId !== request.userId || effectiveCountry(target) !== effectiveCountry(request)) {
+        throw new Error("SERVICE_TARGET_MISMATCH");
+      }
+
+      const targetUpdate = {};
+      if (request.serviceType === "featured") {
+        targetUpdate.featuredAt = serverTimestamp();
+        targetUpdate.featuredUntil = Timestamp.fromMillis(
+          Date.now() + SERVICES.featured.durationDays * 24 * 60 * 60 * 1000
+        );
+      } else if (request.serviceType === "bump") {
+        targetUpdate.bumpedAt = serverTimestamp();
+      } else if (request.serviceType === "verification" && request.targetType === "animal") {
+        targetUpdate.verificationStatus = "verified";
+        targetUpdate.verifiedAt = serverTimestamp();
+        targetUpdate.verifiedBy = auth.currentUser.uid;
+      } else {
+        throw new Error("SERVICE_TARGET_MISMATCH");
+      }
+
+      transaction.update(targetRef, targetUpdate);
+      transaction.update(requestRef, {
+        status: "approved",
+        approvedAt: serverTimestamp(),
+        approvedBy: auth.currentUser.uid,
+        updatedAt: serverTimestamp()
+      });
+    });
+
+    alert(decision === "approved" ? "✅ تم اعتماد الطلب." : "تم رفض الطلب.");
+    await window.openAdminPanel();
+    await loadMarket();
+  } catch (error) {
+    console.error("ADMIN SERVICE DECISION ERROR:", error);
+    alert(error.message === "SERVICE_REQUEST_NOT_PENDING"
+      ? "تم اتخاذ قرار على هذا الطلب مسبقًا."
+      : "تعذر تنفيذ قرار الطلب.");
+  }
+};
+
 window.saveProfile = async function () {
   const user = auth.currentUser;
   if (!user) return;
@@ -1861,13 +2071,23 @@ window.logoutUser = async function () {
 
 onAuthStateChanged(auth, async user => {
   const loginButton = document.querySelector(".login");
+  const adminButton = document.getElementById("adminPanelButton");
+  currentUserIsAdmin = false;
 
   if (user) {
     await ensureUserProfile(user);
+    try {
+      const tokenResult = await getIdTokenResult(user);
+      currentUserIsAdmin = tokenResult.claims.admin === true;
+    } catch (error) {
+      console.error("ADMIN CLAIM ERROR:", error);
+    }
     if (loginButton) loginButton.textContent = "✅ حسابي";
+    if (adminButton) adminButton.style.display = currentUserIsAdmin ? "inline-flex" : "none";
     startUnreadMessagesListener(user);
   } else {
     if (loginButton) loginButton.textContent = "تسجيل الدخول";
+    if (adminButton) adminButton.style.display = "none";
     stopUnreadMessagesListener();
   }
 
