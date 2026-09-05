@@ -1975,20 +1975,30 @@ function listingServiceTarget(animal, serviceType) {
   return { targetType: "auction", targetId: animal.auctionId || "" };
 }
 
-async function listingServiceRequest(animal, serviceType, userId) {
+async function getUserServiceRequests(userId) {
+  const requestsQuery = query(
+    collection(db, "serviceRequests"),
+    where("userId", "==", userId)
+  );
+  const snapshot = await getDocs(requestsQuery);
+  return snapshot.docs.map(requestDoc => ({ id: requestDoc.id, ...requestDoc.data() }));
+}
+
+async function listingServiceRequest(animal, serviceType, userId, requests = null) {
   const target = listingServiceTarget(animal, serviceType);
   if (!target.targetId) return null;
   const requestId = serviceRequestId(userId, serviceType, target.targetType, target.targetId);
-  const requestSnap = await getDoc(doc(db, "serviceRequests", requestId));
-  return requestSnap.exists() ? { id: requestSnap.id, ...requestSnap.data() } : null;
+  const availableRequests = requests || await getUserServiceRequests(userId);
+  return availableRequests.find(request => request.id === requestId) || null;
 }
 
 async function listingServicesHtml(animal, userId) {
   const country = effectiveCountry(animal);
+  const userRequests = await getUserServiceRequests(userId);
   const rows = await Promise.all(Object.keys(SERVICES).map(async serviceType => {
     const service = SERVICES[serviceType];
     const pricing = servicePricing(serviceType, country);
-    const existing = await listingServiceRequest(animal, serviceType, userId);
+    const existing = await listingServiceRequest(animal, serviceType, userId, userRequests);
     const status = existing ? serviceStatusText(existing.status) : "متاح للطلب";
     const disabled = !!existing;
     return `
@@ -2083,9 +2093,9 @@ window.submitListingService = async function (animalId, serviceType) {
     if (!target.targetId) throw new Error("SERVICE_TARGET_NOT_FOUND");
     const requestId = serviceRequestId(user.uid, serviceType, target.targetType, target.targetId);
     const requestRef = doc(db, "serviceRequests", requestId);
-    const existing = await getDoc(requestRef);
-    if (existing.exists()) {
-      alert(existing.data().status === "pending"
+    const existing = await listingServiceRequest(animal, serviceType, user.uid);
+    if (existing) {
+      alert(existing.status === "pending"
         ? "لديك طلب لهذه الخدمة قيد المراجعة بالفعل."
         : "لا يمكن تكرار هذا الطلب حاليًا.");
       return;
