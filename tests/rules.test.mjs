@@ -372,5 +372,22 @@ await check('deletion processing restricted to claim admin and preserves request
   for(const db of [buyer,admin]) { const batch=writeBatch(db);batch.delete(doc(db,'accountDeletionRequests/buyer'));await assertFails(batch.commit()); }
 });
 
+await check('legacy purchase acceptance is seller-only and readable by each party without unlocking contacts',async()=>{
+  await env.withSecurityRulesDisabled(async c=>{
+    const db=c.firestore();
+    await setDoc(doc(db,'purchaseRequests/legacy-contact-proof'),{animalId:'legacy-ae',buyerId:'buyer',sellerId:'seller',status:'pending',createdAt:Timestamp.now(),updatedAt:Timestamp.now()});
+    await setDoc(doc(db,'conversations/legacy-request-chat'),{contextType:'direct',animalId:'legacy-ae',buyerId:'buyer',sellerId:'seller',participants:['buyer','seller']});
+  });
+  const patch={status:'accepted',updatedAt:serverTimestamp()};
+  await assertFails(updateDoc(doc(buyer,'purchaseRequests/legacy-contact-proof'),patch));
+  await assertSucceeds(updateDoc(doc(seller,'purchaseRequests/legacy-contact-proof'),patch));
+  await assertSucceeds(getDocs(query(collection(buyer,'purchaseRequests'),where('buyerId','==','buyer'))));
+  await assertSucceeds(getDocs(query(collection(seller,'purchaseRequests'),where('sellerId','==','seller'))));
+  await assertFails(getDoc(doc(third,'purchaseRequests/legacy-contact-proof')));
+  await assertFails(getDocs(query(collection(third,'purchaseRequests'),where('buyerId','==','buyer'))));
+  await assertFails(getDoc(doc(buyer,'conversations/legacy-request-chat/privateContacts/seller')));
+  await assertFails(getDoc(doc(seller,'conversations/legacy-request-chat/privateContacts/buyer')));
+});
+
 console.log(`SUMMARY | ${results.length}/${results.length} passed`);
 await env.cleanup();

@@ -44,7 +44,10 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      collection:(base,...parts)=>({path:[base.path,...parts].filter(Boolean).join('/')}),
      doc:(base,...parts)=>{const refPath=[base.path,...(parts.length?parts:['auto'+(++sequence)])].filter(Boolean).join('/');return {path:refPath,id:refPath.split('/').pop()}},
      query:(ref,...filters)=>({...ref,filters}),where:(...args)=>args,
-     getDoc:async ref=>snapshot(ref),getDocs:async ref=>readQuery(ref),
+     getDoc:async ref=>snapshot(ref),getDocs:async ref=>{
+       if(ref.path==='purchaseRequests' && window.__mock.purchaseDelay)await new Promise(resolve=>setTimeout(resolve,window.__mock.purchaseDelay));
+       return readQuery(ref);
+     },
      setDoc:async(ref,data,options)=>write(ref,data,options?.merge),updateDoc:async(ref,data)=>write(ref,data,true),
      addDoc:async(ref,data)=>{const item={path:ref.path+'/auto'+(++sequence),id:'auto'+sequence};write(item,data);return item},
      serverTimestamp:()=>new Date(),Timestamp:{fromMillis:value=>new Date(value)},
@@ -332,6 +335,53 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  assert.match(await page.locator('#modalContent').innerText(),/لم يضف المستخدم رقم هاتف للتواصل/);
  assert.equal((await page.locator('#modalContent').innerText()).includes('buyer@example.test'),false);
  pass('completed remains truthful; accepted purchase request without phone has messaging guidance');
+ const guidance='لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة.';
+ await page.evaluate(async id=>{
+   const mock=window.__mock;
+   const legacy={...mock.docs.get('conversations/'+id),animalId:'legacy-animal',country:'AE'};
+   delete legacy.contactStatus;delete legacy.acceptedOfferId;delete legacy.contactUnlockedAt;
+   mock.docs.set('conversations/legacy-direct',legacy);
+   mock.docs.set('conversations/legacy-direct/messages/old-text',{type:'text',text:'رسالة قديمة',senderId:'buyer',createdAt:new Date()});
+   mock.docs.set('purchaseRequests/legacy-accepted',{animalId:'legacy-animal',sellerId:'owner',buyerId:'buyer',status:'accepted',createdAt:new Date(),updatedAt:new Date()});
+ },cid);
+ for(const uid of ['buyer','owner']) {
+   await page.evaluate(async uid=>{
+     window.__mock.purchaseDelay=80;
+     await window.__mock.setUser({uid,email:uid+'@example.test',phoneNumber:null,providerData:[{providerId:'password'}]});
+     await window.showConversation('legacy-direct');
+   },uid);
+   assert.equal(await page.getByText(guidance,{exact:true}).count(),1);
+   assert.match(await page.locator('#modalContent').innerText(),/رسالة قديمة/);
+   assert.equal((await page.locator('#modalContent').innerText()).includes('@example.test'),false);
+   assert.equal(await page.evaluate(()=>window.__mock.docs.get('conversations/legacy-direct').contactStatus),undefined);
+   await page.evaluate(()=>window.showConversation('legacy-direct'));
+   assert.equal(await page.getByText(guidance,{exact:true}).count(),1);
+   pass('legacy accepted purchase without offers/contact unlock; async and repeated '+uid);
+ }
+ await page.evaluate(()=>{
+   const mock=window.__mock;
+   mock.docs.set('conversations/legacy-direct/privateContacts/buyer',{uid:'buyer',displayName:'Buyer',phoneNumber:'',createdAt:new Date()});
+ });
+ await page.evaluate(()=>window.showConversation('legacy-direct'));
+ assert.equal(await page.getByText(guidance,{exact:true}).count(),1);
+ pass('legacy accepted empty private phone remains guidance without unlocking reads');
+ await page.evaluate(()=>window.__mock.docs.get('purchaseRequests/legacy-accepted').buyerPhone='+971500000001');
+ await page.evaluate(()=>window.showConversation('legacy-direct'));
+ assert.equal(await page.getByText(guidance,{exact:true}).count(),0);
+ assert.match(await page.locator('#modalContent').innerText(),/\+971500000001/);
+ pass('legacy accepted request uses existing allowed counterpart phone');
+ await page.evaluate(()=>{
+   const request=window.__mock.docs.get('purchaseRequests/legacy-accepted');delete request.buyerPhone;request.status='pending';
+   window.__mock.docs.set('purchaseRequests/wrong-pair',{...request,status:'accepted',buyerId:'someone-else'});
+   window.__mock.docs.set('purchaseRequests/wrong-animal',{...request,status:'accepted',animalId:'different-animal'});
+ });
+ await page.evaluate(()=>window.showConversation('legacy-direct'));
+ assert.equal(await page.getByText(guidance,{exact:true}).count(),0);
+ pass('pending and unrelated accepted requests do not establish acceptance');
+ await page.evaluate(()=>{window.closeModal();window.__mock.docs.set('conversations/legacy-auction',{...window.__mock.docs.get('conversations/legacy-direct'),contextType:'auction'})});
+ await page.evaluate(()=>window.showConversation('legacy-auction'));
+ assert.equal(await page.getByText(guidance,{exact:true}).isVisible(),false);
+ pass('auction never renders direct contact guidance');
  assert.deepEqual(await page.evaluate(()=>window.__mock.failures),[]);
  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
  console.log(`SUMMARY | ${count}/${count} passed; all Firebase traffic mocked`);

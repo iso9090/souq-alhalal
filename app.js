@@ -4654,6 +4654,27 @@ window.showMessages = async function () {
   }
 };
 
+// Purchase requests have a separate seller-only acceptance transition. Reading a
+// participant's matching request does not unlock or modify privateContacts.
+async function resolveAcceptedPurchaseContact(conversation, user) {
+  if (!user || conversation.contextType !== "direct" ||
+      !conversation.participants?.includes(user.uid) || !conversation.animalId) return null;
+  const role = conversation.sellerId === user.uid ? "sellerId"
+    : conversation.buyerId === user.uid ? "buyerId" : null;
+  if (!role) return null;
+  let snapshot;
+  try { snapshot = await getDocs(query(collection(db, "purchaseRequests"), where(role, "==", user.uid))); }
+  catch { return null; }
+  const accepted = snapshot.docs.map(item => item.data()).filter(request =>
+    request.status === "accepted" && request.animalId === conversation.animalId &&
+    request.sellerId === conversation.sellerId && request.buyerId === conversation.buyerId
+  );
+  if (!accepted.length) return null;
+  const field = role === "sellerId" ? "buyerPhone" : "sellerPhone";
+  const phone = accepted.map(request => request[field]).find(value => typeof value === "string" && value.trim());
+  return { phoneNumber: phone?.trim() || "" };
+}
+
 window.showConversation = async function (conversationId) {
   const user = auth.currentUser;
 
@@ -4722,6 +4743,7 @@ window.showConversation = async function (conversationId) {
       conversation.buyerId === user.uid;
 
     let contactDetailsHtml = "";
+    let contactPhoneAvailable = false;
 
     if (conversation.contextType === "direct" &&
         conversation.contactStatus === "unlocked") {
@@ -4738,6 +4760,7 @@ window.showConversation = async function (conversationId) {
 
       if (contactSnap.exists()) {
         const contact = contactSnap.data();
+        contactPhoneAvailable = typeof contact.phoneNumber === "string" && !!contact.phoneNumber.trim();
         contactDetailsHtml = `
           <div style="background:#123c2c;border:1px solid #277657;padding:13px;border-radius:11px;margin-bottom:12px;">
             <div style="color:#68e6b0;font-weight:800;margin-bottom:7px;">
@@ -4745,7 +4768,7 @@ window.showConversation = async function (conversationId) {
             </div>
             <div>👤 ${escapeHtml(contact.displayName || "مستخدم")}</div>
             <div style="margin-top:5px;">
-              ${contact.phoneNumber ? `📱 <b dir="ltr">${escapeHtml(contact.phoneNumber)}</b>` : "لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة."}
+              ${contactPhoneAvailable ? `📱 <b dir="ltr">${escapeHtml(contact.phoneNumber)}</b>` : "لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة."}
             </div>
           </div>
         `;
@@ -4755,6 +4778,15 @@ window.showConversation = async function (conversationId) {
             لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة.
           </div>
         `;
+      }
+    }
+
+    if (conversation.contextType === "direct" && !contactPhoneAvailable) {
+      const acceptedContact = await resolveAcceptedPurchaseContact(conversation, user);
+      if (acceptedContact) {
+        contactDetailsHtml = `<div style="background:#123c2c;border:1px solid #277657;padding:13px;border-radius:11px;margin-bottom:12px;">
+          ${acceptedContact.phoneNumber ? `📱 <b dir="ltr">${escapeHtml(acceptedContact.phoneNumber)}</b>` : "لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة."}
+        </div>`;
       }
     }
 
