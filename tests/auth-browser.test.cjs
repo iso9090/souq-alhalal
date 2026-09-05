@@ -101,6 +101,14 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      assert.equal(await page.locator('#emailAuthForm').count(),1);
      if(mode==='signup'&&width===360)await page.screenshot({path:path.join(require('os').tmpdir(),'souq-email-signup-mobile.png')});
    }
+   const historyBefore=await page.evaluate(()=>({length:history.length,url:location.href}));
+   for(const mode of ['login','signup']){
+     await page.evaluate(mode=>window.openEmailAuth(mode),mode);
+     assert.deepEqual(await page.evaluate(()=>[window.souqHandleAndroidBack(),window.souqHandleAndroidBack()]),[true,false]);
+     assert.equal(await page.locator('#modal').isVisible(),false);
+   }
+   assert.deepEqual(await page.evaluate(()=>({length:history.length,url:location.href})),historyBefore);
+   pass('native Back closes login/signup once without browser history changes '+width);
    pass('RTL auth modes no overflow '+width);
  }
  await page.evaluate(()=>window.openEmailAuth('signup'));
@@ -142,6 +150,12 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.evaluate(()=>{window.__mock.error=null});await page.locator('#authPassword').fill('sample-password');
  await page.locator('#emailAuthForm button[type=submit]').click();await page.locator('#profileName').waitFor();
  pass('email login succeeds');
+ assert.equal(await page.evaluate(()=>window.souqHandleAndroidBack()),true);
+ assert.equal(await page.locator('#modal').isVisible(),false);
+ assert.equal(await page.evaluate(async()=>{const loading=window.openLogin();const consumed=window.souqHandleAndroidBack();await loading;return consumed}),true);
+ assert.equal(await page.locator('#modal').isVisible(),false);
+ assert.equal(await page.evaluate(()=>window.souqHandleAndroidBack()),false);
+ pass('Account Back closes loaded/loading modal without reopening');
  await page.evaluate(()=>window.openAccountDeletion());
  await page.locator('#requestDeletionButton:not([disabled])').waitFor();
  await page.evaluate(async()=>Promise.all([window.confirmAccountDeletion(),window.confirmAccountDeletion()]));
@@ -205,6 +219,8 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  pass('email-only auction create, bid and purchase request');
  await page.evaluate(id=>window.openDirectConversation(id),listingId);
  const cid=await page.evaluate(()=>[...window.__mock.docs.keys()].find(k=>k.startsWith('conversations/')&&k.split('/').length===2)?.split('/')[1]);assert.ok(cid);
+ assert.equal((await page.locator('#modalContent').innerText()).includes('لم يضف المستخدم رقم هاتف للتواصل'),false);
+ pass('unaccepted direct conversation has no contact guidance');
  await page.locator('#chatOfferAmount').fill('450');await page.evaluate(id=>window.sendConversationOffer(id),cid);
  const offerId=await page.evaluate(id=>[...window.__mock.docs].find(([k,d])=>k.startsWith('conversations/'+id+'/messages/')&&d.type==='offer')?.[0].split('/').pop(),cid);assert.ok(offerId);
  await page.evaluate(async()=>{await window.__mock.setUser({uid:'owner',email:'owner@example.test',phoneNumber:null,providerData:[{providerId:'password'}]})});
@@ -217,6 +233,31 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.getByText('لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة.',{exact:true}).waitFor();
  assert.equal((await page.locator('#modalContent').innerText()).includes('owner@example.test'),false);
  pass('both participants without phone: accept offer, private contacts, messaging, no opponent email');
+ await page.evaluate(id=>{window.__mock.docs.delete('conversations/'+id+'/privateContacts/owner')},cid);
+ await page.evaluate(id=>window.showConversation(id),cid);
+ assert.equal(await page.getByText('لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة.',{exact:true}).count(),1);
+ assert.equal((await page.locator('#modalContent').innerText()).includes('owner@example.test'),false);
+ pass('accepted conversation missing other contact document has one guidance notice');
+ await page.evaluate(id=>window.__mock.docs.set('conversations/'+id+'/privateContacts/owner',{uid:'owner',displayName:'Owner',phoneNumber:'+971500000000',createdAt:new Date()}),cid);
+ await page.evaluate(id=>window.showConversation(id),cid);
+ assert.equal((await page.locator('#modalContent').innerText()).includes('لم يضف المستخدم رقم هاتف للتواصل'),false);
+ assert.match(await page.locator('#modalContent').innerText(),/\+971500000000/);
+ pass('accepted available phone suppresses no-phone notice');
+ await page.evaluate(async id=>{
+   const mock=window.__mock;mock.docs.delete('conversations/'+id+'/privateContacts/buyer');
+   const legacy=mock.docs.get('conversations/'+id);delete legacy.contactStatus;delete legacy.acceptedOfferId;delete legacy.contactUnlockedAt;
+   mock.docs.set('conversations/'+id,legacy);
+   await mock.setUser({uid:'owner',email:'owner@example.test',phoneNumber:null,providerData:[{providerId:'password'}]});
+   await window.showConversation(id);
+ },cid);
+ assert.equal(await page.evaluate(id=>window.__mock.docs.get('conversations/'+id).contactStatus,cid),'unlocked');
+ assert.equal(await page.getByText('لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة.',{exact:true}).count(),1);
+ await page.evaluate(async id=>{
+   window.__mock.docs.set('conversations/'+id+'/privateContacts/owner',{uid:'owner',displayName:'Owner',createdAt:new Date()});
+   await window.__mock.setUser({uid:'buyer',email:'buyer@example.test',phoneNumber:null,providerData:[{providerId:'password'}]});
+   await window.showConversation(id);
+ },cid);
+ pass('legacy accepted-offer recovery retained with missing no-phone contact');
  assert.equal(await page.evaluate(()=>JSON.stringify([...window.__mock.docs.values()]).includes('@example.test')),false);
  assert.equal(await page.evaluate(()=>JSON.stringify([...window.__mock.docs.values()]).includes('sample-password')),false);
  await page.evaluate(async()=>{window.__mock.admin=true;await window.__mock.setUser(window.__mock.api.getAuth().currentUser)});

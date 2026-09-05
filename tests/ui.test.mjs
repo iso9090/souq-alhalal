@@ -106,4 +106,6 @@ test('phone billing fallback retains SDK and country prefixes',source.includes('
 test('private contact data has optional phone and no email',source.slice(source.indexOf('async function ensurePrivateConversationContact'),source.indexOf('async function recoverLegacyDirectConversationContact')).includes('...(profile?.phoneNumber ? { phoneNumber: profile.phoneNumber } : {})')&&!source.slice(source.indexOf('async function ensurePrivateConversationContact'),source.indexOf('async function recoverLegacyDirectConversationContact')).includes('email'));
 test('completed deletion wording reports administrative record not automatic erasure',checks.deletionStatusText('completed').includes('تم تسجيل اكتمال معالجة')&&checks.deletionStatusText('completed').includes('الدعم'));
 test('in-review deletion wording remains truthful',checks.deletionStatusText('in_review').includes('لم تُؤكد'));
+test('generic introduction no longer names countries',!html.includes('الإمارات ومصر'));
+test('market selector remains in header',html.includes('marketCountryButton')&&source.includes('🇦🇪 الإمارات العربية المتحدة')&&source.includes('🇪🇬 جمهورية مصر العربية'));
 console.log(`SUMMARY | ${results.length}/${results.length} passed`);

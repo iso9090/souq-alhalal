@@ -12,3 +12,5 @@ No SMS, live service requests, live data edits, credentials, or real payment cal
 - Updated complete Rules suite additionally exercises email-only seller/buyer contact acceptance and deletion request owner/admin isolation.
 
 - Deletion follow-up: browser checks cover automatic logout/modal closure, pending/restored/completed Account states, graceful duplicates, non-admin denial, admin list/filter/audited transitions and completion cancellation. Rules assertions also reject owner completion and a forged processed timestamp. All data remains local.
+
+- Mobile follow-up tests cover the narrow native Back web contract (including Account loading cancellation), unchanged browser history, missing/available/legacy accepted contacts and no guidance before acceptance. Browser fixtures never contact production. See MOBILE_REGRESSION_NOTES.md for Android build and physical-device limits.

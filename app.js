@@ -834,12 +834,15 @@ async function getUserProfile() {
   }
 }
 
+let modalRevision = 0;
+
 function showModal(html) {
   const modal = document.getElementById("modal");
   const content = document.getElementById("modalContent");
 
   if (!modal || !content) return;
 
+  modalRevision++;
   content.innerHTML = html;
   modal.style.display = "flex";
   modal.style.alignItems = "flex-start";
@@ -879,8 +882,17 @@ function showModal(html) {
 }
 
 window.closeModal = function () {
+  modalRevision++;
   const modal = document.getElementById("modal");
   if (modal) modal.style.display = "none";
+};
+
+// Narrow native Back contract: only this app's existing modal, no history mutation.
+window.souqHandleAndroidBack = function () {
+  const modal = document.getElementById("modal");
+  if (!modal || getComputedStyle(modal).display === "none") return false;
+  window.closeModal();
+  return true;
 };
 
 async function showAccount() {
@@ -895,10 +907,12 @@ async function showAccount() {
     </div>
   `);
 
+  const accountModalRevision = modalRevision;
   await ensureUserProfile(user);
   const deletion = await readOwnDeletionRequest(user);
   if (auth.currentUser?.uid !== user.uid) return;
   const profile = await getUserProfile();
+  if (modalRevision !== accountModalRevision || auth.currentUser?.uid !== user.uid) return;
   const displayName = profile?.displayName || "";
   const accountType = profile?.accountType || "buyer";
   const phone = user.phoneNumber || profile?.phoneNumber || "";
@@ -4738,7 +4752,7 @@ window.showConversation = async function (conversationId) {
       } else {
         contactDetailsHtml = `
           <div style="background:#3b3219;border:1px solid #8a7430;padding:13px;border-radius:11px;margin-bottom:12px;color:#ffd66b;">
-            ⚠️ تم قبول العرض، لكن بيانات تواصل الطرف الآخر لم تُجهّز بعد. اطلب منه فتح المحادثة مرة واحدة.
+            لم يضف المستخدم رقم هاتف للتواصل. يمكنك متابعة التواصل عبر المحادثة داخل المنصة.
           </div>
         `;
       }
