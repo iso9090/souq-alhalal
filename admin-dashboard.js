@@ -9,7 +9,7 @@ export function installAdminDashboard(api) {
   fields.purchaseRequests=['animalId','sellerId','buyerId','price','status','createdAt'];
   labels.buyerId='المشتري';
   const terms={active:'نشط',suspended:'معلق',blocked:'محظور',deletion_requested:'طلب حذف',hidden:'مخفي',needs_review:'يحتاج مراجعة',sold:'تم البيع',not_approved:'لم يعتمد البيع',buyer:'مشترٍ',seller:'بائع',both:'بائع ومشترٍ',direct:'بيع مباشر',auction:'مزاد',open:'مفتوح',reviewing:'تحت المراجعة',resolved:'معالج',rejected:'مرفوض',pending:'جديد / قيد الانتظار',approved:'معتمد',accepted:'مقبول',cancelled:'ملغي',user:'مستخدم',animal:'إعلان'};
-  let generation=0, page=[], cursor=null, current='home', filters={}, busy=false;
+  let generation=0, page=[], cursor=null, current='home', filters={}, busy=false, trail=[], viewLabel=tabs.home;
   const button=(text,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=text;b.disabled=busy;b.onclick=()=>Promise.resolve().then(fn).catch(()=>alert('تعذر تنفيذ العملية. تحقق من الاتصال والصلاحيات.'));return b;};
   const value=v=>v?.toDate ? formatDate(v) : v == null || v === '' ? 'غير مسجل' : terms[v]||String(v);
   const panel=()=>document.getElementById('adminV2Body');
@@ -23,12 +23,12 @@ export function installAdminDashboard(api) {
     if(busy || !await requireAdminClaim(true))return;
     const reason=reasonFor('هل أنت متأكد من تنفيذ هذا الإجراء: '+action+'؟');if(!reason)return;
     busy=true;
-    try {await runTransaction(db,async tx=>{const ref=doc(db,kind,id),snap=await tx.get(ref);if(!snap.exists())throw Error('missing');const patch=await makePatch(snap.data(),reason);const logId=audit(tx,action,kind,id,reason,patch.metadata||{});delete patch.metadata;tx.update(ref,{...patch,moderationLogId:logId});});await detail(kind,id);}
-    finally{busy=false;panel()?.querySelectorAll('button').forEach(b=>{b.disabled=false;});}
+    try {await runTransaction(db,async tx=>{const ref=doc(db,kind,id),snap=await tx.get(ref);if(!snap.exists())throw Error('missing');const patch=await makePatch(snap.data(),reason);const logId=audit(tx,action,kind,id,reason,patch.metadata||{});delete patch.metadata;tx.update(ref,{...patch,moderationLogId:logId});});await detail(kind,id,false);}
+    finally{busy=false;document.querySelector('.admin-v2')?.querySelectorAll('button').forEach(b=>{b.disabled=false;});}
   }
   async function open(tab='home') {
     if(!await requireAdminClaim(true)){alert('غير مصرح لك بفتح لوحة الإدارة.');return;}
-    current=tab;cursor=null;filters={};generation++;
+    current=tab;cursor=null;filters={};trail=[];viewLabel=tabs[tab];generation++;
     showModal('<section class="admin-v2" dir="rtl"><h2>لوحة إدارة سوق الحلال</h2><nav id="adminV2Nav" aria-label="تبويبات الإدارة"></nav><div id="adminV2Body" aria-live="polite">جاري التحميل…</div></section>');
     for(const [key,label] of Object.entries(tabs)) {const b=button(label,()=>key==='services'?api.openServices():open(key));b.setAttribute('aria-current',String(key===tab));document.getElementById('adminV2Nav').append(b);}
     try {if(tab==='home')await home();else await list(false);}catch{if(panel())panel().textContent='تعذر تحميل البيانات. أعد اختيار التبويب للمحاولة.';}
@@ -70,11 +70,44 @@ export function installAdminDashboard(api) {
     const root=document.getElementById('adminRows');root.innerHTML='';if(!items.length){root.textContent='لا توجد نتائج.';return;}
     for(const d of items){const card=document.createElement('article');card.className='admin-row';const pic=safeImageData(d.images?.[0]);card.innerHTML=(pic?`<img class="admin-thumb" src="${esc(pic)}" alt="صورة الإعلان">`:'')+`<h3>${esc(d.displayName||d.name||d.type||d.action||d.id)}</h3><p dir="auto">${esc(d.id)}</p><dl>${(fields[current]||[]).filter(f=>!['details','resolutionNotes','email','phoneNumber','sellerPhone'].includes(f)).map(f=>`<dt>${esc(labels[f])}</dt><dd>${esc(value(d[f]))}</dd>`).join('')}</dl>`+(Array.isArray(d.images)?`<p>عدد الصور: ${d.images.length}</p>`:'');card.append(button('فتح التفاصيل',()=>detail(current,d.id)));root.append(card);}
   }
-  async function detail(kind,id) {
+  // Preserve nodes and their handlers so Back retains the search, filters and page.
+  async function back() {
+    if(!await requireAdminClaim(true) || !trail.length || !panel())return;
+    generation++;
+    const previous=trail.pop();
+    panel().replaceChildren(...previous.nodes);
+    viewLabel=previous.label;
+    previous.focus?.focus({preventScroll:true});
+    const modal=document.getElementById('modal');
+    if(modal)modal.scrollTop=previous.scroll;
+  }
+  function detailHeader() {
+    const header=document.createElement('div');header.className='admin-detail-header';
+    const previous=trail.at(-1);
+    if(previous){const b=button('→ رجوع إلى '+previous.label,back);b.className='admin-back';header.append(b);}
+    panel().append(header);
+    return header;
+  }
+  async function detail(kind,id,push=true) {
     if(!await requireAdminClaim(true))return;
-    const token=++generation;panel().textContent='جاري تحميل التفاصيل…';const snap=await getDoc(doc(db,kind,id));if(token!==generation||!panel())return;if(!snap.exists()){panel().textContent='السجل غير موجود.';return;}const d={...snap.data(),id};
-    panel().innerHTML=`<h3>${esc(tabs[kind]||kind)} · ${esc(id)}</h3><dl>${(fields[kind]||[]).map(f=>`<dt>${esc(labels[f])}</dt><dd dir="auto">${esc(value(d[f]))}</dd>`).join('')}</dl>`;
-    panel().append(button('العودة للقائمة',()=>open(kind)));
+    if(!panel())return;
+    if(push)trail.push({nodes:[...panel().childNodes],label:viewLabel,focus:document.activeElement,scroll:document.getElementById('modal')?.scrollTop||0});
+    viewLabel='تفاصيل '+(tabs[kind]||kind);
+    const token=++generation;panel().replaceChildren();detailHeader();
+    const loading=document.createElement('p');loading.textContent='جاري تحميل التفاصيل…';panel().append(loading);
+    const modal=document.getElementById('modal');if(modal)modal.scrollTop=0;
+    let snap;
+    try{snap=await getDoc(doc(db,kind,id));}
+    catch{if(token===generation&&panel())loading.textContent='تعذر تحميل التفاصيل. يمكنك الرجوع والمحاولة مجددًا.';return;}
+    if(token!==generation||!panel())return;
+    if(!snap.exists()){loading.textContent='السجل غير موجود.';return;}
+    const d={...snap.data(),id};
+    panel().replaceChildren();
+    const header=detailHeader(),title=document.createElement('h3');
+    title.textContent=(tabs[kind]||kind)+' · '+id;header.append(title);
+    const description=document.createElement('dl');
+    description.innerHTML=(fields[kind]||[]).map(f=>`<dt>${esc(labels[f])}</dt><dd dir="auto">${esc(value(d[f]))}</dd>`).join('');
+    panel().append(description);
     for(const [field,target] of [['sellerId','users'],['reporterId','users'],['reportedUserId','users'],['lastBidderId','users'],['winnerId','users'],['animalId','animals']])if(d[field])panel().append(button(labels[field],()=>detail(target,d[field])));
     if(kind==='reports'){
       const target={user:'users',animal:'animals',auction:'auctions'}[d.targetType];if(target)panel().append(button('فتح الهدف',()=>detail(target,d.targetId)));

@@ -22,9 +22,14 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    const clone = value => structuredClone(value);
    const snapshot = ref => ({ id: ref.path.split('/').pop(), exists: () => docs.has(ref.path), data: () => clone(docs.get(ref.path)) });
    const readQuery = ref => {
-     const items = [...docs].filter(([key]) => key.startsWith(ref.path + '/') && key.split('/').length === ref.path.split('/').length + 1)
-       .filter(([,data]) => (ref.filters || []).filter(f=>Array.isArray(f)).every(([field,op,value]) => op === 'array-contains' ? data[field]?.includes(value) : op==='>' ? data[field]>value : op==='<=' ? data[field]<=value : data[field] === value))
+     let items = [...docs].filter(([key]) => key.startsWith(ref.path + '/') && key.split('/').length === ref.path.split('/').length + 1)
+       .filter(([key,data]) => (ref.filters || []).filter(f=>Array.isArray(f)).every(([field,op,value]) => op === 'array-contains' ? data[field]?.includes(value) : op==='>' ? data[field]>value : op==='<=' ? data[field]<=value : (field==='__name__'?key.split('/').pop():data[field]) === value))
        .map(([key]) => snapshot({path:key}));
+     if((ref.filters||[]).some(f=>f.orderBy==='__name__'))items.sort((a,b)=>a.id.localeCompare(b.id));
+     const after=(ref.filters||[]).find(f=>f.cursor)?.cursor;
+     if(after)items=items.filter(d=>d.id.localeCompare(after.id)>0);
+     const max=(ref.filters||[]).find(f=>f.limit)?.limit;
+     if(max)items=items.slice(0,max);
      return { docs: items, forEach: fn => items.forEach(fn), empty: !items.length, size: items.length };
    };
    const write = (ref, data, merge) => {
@@ -428,6 +433,69 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await page.screenshot({path:process.env.TEMP+`/souq-dashboard-${width}.png`});
  }
  pass('dashboard seven tabs, real aggregation adapter, RTL mobile and desktop');
+ // All navigation fixtures and interactions are offline.
+ await page.evaluate(()=>{
+   for(let i=0;i<55;i++)window.__mock.docs.set('users/nav-user'+String(i).padStart(3,'0'),{displayName:'Navigation '+i,status:'active',country:'EG',accountType:'both'});
+   window.__mock.docs.set('auctions/nav-auction',{animalId:'moderation-ad',sellerId:'moderation-user',status:'active'});
+   window.__mock.docs.set('reports/nav-report',{targetType:'animal',targetId:'moderation-ad',reporterId:'moderation-user',status:'open'});
+   window.__mock.docs.set('adminAuditLogs/nav-log',{action:'navigation fixture',targetId:'moderation-ad'});
+ });
+ for(const width of [1280,360]){
+   await page.setViewportSize({width,height:900});
+   for(const [tab,term] of [['المستخدمون','moderation-user'],['الإعلانات','moderation-ad'],['المزادات','nav-auction'],['البلاغات','nav-report'],['سجل الإدارة','nav-log']]){
+     await page.getByRole('button',{name:tab,exact:true}).click();
+     await page.locator('#adminFilters input').fill(term);
+     await page.locator('#adminRows button').click();
+     const back=page.locator('.admin-back');await back.waitFor();
+     assert.match(await back.innerText(),new RegExp(tab));
+     assert.equal(await page.evaluate(()=>{const b=document.querySelector('.admin-back').getBoundingClientRect(),x=document.querySelector('#modal .x').getBoundingClientRect();return b.height>=44 && b.left>=0 && b.right<=innerWidth && !(b.left<x.right&&b.right>x.left&&b.top<x.bottom&&b.bottom>x.top) && document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1;}),true);
+     await page.screenshot({path:process.env.TEMP+'/souq-nav-'+width+'-'+term+'.png'});
+     await back.click();
+     assert.equal(await page.locator('#adminFilters input').inputValue(),term);
+     assert.equal(await page.locator('.admin-v2').isVisible(),true);
+     assert.equal(await page.locator('#adminRows button').count(),1);
+     pass('detail back preserves '+tab+' search and dashboard '+width);
+   }
+   await page.getByRole('button',{name:'المستخدمون',exact:true}).click();
+   await page.getByRole('combobox',{name:'الدولة',exact:true}).selectOption('EG');
+   await page.getByRole('button',{name:'الصفحة التالية',exact:true}).click();
+   await page.locator('#adminFilters input').fill('nav-user050');
+   await page.locator('#adminRows button').click();
+   await page.locator('.admin-back').click();
+   assert.equal(await page.getByRole('combobox',{name:'الدولة',exact:true}).inputValue(),'EG');
+   assert.equal(await page.locator('#adminFilters input').inputValue(),'nav-user050');
+   await page.locator('#adminFilters input').fill('');
+   assert.equal(await page.locator('#adminRows button').count(),5);
+   pass('back preserves server filter and second page '+width);
+   await page.getByRole('button',{name:'الإعلانات',exact:true}).click();
+   await page.locator('#adminFilters input').fill('moderation-ad');
+   await page.locator('#adminRows button').click();
+   await page.getByRole('button',{name:'البائع',exact:true}).click();
+   await page.locator('.admin-back').click();
+   assert.equal(await page.locator('.admin-gallery').count(),1);
+   await page.locator('.admin-back').click();
+   assert.equal(await page.locator('#adminFilters input').inputValue(),'moderation-ad');
+   pass('nested seller details back to ad then original list '+width);
+   await page.locator('#adminRows button').click();
+   await page.locator('#modal .x').click();
+   assert.equal(await page.locator('#modal').isVisible(),false);
+   await page.evaluate(()=>window.openAdminPanel());
+   await page.getByRole('button',{name:'طلبات الخدمات',exact:true}).click();
+   await page.locator('#adminServiceRequestsList').waitFor();
+   await page.getByRole('button',{name:'العودة للوحة الإدارة',exact:true}).click();
+   await page.locator('#adminV2Nav').waitFor();
+   assert.equal(await page.locator('#adminV2Nav button').count(),7);
+   pass('main close exits and inline service screen returns to dashboard '+width);
+ }
+ await page.getByRole('button',{name:'المزادات',exact:true}).click();
+ await page.locator('#adminFilters input').fill('nav-auction');
+ await page.evaluate(()=>window.__mock.docs.delete('auctions/nav-auction'));
+ await page.locator('#adminRows button').click();
+ await page.getByText('السجل غير موجود.',{exact:true}).waitFor();
+ await page.locator('.admin-back').click();
+ assert.equal(await page.locator('#adminFilters input').inputValue(),'nav-auction');
+ pass('missing record retains a working Back to the previous list');
+ await page.evaluate(()=>{for(const k of [...window.__mock.docs.keys()])if(k.includes('/nav-'))window.__mock.docs.delete(k);});
  await page.getByRole('button',{name:'المستخدمون',exact:true}).click();
  await page.locator('#adminFilters input').fill('moderation-user');
  await page.locator('#adminRows button').click();
@@ -436,6 +504,11 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.getByRole('button',{name:'إعادة التفعيل',exact:true}).click();
  await page.waitForFunction(()=>window.__mock.docs.get('users/moderation-user').status==='active');
  pass('dashboard user search, details, suspension and reactivation write audit');
+ await page.locator('.admin-back').click();
+ assert.equal(await page.locator('#adminFilters input').inputValue(),'moderation-user');
+ assert.equal(await page.locator('.admin-back').count(),0);
+ pass('mutation refresh does not add a duplicate detail history entry');
+
  await page.getByRole('button',{name:'الإعلانات',exact:true}).click();
  await page.locator('#adminFilters input').fill('moderation-ad');
  await page.locator('#adminRows button').click();
