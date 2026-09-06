@@ -2,9 +2,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/ui.test.mjs",
-    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs",
-    "test:browser": "node tests/browser.test.cjs && node tests/auth-browser.test.cjs"
+    "test": "node tests/ui.test.mjs && node tests/admin-permissions.test.mjs && node tests/migration.test.mjs",
+    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs && node tests/assistants-rules.test.mjs",
+    "test:browser": "node tests/browser.test.cjs && node tests/auth-browser.test.cjs && node tests/assistants-browser.test.cjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

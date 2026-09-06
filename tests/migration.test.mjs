@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import {planRegistry,parseOptions,prepare,PROJECT} from '../admin-tools/prepare-super-admin-registry.mjs';
+import {accessModel} from '../admin-permissions.js';
+let n=0;async function test(name,fn){await fn();n++;console.log('PASS | '+name);}
+const owners=[{uid:'owner',customClaims:{admin:true},disabled:false}];
+await test('legacy owner before registry',()=>assert.equal(accessModel('owner',{admin:true}).role,'super_admin'));
+await test('registered owner after preparation',()=>assert.equal(accessModel('owner',{admin:true},{},null,{enabled:false,superAdminUids:['owner']}).role,'super_admin'));
+await test('new claim alone after preparation denied',()=>assert.equal(accessModel('other',{admin:true},{},null,{enabled:false,superAdminUids:['owner']}).role,null));
+await test('registry alone does not grant owner claim',()=>assert.equal(accessModel('owner',{},{},null,{enabled:true,superAdminUids:['owner']}).role,null));
+await test('empty enabled registry cannot enable assistant',()=>assert.equal(accessModel('helper',{},{},{role:'admin_assistant',adminStatus:'active',permissions:['users_view']},{enabled:true,superAdminUids:[]}).role,null));
+await test('default dry-run with explicit project',()=>assert.equal(parseOptions(['--project',PROJECT]).apply,false));
+await test('explicit dry-run supported',()=>assert.equal(parseOptions(['--project',PROJECT,'--dry-run']).apply,false));
+await test('no implicit production project',()=>assert.throws(()=>parseOptions([])));
+await test('other production project denied',()=>assert.throws(()=>parseOptions(['--project','other'])));
+await test('conflicting modes denied',()=>assert.throws(()=>parseOptions(['--project',PROJECT,'--apply','--dry-run'])));
+await test('zero owners denied',()=>assert.throws(()=>planRegistry([])));
+await test('last disabled owner denied',()=>assert.throws(()=>planRegistry([{...owners[0],disabled:true}])));
+await test('last blocked owner denied',()=>assert.throws(()=>planRegistry([{...owners[0],profileStatus:'blocked'}])));
+await test('initial registry includes only claim owners',()=>assert.deepEqual(planRegistry([...owners,{uid:'normal'}]).uids,['owner']));
+await test('existing registry unchanged',()=>assert.equal(planRegistry(owners,{superAdminUids:['owner']}).write,false));
+await test('new claim cannot enroll on rerun',()=>assert.throws(()=>planRegistry([...owners,{uid:'other',customClaims:{admin:true}}],{superAdminUids:['owner']})));
+await test('existing owner removal denied',()=>assert.throws(()=>planRegistry(owners,{superAdminUids:['owner','other']})));
+await test('empty existing registry rejected',()=>assert.throws(()=>planRegistry(owners,{superAdminUids:[]})));
+function fixture(){const docs=new Map(),writes=[];const snap=path=>({exists:docs.has(path),data:()=>docs.get(path)});const db={doc:path=>({path,get:async()=>snap(path)}),runTransaction:async fn=>{const pending=[];await fn({get:async r=>snap(r.path),create:(r,v)=>pending.push([r.path,v])});pending.forEach(([p,v])=>{docs.set(p,v);writes.push(p);});}};return {docs,writes,db,auth:{listUsers:async()=>({users:structuredClone(owners)}),getUser:async()=>owners[0]},timestamp:()=>new Date(),confirm:async()=>true};}
+await test('dry-run performs zero writes and omits full identifiers',async()=>{const f=fixture(),r=await prepare(f);assert.equal(f.writes.length,0);assert.equal(r.written,false);assert.equal('uids' in r,false);});
+await test('apply without explicit confirmation denied',async()=>{const f=fixture();await assert.rejects(prepare({...f,apply:true,confirm:async()=>false}));assert.equal(f.writes.length,0);});
+await test('approved test preparation is atomic and disabled',async()=>{const f=fixture();await prepare({...f,apply:true});assert.deepEqual(f.writes,['adminSecurity/config','adminAccess/owner']);assert.equal(f.docs.get('adminSecurity/config').enabled,false);});
+await test('rerun never overwrites existing registry',async()=>{const f=fixture();f.docs.set('adminSecurity/config',{enabled:true,superAdminUids:['owner']});const r=await prepare({...f,apply:true});assert.equal(f.writes.length,0);assert.equal(r.assistantsEnabled,true);});
+await test('existing assistant role cannot be overwritten',async()=>{const f=fixture();f.docs.set('adminAccess/owner',{role:'admin_assistant'});await assert.rejects(prepare({...f,apply:true}));assert.equal(f.writes.length,0);});
+await test('claim removal during approval aborts',async()=>{const f=fixture();f.auth.getUser=async()=>({customClaims:{}});await assert.rejects(prepare({...f,apply:true}));assert.equal(f.writes.length,0);});
+console.log(`SUMMARY | ${n}/${n} passed`);

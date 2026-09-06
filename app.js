@@ -1093,20 +1093,26 @@ window.cancelServiceRequest = async function (requestId) {
   }
 };
 
+let currentAdminAccess = {role:null,permissions:[]};
 async function requireAdminClaim(forceRefresh = false) {
-  const user = auth.currentUser;
-  if (!user) return false;
+  const user=auth.currentUser;
+  currentAdminAccess={role:null,permissions:[]};currentUserIsAdmin=false;
+  if(!user)return false;
   try {
-    const tokenResult = await getIdTokenResult(user, forceRefresh);
-    const allowed = tokenResult.claims.admin === true;
-    currentUserIsAdmin = allowed;
-    const button = document.getElementById("adminPanelButton");
-    if (button) button.style.display = allowed ? "inline-flex" : "none";
-    return allowed;
-  } catch (error) {
-    console.error("ADMIN TOKEN ERROR:", error);
-    return false;
-  }
+    const [{accessModel},token,profile,record,config]=await Promise.all([
+      import('./admin-permissions.js'),getIdTokenResult(user,forceRefresh),
+      getDoc(doc(db,'users',user.uid)),getDoc(doc(db,'adminAccess',user.uid)).catch(()=>({data:()=>null})),getDoc(doc(db,'adminSecurity','config')).catch(()=>({data:()=>null}))
+    ]);
+    if(auth.currentUser?.uid!==user.uid)return false;
+    currentAdminAccess=accessModel(user.uid,token.claims,profile.data()||{},record.data(),config.data());
+    currentUserIsAdmin=currentAdminAccess.role==='super_admin'||currentAdminAccess.permissions.length>0;
+  } catch { currentAdminAccess={role:null,permissions:[]}; }
+  const button=document.getElementById('adminPanelButton');if(button)button.style.display=currentUserIsAdmin?'inline-flex':'none';
+  return currentUserIsAdmin;
+}
+async function requireAdminPermission(permission) {
+  if(!await requireAdminClaim(true))return false;
+  const {can}=await import('./admin-permissions.js');return can(currentAdminAccess,permission);
 }
 
 function appendAdminAudit(transaction, action, targetType, targetId, reason) {
@@ -1118,7 +1124,7 @@ function appendAdminAudit(transaction, action, targetType, targetId, reason) {
 
 let adminServicesCursor = null;
 window.openAdminServices = async function (next = false) {
-  if (!await requireAdminClaim(true)) {
+  if (!await requireAdminPermission("services_view")) {
     alert("غير مصرح لك بفتح لوحة الإدارة.");
     return;
   }
@@ -1189,7 +1195,7 @@ let adminDeletionBusy = false;
 let adminDeletionCursor = null;
 window.loadAdminDeletionRequests = async function (next = false) {
   const container = document.getElementById("adminDeletionRequestsList");
-  if (!container || !await requireAdminClaim(true)) return;
+  if (!container || !await requireAdminPermission("users_view")) {if(container)container.textContent="لا تملك صلاحية عرض طلبات الحذف.";return;}
   container.textContent = "جاري تحميل طلبات الحذف…";
   try {
     const snapshot = await getDocs(query(collection(db, "accountDeletionRequests"), orderBy('__name__'), ...(next && adminDeletionCursor ? [startAfter(adminDeletionCursor)] : []), limit(50)));
@@ -1216,11 +1222,12 @@ window.renderAdminDeletionRequests = function () {
     <p>تاريخ الطلب: ${escapeHtml(formatDate(item.createdAt))}</p>
     <p>الحالة: ${item.status === "pending" ? "بانتظار المراجعة" : item.status === "in_review" ? "قيد المراجعة" : item.status === "completed" ? "تم التنفيذ" : "حالة غير معروفة"}</p>
     ${item.processedAt ? `<p>آخر معالجة: ${escapeHtml(formatDate(item.processedAt))}</p>` : ""}
-    ${["pending", "in_review"].includes(item.status) ? `<button type="button" style="width:100%;box-sizing:border-box;white-space:normal;" onclick="processDeletionRequest(${escapeHtml(JSON.stringify(item.id))}, ${escapeHtml(JSON.stringify(item.status === "pending" ? "in_review" : "completed"))})">${item.status === "pending" ? "بدء المراجعة" : "تم التنفيذ"}</button>` : ""}
+    ${["pending", "in_review"].includes(item.status) && (currentAdminAccess.role==="super_admin"||currentAdminAccess.permissions.includes("users_manage")&&!currentAdminAccess.protectedUids.includes(item.userId)) ? `<button type="button" style="width:100%;box-sizing:border-box;white-space:normal;" onclick="processDeletionRequest(${escapeHtml(JSON.stringify(item.id))}, ${escapeHtml(JSON.stringify(item.status === "pending" ? "in_review" : "completed"))})">${item.status === "pending" ? "بدء المراجعة" : "تم التنفيذ"}</button>` : ""}
   </article>`).join("") : "<p>لا توجد طلبات بهذه الحالة.</p>";
 };
 window.processDeletionRequest = async function (uid, nextStatus) {
-  if (adminDeletionBusy || !["in_review", "completed"].includes(nextStatus) || !await requireAdminClaim(true)) return;
+  if (adminDeletionBusy || !["in_review", "completed"].includes(nextStatus) || !await requireAdminPermission("users_manage")) return;
+  if(currentAdminAccess.role!=="super_admin"&&(uid===auth.currentUser.uid||currentAdminAccess.protectedUids.includes(uid)))return;
   if (adminDeletionBusy) return;
   if (nextStatus === "completed" && !confirm("لا تضغط تم التنفيذ إلا بعد إتمام معالجة حذف/إخفاء البيانات المطلوبة خارج هذه الشاشة وفق إجراءات الإدارة. هل تؤكد اكتمال المعالجة؟")) return;
   const auditReason = prompt("سبب معالجة طلب الحذف (إلزامي)");
@@ -1280,7 +1287,7 @@ window.renderAdminServiceRequests = function () {
         ${request.adminNote ? `<p>سبب الرفض: ${escapeHtml(request.adminNote)}</p>` : ''}
         <details class="admin-service-details"><summary>تفاصيل الطلب</summary>${verificationHtml || '<p>لا توجد تفاصيل إضافية لهذا الطلب.</p>'}</details>
         <details class="admin-technical"><summary>تفاصيل تقنية</summary><dl><dt>Document ID</dt><dd>${escapeHtml(request.id)}</dd><dt>userId</dt><dd>${escapeHtml(request.userId)}</dd><dt>targetId</dt><dd>${escapeHtml(request.targetId)}</dd></dl></details>
-        ${request.status === "pending" ? `
+        ${request.status === "pending" && (currentAdminAccess.role==="super_admin"||currentAdminAccess.permissions.includes("services_manage")) ? `
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
             ${effectivePaymentStatus(request) === "unpaid" ? `<button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved_override')" style="flex:1;padding:10px;background:#9a6813;color:white;border:0;border-radius:8px;">اعتماد بدون دفع</button>` : ""}
@@ -1294,7 +1301,7 @@ window.renderAdminServiceRequests = function () {
 
 window.decideServiceRequest = async function (requestId, decision) {
   if (!['approved', 'approved_override', 'rejected'].includes(decision)) return;
-  if (!await requireAdminClaim(true)) {
+  if (!await requireAdminPermission("services_manage")) {
     alert("غير مصرح لك بتنفيذ هذا الإجراء.");
     return;
   }
@@ -2440,8 +2447,7 @@ onAuthStateChanged(auth, async user => {
     await readOwnDeletionRequest(user);
     if (auth.currentUser?.uid !== user.uid) return;
     try {
-      const tokenResult = await getIdTokenResult(user);
-      currentUserIsAdmin = tokenResult.claims.admin === true;
+      currentUserIsAdmin = await requireAdminClaim();
     } catch (error) {
       console.error("ADMIN CLAIM ERROR:", error);
     }
@@ -5364,7 +5370,7 @@ for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListi
 
 let adminDashboardPromise;
 function getAdminDashboard() {
-  if (!adminDashboardPromise) adminDashboardPromise = import('./admin-dashboard.js').then(({installAdminDashboard}) => installAdminDashboard({db,auth,collection,doc,getDoc,getDocs,query,where,limit,orderBy,startAfter,getCountFromServer,runTransaction,serverTimestamp,setDoc,requireAdminClaim,showModal,escapeHtml,safeImageData,formatDate,openServices:()=>window.openAdminServices(),logout:()=>window.logoutUser()})).catch(error=>{adminDashboardPromise=null;throw error;});
+  if (!adminDashboardPromise) adminDashboardPromise = import('./admin-dashboard.js').then(({installAdminDashboard}) => installAdminDashboard({db,auth,collection,doc,getDoc,getDocs,query,where,limit,orderBy,startAfter,getCountFromServer,runTransaction,serverTimestamp,setDoc,requireAdminClaim,requireAdminPermission,getAccess:()=>currentAdminAccess,showModal,escapeHtml,safeImageData,formatDate,openServices:()=>window.openAdminServices(),logout:()=>window.logoutUser()})).catch(error=>{adminDashboardPromise=null;throw error;});
   return adminDashboardPromise;
 }
 window.openAdminPanel = async function () {
@@ -5374,3 +5380,5 @@ window.openAdminPanel = async function () {
 window.submitModerationReport = async function(type,id) {
   try { await (await getAdminDashboard()).report(type,id); } catch { alert('تعذر إرسال البلاغ.'); }
 };
+
+window.openAdminSection=async function(section){if(!await requireAdminClaim(true)){alert('غير مصرح');return;}await (await getAdminDashboard()).open(section);};
