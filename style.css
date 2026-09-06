@@ -1507,3 +1507,15 @@ body .mobile-bottom-nav a.active .bottom-icon svg{stroke:#95651f !important;}
     height:22px !important;
   }
 }
+
+/* Email password controls */
+.email-auth .password-field { position: relative; }
+.email-auth .password-field input { padding-inline-end: 54px; width: 100%; box-sizing: border-box; }
+.email-auth .password-toggle { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; min-height: 0; margin: 0; padding: 8px; display: flex; align-items: center; justify-content: center; background: transparent; color: #334155; border: 0; }
+.email-auth .password-toggle:focus-visible { outline: 2px solid #166534; outline-offset: -2px; }
+.email-auth .password-toggle[aria-pressed="true"] { background: #dcfce7; }
+.password-requirements { list-style: none; padding: 0; font-size: 14px; color: #475569; }
+.password-requirements li { margin-block: 4px; }
+.email-auth .met { color: #166534; }
+#passwordMatch { color: #b91c1c; font-size: 14px; }
+#passwordMatch.met { color: #166534; }

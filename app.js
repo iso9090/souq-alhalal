@@ -2090,13 +2090,46 @@ function authErrorText(code) {
   return messages[code] || "تعذر إتمام الطلب. يرجى المحاولة مرة أخرى.";
 }
 
+function passwordRequirements(password) {
+  return [password.length >= 8, /[A-Z]/.test(password), /[a-z]/.test(password), /[0-9]/.test(password), /[^A-Za-z0-9\s]/.test(password)];
+}
+
+function passwordField(id, autocomplete) {
+  return `<div class="password-field"><input id="${id}" type="password" autocomplete="${autocomplete}" maxlength="4096" required oninput="updatePasswordFeedback()"><button class="password-toggle" type="button" aria-controls="${id}" aria-label="إظهار ${id === 'authPasswordConfirm' ? 'تأكيد كلمة المرور' : 'كلمة المرور'}" aria-pressed="false" onclick="toggleAuthPassword('${id}', this)"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>`;
+}
+
+window.toggleAuthPassword = function (id, button) {
+  const input = document.getElementById(id);
+  const visible = input.type === "password";
+  input.type = visible ? "text" : "password";
+  button.setAttribute("aria-pressed", String(visible));
+  button.setAttribute("aria-label", `${visible ? 'إخفاء' : 'إظهار'} ${id === 'authPasswordConfirm' ? 'تأكيد كلمة المرور' : 'كلمة المرور'}`);
+};
+
+window.updatePasswordFeedback = function () {
+  const password = document.getElementById("authPassword")?.value || "";
+  document.querySelectorAll("#passwordRequirements li").forEach((item, index) => {
+    const met = passwordRequirements(password)[index];
+    item.classList.toggle("met", met);
+    item.querySelector("span").textContent = met ? "✓" : "○";
+  });
+  const confirmation = document.getElementById("authPasswordConfirm");
+  const message = document.getElementById("passwordMatch");
+  if (message && confirmation) {
+    const matches = password === confirmation.value;
+    message.textContent = confirmation.value ? (matches ? "✓ كلمتا المرور متطابقتان." : "تأكيد كلمة المرور غير مطابق.") : "";
+    message.classList.toggle("met", !!confirmation.value && matches);
+    confirmation.setAttribute("aria-invalid", String(!!confirmation.value && !matches));
+  }
+};
+
 function validateEmailForm(mode, email, password = "", confirmation = "", name = "") {
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "يرجى إدخال بريد إلكتروني صحيح.";
   if (mode === "reset") return "";
   if (!password || password.length > 4096) return "يرجى إدخال كلمة مرور صحيحة.";
   if (mode === "signup") {
     if (name.length < 2 || name.length > 50) return "يرجى إدخال اسم من حرفين إلى 50 حرفًا.";
-    if (password.length < 6) return "كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.";
+    if (!passwordRequirements(password).every(Boolean)) return "استخدم 8 أحرف على الأقل، وحرفًا إنجليزيًا كبيرًا وصغيرًا ورقمًا ورمزًا خاصًا.";
     if (password !== confirmation) return "تأكيد كلمة المرور غير مطابق.";
   }
   return "";
@@ -2115,8 +2148,8 @@ window.openEmailAuth = function (mode = "login") {
       <label for="authEmail">البريد الإلكتروني</label>
       <input id="authEmail" type="email" dir="ltr" autocomplete="username" maxlength="254" required>
       ${mode !== "reset" ? `<label for="authPassword">كلمة المرور</label>
-        <input id="authPassword" type="password" autocomplete="${mode === "signup" ? "new-password" : "current-password"}" maxlength="4096" required>` : ""}
-      ${mode === "signup" ? '<label for="authPasswordConfirm">تأكيد كلمة المرور</label><input id="authPasswordConfirm" type="password" autocomplete="new-password" maxlength="4096" required><p>لا تحتاج رقم هاتف أو SMS. يمكنك استخدام حسابك للبيع والشراء.</p>' : ""}
+        ${passwordField('authPassword', mode === 'signup' ? 'new-password' : 'current-password')}` : ""}
+      ${mode === "signup" ? `<ul id="passwordRequirements" class="password-requirements">${['8 أحرف على الأقل', 'حرف إنجليزي كبير (A–Z)', 'حرف إنجليزي صغير (a–z)', 'رقم واحد على الأقل (0–9)', 'رمز خاص واحد على الأقل مثل ! أو @'].map(label => `<li><span>○</span> ${label}</li>`).join('')}</ul><label for="authPasswordConfirm">تأكيد كلمة المرور</label>${passwordField('authPasswordConfirm', 'new-password')}<p id="passwordMatch" aria-live="polite"></p><p>لا تحتاج رقم هاتف أو SMS. يمكنك استخدام حسابك للبيع والشراء.</p>` : ""}
       <p id="emailAuthStatus" role="status" aria-live="polite"></p>
       <button type="submit">${mode === "reset" ? "إرسال رابط إعادة التعيين" : title}</button>
       ${mode === "login" ? '<button type="button" onclick="openEmailAuth(\'signup\')">إنشاء حساب جديد</button><button type="button" onclick="openEmailAuth(\'reset\')">نسيت كلمة المرور؟</button>' : '<button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>'}
@@ -2160,7 +2193,14 @@ window.submitEmailAuth = async function (event, mode) {
     status.textContent = mode === "reset" && error.code === "auth/user-not-found"
       ? resetMessage : authErrorText(error.code);
   } finally {
-    form.querySelectorAll('input[type="password"]').forEach(input => { input.value = ""; });
+    form.querySelectorAll('#authPassword, #authPasswordConfirm').forEach(input => {
+      input.value = "";
+      input.type = "password";
+      const button = form.querySelector(`[aria-controls="${input.id}"]`);
+      button.setAttribute("aria-pressed", "false");
+      button.setAttribute("aria-label", `إظهار ${input.id === 'authPasswordConfirm' ? 'تأكيد كلمة المرور' : 'كلمة المرور'}`);
+    });
+    if (form.isConnected) window.updatePasswordFeedback();
     emailAuthBusy = false;
     buttons.forEach(button => { button.disabled = false; });
   }

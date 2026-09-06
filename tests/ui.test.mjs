@@ -91,11 +91,11 @@ test('image attributes reject quote injection',security.safeImageData('data:imag
 test('jpeg compressed data remains accepted',security.safeImageData('data:image/jpeg;base64,YWJj')==='data:image/jpeg;base64,YWJj');
 test('HTML user text is escaped',security.escapeHtml('<img onerror="x">').includes('&lt;'));
 test('demo link only for missing or unpaid pending',!!security.demoPaymentLink({status:'pending'})&&!!security.demoPaymentLink({status:'pending',paymentStatus:'unpaid'})&&!security.demoPaymentLink({status:'pending',paymentStatus:'paid'})&&!security.demoPaymentLink({status:'approved',paymentStatus:'unpaid'})&&!security.demoPaymentLink({status:'pending',paymentStatus:null}));
-vm.runInContext(['authErrorText','validateEmailForm','deletionStatusText'].map(extractFunction).join('\n')+';globalThis.authChecks={authErrorText,validateEmailForm,deletionStatusText};',context);
+vm.runInContext(['authErrorText','passwordRequirements','validateEmailForm','deletionStatusText'].map(extractFunction).join('\n')+';globalThis.authChecks={authErrorText,validateEmailForm,deletionStatusText};',context);
 const checks=context.authChecks;
-test('signup accepts email without phone',checks.validateEmailForm('signup','owner@example.test','long-password','long-password','اسم')==='');
-test('signup rejects mismatched confirmation',checks.validateEmailForm('signup','owner@example.test','long-password','different','اسم').includes('غير مطابق'));
-test('signup rejects blank name',!!checks.validateEmailForm('signup','owner@example.test','long-password','long-password',''));
+test('signup accepts email without phone',checks.validateEmailForm('signup','owner@example.test','Strong-pass1!','Strong-pass1!','اسم')==='');
+test('signup rejects mismatched confirmation',checks.validateEmailForm('signup','owner@example.test','Strong-pass1!','different','اسم').includes('غير مطابق'));
+test('signup rejects blank name',!!checks.validateEmailForm('signup','owner@example.test','Strong-pass1!','Strong-pass1!',''));
 test('signup rejects weak password',!!checks.validateEmailForm('signup','owner@example.test','short','short','اسم'));
 test('invalid email rejected',!!checks.validateEmailForm('login','invalid','anything'));
 test('reset requires only valid email',checks.validateEmailForm('reset','owner@example.test')==='');

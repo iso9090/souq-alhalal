@@ -117,13 +117,30 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.evaluate(()=>window.openEmailAuth('signup'));
  await page.locator('#emailDisplayName').fill('مستخدم <اختبار>');
  await page.locator('#authEmail').fill('owner@example.test');
- await page.locator('#authPassword').fill('sample-password');
+ for (const weak of ['Aa1!abc', 'abcdefgh1!', 'ABCDEFGH1!', 'Abcdefgh!', 'Abcdefgh1', 'Abcdefg1 ']) {
+   await page.locator('#authPassword').fill(weak);
+   await page.locator('#authPasswordConfirm').fill(weak);
+   await page.locator('#emailAuthForm button[type=submit]').click();
+   assert.equal(await page.evaluate(()=>window.__mock.calls.filter(c=>c.kind==='signup').length),0);
+ }
+ pass('each missing password requirement prevents signup');
+ await page.locator('#authPassword').fill('Sample-password1!');
+ assert.equal(await page.locator('#passwordRequirements li.met').count(),5);
+ for (const id of ['authPassword', 'authPasswordConfirm']) {
+   const toggle = page.locator(`[aria-controls="${id}"]`);
+   await toggle.click();
+   assert.equal(await page.locator('#'+id).getAttribute('type'),'text');
+   assert.equal(await toggle.getAttribute('aria-pressed'),'true');
+   await toggle.click();
+   assert.equal(await page.locator('#'+id).getAttribute('type'),'password');
+ }
+ pass('both eye buttons toggle without submitting; live requirements satisfied');
  await page.locator('#authPasswordConfirm').fill('different');
  await page.locator('#emailAuthForm button[type=submit]').click();
- await page.getByText('تأكيد كلمة المرور غير مطابق.',{exact:true}).waitFor();
+ assert.equal(await page.locator('#emailAuthStatus').textContent(),'تأكيد كلمة المرور غير مطابق.');
  assert.equal(await page.evaluate(()=>window.__mock.calls.filter(c=>c.kind==='signup').length),0);
  pass('confirmation mismatch prevents signup');
- await page.locator('#authPasswordConfirm').fill('sample-password');
+ await page.locator('#authPasswordConfirm').fill('Sample-password1!');
  await page.evaluate(async()=>{
    const event={preventDefault(){}};
    await Promise.all([window.submitEmailAuth(event,'signup'),window.submitEmailAuth(event,'signup')]);
@@ -144,13 +161,15 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.getByText('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني إذا كان الحساب مسجلاً لدينا.',{exact:true}).waitFor();
  pass('logout and reset avoid account enumeration');
  await page.evaluate(()=>window.openEmailAuth());
- await page.locator('#authEmail').fill('owner@example.test');await page.locator('#authPassword').fill('sample-password');
+ await page.locator('#authEmail').fill('owner@example.test');await page.locator('#authPassword').fill('Sample-password1!');
  await page.evaluate(()=>{window.__mock.error='auth/invalid-credential'});
+ await page.locator('[aria-controls="authPassword"]').click();
  await page.locator('#emailAuthForm button[type=submit]').click();
  await page.getByText('البريد الإلكتروني أو كلمة المرور غير صحيحة.',{exact:true}).waitFor();
  assert.equal(await page.locator('#authPassword').inputValue(),'');
+ assert.equal(await page.locator('#authPassword').getAttribute('type'),'password');
  pass('login failure Arabic and password input cleared');
- await page.evaluate(()=>{window.__mock.error=null});await page.locator('#authPassword').fill('sample-password');
+ await page.evaluate(()=>{window.__mock.error=null});await page.locator('#authPassword').fill('legacy-password');
  await page.locator('#emailAuthForm button[type=submit]').click();await page.locator('#profileName').waitFor();
  pass('email login succeeds');
  assert.equal(await page.evaluate(()=>window.souqHandleAndroidBack()),true);
@@ -169,7 +188,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  assert.ok(dialogs.includes('تم إرسال طلب حذف حسابك بنجاح.'));
  pass('deletion success feedback closes modal and signs out');
  await page.evaluate(()=>window.openEmailAuth());
- await page.locator('#authEmail').fill('owner@example.test');await page.locator('#authPassword').fill('sample-password');
+ await page.locator('#authEmail').fill('owner@example.test');await page.locator('#authPassword').fill('Sample-password1!');
  await page.locator('#emailAuthForm button[type=submit]').click();await page.locator('#accountDeletionNotice').waitFor();
  assert.match(await page.locator('#accountDeletionNotice').innerText(),/طلب حذف حسابك قيد المراجعة/);
  assert.equal(await page.locator('#accountDeletionButton').isDisabled(),true);
@@ -262,7 +281,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  },cid);
  pass('legacy accepted-offer recovery retained with missing no-phone contact');
  assert.equal(await page.evaluate(()=>JSON.stringify([...window.__mock.docs.values()]).includes('@example.test')),false);
- assert.equal(await page.evaluate(()=>JSON.stringify([...window.__mock.docs.values()]).includes('sample-password')),false);
+ assert.equal(await page.evaluate(()=>JSON.stringify([...window.__mock.docs.values()]).includes('Sample-password1!')),false);
  await page.evaluate(async()=>{window.__mock.admin=true;await window.__mock.setUser(window.__mock.api.getAuth().currentUser)});
  assert.equal(await page.locator('#adminPanelButton').isVisible(),true);
  await page.evaluate(()=>window.openAdminPanel());await page.locator('#adminServiceRequestsList').waitFor();
