@@ -7,7 +7,103 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return activeAccount() && request.auth.token.get('admin', false) == true;
+      return activeAccount() && request.auth.token.get('admin', false) == true
+        && (!exists(/databases/$(database)/documents/adminSecurity/config)
+          || request.auth.uid in get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids);
+    }
+
+    // Legacy signed custom claim remains the trusted Super Admin authority.
+    // Registry/config can only be bootstrapped by an explicitly authorized trusted environment.
+    function delegationReady() {
+      return exists(/databases/$(database)/documents/adminSecurity/config)
+        && get(/databases/$(database)/documents/adminSecurity/config).data.enabled == true
+        && get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids is list
+        && get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids.size() > 0;
+    }
+    function assistantAccess() { return get(/databases/$(database)/documents/adminAccess/$(request.auth.uid)).data; }
+    function hasPermission(permission) {
+      return isAdmin() || (activeAccount() && delegationReady()
+        && exists(/databases/$(database)/documents/adminAccess/$(request.auth.uid))
+        && assistantAccess().role == 'admin_assistant' && assistantAccess().adminStatus == 'active'
+        && permission in assistantAccess().permissions);
+    }
+    function protectedAccount(uid) {
+      return (delegationReady() && uid in get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids)
+        || (exists(/databases/$(database)/documents/adminAccess/$(uid))
+          && get(/databases/$(database)/documents/adminAccess/$(uid)).data.role == 'super_admin');
+    }
+    function mayManageUser(uid) { return isAdmin() || (delegationReady() && uid != request.auth.uid && !protectedAccount(uid)); }
+    function userActionPermission() {
+      return hasPermission(request.resource.data.status == 'suspended' ? 'users_suspend'
+        : request.resource.data.status == 'blocked' ? 'users_block' : 'users_manage');
+    }
+    function validPermissions(values) {
+      return values is list && values.size() <= 21 && values.toSet().size() == values.size()
+        && values.hasOnly(['dashboard_view', 'users_view', 'users_suspend', 'users_block', 'users_manage', 'listings_view', 'listings_manage', 'auctions_view', 'auctions_manage', 'purchase_requests_view', 'purchase_requests_manage', 'reports_view', 'reports_manage', 'services_view', 'services_manage', 'admin_log_view', 'assistants_view', 'assistants_create', 'assistants_edit_permissions', 'assistants_suspend', 'assistants_remove_role']);
+    }
+    function canDelegate(uid, permission, oldPermissions, newPermissions) {
+      return delegationReady() && hasPermission(permission) && uid != request.auth.uid && !protectedAccount(uid)
+        && (isAdmin() ? request.auth.uid in get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids
+          : assistantAccess().permissions.hasAll(oldPermissions) && assistantAccess().permissions.hasAll(newPermissions));
+    }
+    function assistantAudit(uid, action, oldPermissions) {
+      let log = getAfter(/databases/$(database)/documents/adminAuditLogs/$(request.resource.data.moderationLogId)).data;
+      return validAudit('adminAccess',uid) && log.action == action
+        && log.metadata.oldPermissions == oldPermissions && log.metadata.newPermissions == request.resource.data.permissions;
+    }
+    function validAssistantData() {
+      let d=request.resource.data;
+      return d.keys().hasOnly(['role','adminStatus','permissions','createdByAdminUid','adminCreatedAt','adminUpdatedAt','moderationLogId'])
+        && d.role in ['admin_assistant','removed'] && d.adminStatus in ['active','suspended']
+        && validPermissions(d.permissions) && d.adminUpdatedAt == request.time
+        && d.createdByAdminUid is string && d.adminCreatedAt is timestamp && d.moderationLogId is string;
+    }
+    function assistantLogPermission(action) {
+      return action == 'assistant_created' ? 'assistants_create'
+        : action == 'assistant_permissions_updated' ? 'assistants_edit_permissions'
+        : action in ['assistant_suspended','assistant_reactivated'] ? 'assistants_suspend'
+        : action == 'assistant_role_removed' ? 'assistants_remove_role' : 'invalid';
+    }
+    function canWriteAudit(data) {
+      return isAdmin() || (data.targetType == 'users' && mayManageUser(data.targetId)
+          && hasPermission(data.action == 'تعليق الحساب' ? 'users_suspend' : data.action == 'حظر الحساب' ? 'users_block' : 'users_manage'))
+        || (data.targetType == 'animals' && hasPermission('listings_manage'))
+        || (data.targetType == 'auctions' && hasPermission('auctions_manage'))
+        || (data.targetType == 'purchaseRequests' && hasPermission('purchase_requests_manage'))
+        || (data.targetType == 'reports' && hasPermission('reports_manage'))
+        || (data.targetType == 'serviceRequests' && hasPermission('services_manage'))
+        || (data.targetType == 'accountDeletionRequests' && hasPermission('users_manage') && mayManageUser(data.targetId))
+        || (data.targetType == 'adminAccess' && hasPermission(assistantLogPermission(data.action)));
+    }
+    match /adminSecurity/{id} { allow read: if signedIn(); allow write: if false; }
+    match /adminAccess/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || hasPermission('assistants_view') || hasPermission('assistants_create') || hasPermission('assistants_edit_permissions'));
+      allow list: if hasPermission('assistants_view');
+      allow create: if validAssistantData() && exists(/databases/$(database)/documents/users/$(uid))
+        && request.resource.data.role == 'admin_assistant' && request.resource.data.adminStatus == 'active'
+        && request.resource.data.createdByAdminUid == request.auth.uid && request.resource.data.adminCreatedAt == request.time
+        && canDelegate(uid,'assistants_create',[],request.resource.data.permissions) && assistantAudit(uid,'assistant_created',[]);
+      allow update: if validAssistantData() && resource.data.role in ['admin_assistant','removed'] && (
+        (resource.data.role == 'removed' && request.resource.data.role == 'admin_assistant'
+          && request.resource.data.adminStatus == 'active' && request.resource.data.createdByAdminUid == request.auth.uid
+          && request.resource.data.adminCreatedAt == request.time
+          && canDelegate(uid,'assistants_create',resource.data.permissions,request.resource.data.permissions)
+          && assistantAudit(uid,'assistant_created',resource.data.permissions))
+        || (resource.data.role == 'admin_assistant' && request.resource.data.adminCreatedAt == resource.data.adminCreatedAt
+          && request.resource.data.createdByAdminUid == resource.data.createdByAdminUid && (
+          (changedKeysOnly(['permissions','adminUpdatedAt','moderationLogId'])
+            && canDelegate(uid,'assistants_edit_permissions',resource.data.permissions,request.resource.data.permissions)
+            && assistantAudit(uid,'assistant_permissions_updated',resource.data.permissions))
+          || (changedKeysOnly(['adminStatus','adminUpdatedAt','moderationLogId'])
+            && request.resource.data.adminStatus != resource.data.adminStatus
+            && canDelegate(uid,'assistants_suspend',resource.data.permissions,request.resource.data.permissions)
+            && assistantAudit(uid,request.resource.data.adminStatus == 'active' ? 'assistant_reactivated' : 'assistant_suspended',resource.data.permissions))
+          || (changedKeysOnly(['role','adminStatus','permissions','adminUpdatedAt','moderationLogId'])
+            && request.resource.data.role == 'removed' && request.resource.data.adminStatus == 'suspended' && request.resource.data.permissions.size() == 0
+            && canDelegate(uid,'assistants_remove_role',resource.data.permissions,[])
+            && assistantAudit(uid,'assistant_role_removed',resource.data.permissions))
+        )));
+      allow delete: if false;
     }
 
     function activeAccount() {
@@ -134,7 +230,8 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == uid || hasPermission('users_view') || hasPermission('assistants_create') || hasPermission('assistants_edit_permissions')
+        || (hasPermission('assistants_view') && exists(/databases/$(database)/documents/adminAccess/$(uid))));
 
       allow create: if activeAccount()
         && request.auth.uid == uid
@@ -167,7 +264,7 @@ service cloud.firestore {
           || request.resource.data.accountType in ['buyer', 'seller', 'both']
         );
 
-      allow update: if isAdmin() && uid != request.auth.uid
+      allow update: if userActionPermission() && mayManageUser(uid) && uid != request.auth.uid
         && changedKeysOnly(['status', 'moderationLogId'])
         && request.resource.data.status in ['active','suspended','blocked','deletion_requested']
         && validAudit('users', uid);
@@ -240,7 +337,7 @@ service cloud.firestore {
         && verificationFieldsUnchanged()
         && promotionFieldsUnchanged()
       ) || (
-        isAdmin()
+        hasPermission('services_manage')
         && (
           (
             changedKeysOnly(['featuredAt', 'featuredUntil'])
@@ -274,7 +371,7 @@ service cloud.firestore {
         )
       );
 
-      allow update: if isAdmin()
+      allow update: if hasPermission('listings_manage')
         && changedKeysOnly(['images','imagesLocked','moderationLocked','status','moderationLogId'])
         && request.resource.data.moderationLocked == true
         && request.resource.data.status in ['active','hidden','needs_review','sold','not_approved']
@@ -364,7 +461,7 @@ service cloud.firestore {
         )
         )
       ) || (
-        isAdmin()
+        hasPermission('services_manage')
         && (
           (
             changedKeysOnly(['featuredAt', 'featuredUntil'])
@@ -388,12 +485,16 @@ service cloud.firestore {
         )
       );
 
+      allow update: if hasPermission('auctions_manage') && resource.data.status == 'active'
+        && resource.data.endTime <= request.time && request.resource.data.status in ['sold','not_approved']
+        && changedKeysOnly(['status','updatedAt','moderationLogId']) && request.resource.data.updatedAt == request.time
+        && validAudit('auctions',auctionId);
       allow delete: if isOwner('sellerId');
     }
 
     match /serviceRequests/{requestId} {
       allow read: if signedIn()
-        && (resource.data.userId == request.auth.uid || isAdmin());
+        && (resource.data.userId == request.auth.uid || hasPermission('services_view'));
 
       allow create: if activeAccount()
         && request.resource.data.keys().hasOnly([
@@ -491,7 +592,7 @@ service cloud.firestore {
         && request.resource.data.cancelledAt == request.time
         && request.resource.data.updatedAt == request.time
       ) || (
-        isAdmin()
+        hasPermission('services_manage')
         && resource.data.status == 'pending'
         && request.resource.data.updatedAt == request.time
         && (
@@ -624,7 +725,7 @@ service cloud.firestore {
     match /purchaseRequests/{requestId} {
       allow read: if signedIn()
         && (
-          isAdmin() || resource.data.buyerId == request.auth.uid
+          hasPermission('purchase_requests_view') || resource.data.buyerId == request.auth.uid
           || resource.data.sellerId == request.auth.uid
         );
 
@@ -657,6 +758,9 @@ service cloud.firestore {
         && request.resource.data.status in ['accepted', 'rejected']
         && request.resource.data.updatedAt == request.time;
 
+      allow update: if hasPermission('purchase_requests_manage') && resource.data.status == 'pending'
+        && request.resource.data.status in ['accepted','rejected'] && changedKeysOnly(['status','updatedAt','moderationLogId'])
+        && request.resource.data.updatedAt == request.time && validAudit('purchaseRequests',requestId);
       allow delete: if false;
     }
 
@@ -1027,8 +1131,8 @@ service cloud.firestore {
     }
 
     match /accountDeletionRequests/{uid} {
-      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow list: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow get: if signedIn() && (request.auth.uid == uid || hasPermission('users_view'));
+      allow list: if signedIn() && (resource.data.userId == request.auth.uid || hasPermission('users_view'));
       allow create: if activeAccount()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['userId', 'status', 'createdAt', 'updatedAt'])
@@ -1036,7 +1140,7 @@ service cloud.firestore {
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
-      allow update: if isAdmin()
+      allow update: if hasPermission('users_manage') && mayManageUser(uid)
         && resource.data.status in ['pending', 'in_review']
         && request.resource.data.status in ['in_review', 'completed']
         && changedKeysOnly(['status', 'updatedAt', 'processedBy', 'processedAt'])
@@ -1047,7 +1151,7 @@ service cloud.firestore {
     }
 
     match /reports/{reportId} {
-      allow read: if isAdmin() || (signedIn() && resource.data.reporterId == request.auth.uid);
+      allow read: if hasPermission('reports_view') || (signedIn() && resource.data.reporterId == request.auth.uid);
       allow create: if activeAccount()
         && request.resource.data.keys().hasOnly(['reporterId','targetType','targetId','reportedUserId','reason','details','status','createdAt'])
         && request.resource.data.reporterId == request.auth.uid
@@ -1064,7 +1168,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/animals/$(request.resource.data.targetId)).data.sellerId == request.resource.data.reportedUserId)
           || (request.resource.data.targetType == 'auction'
           && get(/databases/$(database)/documents/auctions/$(request.resource.data.targetId)).data.sellerId == request.resource.data.reportedUserId));
-      allow update: if isAdmin() && changedKeysOnly(['status','reviewedAt','reviewedBy','resolutionNotes','moderationLogId'])
+      allow update: if hasPermission('reports_manage') && changedKeysOnly(['status','reviewedAt','reviewedBy','resolutionNotes','moderationLogId'])
         && request.resource.data.status in ['reviewing','resolved','rejected']
         && request.resource.data.reviewedAt == request.time && request.resource.data.reviewedBy == request.auth.uid
         && request.resource.data.resolutionNotes is string && request.resource.data.resolutionNotes.size() <= 500
@@ -1072,16 +1176,23 @@ service cloud.firestore {
       allow delete: if false;
     }
     match /adminAuditLogs/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAdmin()
+      allow read: if hasPermission('admin_log_view');
+      allow create: if canWriteAudit(request.resource.data)
         && request.resource.data.keys().hasOnly(['adminUid','action','targetType','targetId','reason','timestamp','metadata'])
         && request.resource.data.adminUid == request.auth.uid && request.resource.data.timestamp == request.time
         && request.resource.data.action is string && request.resource.data.action.size() <= 100
-        && request.resource.data.targetType in ['users','animals','reports','serviceRequests','accountDeletionRequests']
+        && request.resource.data.targetType in ['users','animals','auctions','purchaseRequests','reports','serviceRequests','accountDeletionRequests','adminAccess']
         && request.resource.data.targetId is string && request.resource.data.targetId.size() <= 300
         && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
-        && request.resource.data.metadata is map && request.resource.data.metadata.keys().hasOnly(['imageHash'])
-        && (!request.resource.data.metadata.keys().hasAny(['imageHash']) || request.resource.data.metadata.imageHash.matches('^[a-f0-9]{64}$'));
+        && request.resource.data.metadata is map && (
+          (request.resource.data.targetType != 'adminAccess' && request.resource.data.metadata.keys().hasOnly(['imageHash'])
+            && (!request.resource.data.metadata.keys().hasAny(['imageHash']) || request.resource.data.metadata.imageHash.matches('^[a-f0-9]{64}$')))
+          || (request.resource.data.targetType == 'adminAccess'
+            && request.resource.data.metadata.keys().hasOnly(['oldPermissions','newPermissions'])
+            && validPermissions(request.resource.data.metadata.oldPermissions) && validPermissions(request.resource.data.metadata.newPermissions)
+            && getAfter(/databases/$(database)/documents/adminAccess/$(request.resource.data.targetId)).data.moderationLogId == logId
+            && getAfter(/databases/$(database)/documents/adminAccess/$(request.resource.data.targetId)).data.adminUpdatedAt == request.time)
+        );
       allow update, delete: if false;
     }
     match /{document=**} {

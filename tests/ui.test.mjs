@@ -71,12 +71,12 @@ test('listing management loads owned service requests with authorized query',sou
 test('listing management no longer gets missing service documents directly',!source.includes('getDoc(doc(db, "serviceRequests", requestId))'));
 test('listing management renders all three service actions',source.includes('Object.keys(SERVICES).map')&&source.includes('const servicesHtml = await listingServicesHtml(animal, user.uid)'));
 test('non-owner listing management guard remains',source.includes('if (animal.sellerId !== user.uid)'));
-test('admin UI trusts only Firebase custom claim',source.includes('tokenResult.claims.admin === true')&&!source.includes('adminPhone')&&source.includes('adminUid: auth.currentUser.uid'));
+test('legacy Super Admin stays custom-claim anchored; assistants use protected access records',fs.readFileSync(new URL('../admin-permissions.js',import.meta.url),'utf8').includes('claims.admin===true')&&source.includes("getDoc(doc(db,'adminAccess',user.uid))")&&!source.includes('adminPhone')&&source.includes('adminUid: auth.currentUser.uid'));
 test('non-admin admin button starts hidden',html.includes('id="adminPanelButton"')&&html.includes('id="adminPanelButton" type="button" onclick="openAdminPanel()"'));
 test('admin panel exposes status country and service filters',source.includes('adminServiceStatusFilter')&&source.includes('adminServiceCountryFilter')&&source.includes('adminServiceTypeFilter'));
 test('admin approval uses transaction and trusted target fields',source.includes('window.decideServiceRequest')&&source.includes('await runTransaction')&&source.includes('targetUpdate.featuredUntil')&&source.includes('targetUpdate.bumpedAt')&&source.includes('targetUpdate.verificationStatus = "verified"'));
 test('admin rejection supports optional bounded note',source.includes('ملاحظة الرفض — اختيارية')&&source.includes('adminNote.trim().slice(0, 1000)'));
-test('cancelled requests have no admin action buttons',source.includes('request.status === "pending" ?'));
+test('cancelled requests have no admin action buttons',source.includes('request.status === "pending" && (currentAdminAccess.role'));
 test('new service requests start unpaid',source.includes('paymentStatus: "unpaid"'));
 test('unpaid UI is explicit',source.includes('return "غير مدفوع"'));
 test('normal unpaid approval is disabled',source.includes('effectivePaymentStatus(request) !== "paid" ? "disabled"'));

@@ -294,3 +294,16 @@ body:has(#modal[style*="display: flex"] .admin-v2){overflow:visible!important;ba
 #modalContent .admin-image-empty{background:#f0f3f5!important;color:#526575!important}
 @media(max-width:800px){#modalContent .admin-detail-card[data-kind=reports]>dl{grid-template-columns:1fr;gap:4px}#modalContent .admin-detail-card[data-kind=reports]>dl dd{margin-bottom:12px}}
 #modalContent .admin-v2 dd.admin-price{font-size:24px!important} #modalContent .admin-v2 dd.admin-price-current{font-size:30px!important}
+/* Assistant management shares the existing dashboard shell. */
+.admin-assistants-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,350px),1fr));gap:16px;margin:18px 0}
+.admin-assistant-search,.admin-permissions-form{background:white;border:1px solid #dbe5e8;border-radius:14px;padding:20px;margin:16px 0}
+.permission-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:14px;margin:18px 0}
+.permission-groups fieldset{border:1px solid #d6e2db;border-radius:10px;padding:12px;min-width:0}
+.permission-groups legend{font-size:17px;font-weight:700;color:#125340}
+#modalContent .permission-groups label{display:flex;align-items:center;gap:10px;min-height:46px;font-size:16px;color:#183449}
+#modalContent .permission-groups input[type=checkbox]{width:22px;height:22px;min-height:22px;flex:0 0 22px;margin:0;accent-color:#00634f}
+#modalContent .admin-permissions-form textarea{width:100%;min-height:90px;font-size:16px;border:1px solid #b5c8bd;background:white;color:#183449;border-radius:8px;padding:10px}
+.admin-assistant-search input{width:100%}.assistant-search-results{display:grid;gap:10px}
+.admin-assistant-actions{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+@media(max-width:800px){#modalContent .admin-assistant-detail dl,#modalContent .admin-assistants-grid dl{grid-template-columns:1fr;gap:4px}#modalContent .admin-assistant-detail dd,#modalContent .admin-assistants-grid dd{margin-bottom:12px}.admin-assistant-actions>button{width:100%}}
+@media(max-width:800px){.admin-assistants-grid,.permission-groups{grid-template-columns:1fr}.admin-permissions-form,.admin-assistant-search{padding:14px}}
