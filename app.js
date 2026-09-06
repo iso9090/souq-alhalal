@@ -1128,7 +1128,11 @@ window.openAdminServices = async function (next = false) {
     const snapshot = await getDocs(query(collection(db, "serviceRequests"), orderBy('__name__'), ...(next && adminServicesCursor ? [startAfter(adminServicesCursor)] : []), limit(50)));
     adminServicesCursor = snapshot.docs.at(-1);
     const requests = snapshot.docs.map(requestDoc => ({ id: requestDoc.id, ...requestDoc.data() }));
-    adminServiceRequests = requests.map(request => ({...request, targetName: request.targetId, sellerName: request.userId}));
+    const dashboardUI = await getAdminDashboard();
+    adminServiceRequests = await Promise.all(requests.map(async request => ({...request,
+      displayPrice: dashboardUI.money(request.amount,request),displayDate:dashboardUI.dateText(request.createdAt),
+      targetName: await dashboardUI.nameOf(request.targetType === 'auction' ? 'auctions' : 'animals', request.targetId),
+      sellerName: await dashboardUI.nameOf('users', request.userId)})));
     adminServiceRequests.sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
 
     showModal(`
@@ -1173,6 +1177,7 @@ window.openAdminServices = async function (next = false) {
     `);
     window.renderAdminServiceRequests();
     await window.loadAdminDeletionRequests();
+    await dashboardUI.styleServices();
   } catch (error) {
     console.error("ADMIN PANEL ERROR:", error);
     alert(error.code === "permission-denied" ? "لا تملك صلاحية فتح لوحة الإدارة." : "تعذر تحميل لوحة الإدارة.");
@@ -1195,6 +1200,8 @@ window.loadAdminDeletionRequests = async function (next = false) {
       const data = item.data();
       return { id: item.id, userId: data.userId, status: data.status, createdAt: data.createdAt, processedAt: data.processedAt };
     }).sort((a,b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
+    const ui=await getAdminDashboard();
+    adminDeletionRequests=await Promise.all(adminDeletionRequests.map(async item=>({...item,displayName:await ui.nameOf('users',item.userId||item.id)})));
     window.renderAdminDeletionRequests();
   } catch { container.textContent = "تعذر تحميل طلبات الحذف. أعد فتح لوحة الإدارة للمحاولة مجددًا."; }
 };
@@ -1204,7 +1211,7 @@ window.renderAdminDeletionRequests = function () {
   const filter = document.getElementById("adminDeletionFilter")?.value || "all";
   const requests = adminDeletionRequests.filter(item => filter === "all" || (filter === "active" ? ["pending", "in_review"].includes(item.status) : item.status === "completed"));
   container.innerHTML = requests.length ? requests.map(item => `<article style="border:1px solid #b88a32;padding:12px;margin:12px 0;border-radius:12px;overflow-wrap:anywhere;">
-    <p>معرّف الحساب: <b dir="ltr">${escapeHtml(item.userId || item.id)}</b></p>
+    <details class="admin-technical"><summary>تفاصيل تقنية</summary><p dir="ltr">${escapeHtml(item.userId || item.id)}</p></details>
     ${item.displayName ? `<p>الاسم: ${escapeHtml(item.displayName)}</p>` : ""}
     <p>تاريخ الطلب: ${escapeHtml(formatDate(item.createdAt))}</p>
     <p>الحالة: ${item.status === "pending" ? "بانتظار المراجعة" : item.status === "in_review" ? "قيد المراجعة" : item.status === "completed" ? "تم التنفيذ" : "حالة غير معروفة"}</p>
@@ -1258,19 +1265,21 @@ window.renderAdminServiceRequests = function () {
       </div>
     ` : "";
     return `
-      <div style="background:#222;padding:14px;border-radius:12px;margin-bottom:11px;">
+      <article class="admin-service-card">
         <div style="display:flex;justify-content:space-between;gap:8px;">
           <b style="color:#68e6b0;">${SERVICES[request.serviceType]?.label || "خدمة"}</b>
-          <b style="color:#ffd66b;">${Number(request.amount || 0).toLocaleString("en-US")} ${escapeHtml(request.currency || "")}</b>
+          <b style="color:#ffd66b;">${escapeHtml(request.displayPrice)}</b>
         </div>
         <div>الإعلان: ${escapeHtml(request.targetName)}</div>
-        <div>البائع: ${escapeHtml(request.sellerName)} <small>(${escapeHtml(request.userId.slice(0, 10))}…)</small></div>
-        <div>الدولة: ${effectiveCountry(request) === "EG" ? "مصر" : "الإمارات"}</div>
-        <div>الحالة: <b>${serviceStatusText(request.status)}</b></div>
-        <div>الدفع: <b>${servicePaymentText(request)}</b></div>
+        <div>مقدم الطلب: ${escapeHtml(request.sellerName)}</div>
+        <div>الدولة: ${effectiveCountry(request) === "EG" ? "مصر" : "الإمارات العربية المتحدة"}</div>
+        <div>حالة الطلب: <b class="admin-badge ${request.status === 'approved' ? 'green' : request.status === 'rejected' ? 'red' : 'gold'}">${serviceStatusText(request.status)}</b></div>
+        <div>حالة الدفع: <b class="admin-badge ${effectivePaymentStatus(request) === 'paid' ? 'green' : 'gold'}">${servicePaymentText(request)}</b></div>
         ${request.paymentOverride === true ? `<div style="color:#ffd66b;font-size:12px;">سبب الاعتماد الاستثنائي: ${escapeHtml(request.paymentOverrideReason || "غير محدد")}</div>` : ""}
-        <div style="color:#888;font-size:12px;">${formatDate(request.createdAt)}</div>
-        ${verificationHtml}
+        <div style="color:#888;font-size:12px;">${escapeHtml(request.displayDate)}</div>
+        ${request.adminNote ? `<p>سبب الرفض: ${escapeHtml(request.adminNote)}</p>` : ''}
+        <details class="admin-service-details"><summary>تفاصيل الطلب</summary>${verificationHtml || '<p>لا توجد تفاصيل إضافية لهذا الطلب.</p>'}</details>
+        <details class="admin-technical"><summary>تفاصيل تقنية</summary><dl><dt>Document ID</dt><dd>${escapeHtml(request.id)}</dd><dt>userId</dt><dd>${escapeHtml(request.userId)}</dd><dt>targetId</dt><dd>${escapeHtml(request.targetId)}</dd></dl></details>
         ${request.status === "pending" ? `
           <div style="display:flex;gap:8px;margin-top:10px;">
             <button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
@@ -1278,7 +1287,7 @@ window.renderAdminServiceRequests = function () {
             <button onclick="decideServiceRequest(${inlineArgument(request.id)},'rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
           </div>
         ` : ""}
-      </div>
+      </article>
     `;
   }).join("") : `<div style="background:#222;padding:20px;border-radius:12px;text-align:center;">لا توجد طلبات مطابقة.</div>`;
 };
@@ -5355,7 +5364,7 @@ for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListi
 
 let adminDashboardPromise;
 function getAdminDashboard() {
-  if (!adminDashboardPromise) adminDashboardPromise = import('./admin-dashboard.js').then(({installAdminDashboard}) => installAdminDashboard({db,auth,collection,doc,getDoc,getDocs,query,where,limit,orderBy,startAfter,getCountFromServer,runTransaction,serverTimestamp,setDoc,requireAdminClaim,showModal,escapeHtml,safeImageData,formatDate,openServices:()=>window.openAdminServices()})).catch(error=>{adminDashboardPromise=null;throw error;});
+  if (!adminDashboardPromise) adminDashboardPromise = import('./admin-dashboard.js').then(({installAdminDashboard}) => installAdminDashboard({db,auth,collection,doc,getDoc,getDocs,query,where,limit,orderBy,startAfter,getCountFromServer,runTransaction,serverTimestamp,setDoc,requireAdminClaim,showModal,escapeHtml,safeImageData,formatDate,openServices:()=>window.openAdminServices(),logout:()=>window.logoutUser()})).catch(error=>{adminDashboardPromise=null;throw error;});
   return adminDashboardPromise;
 }
 window.openAdminPanel = async function () {
