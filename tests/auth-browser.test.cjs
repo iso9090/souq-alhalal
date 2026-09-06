@@ -51,7 +51,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      query:(ref,...filters)=>({...ref,filters}),where:(...args)=>args,
      limit:n=>({limit:n}),orderBy:field=>({orderBy:field}),startAfter:cursor=>({cursor}),
      getCountFromServer:async ref=>({data:()=>({count:readQuery(ref).size})}),
-     getDoc:async ref=>snapshot(ref),getDocs:async ref=>{
+     getDoc:async ref=>{window.__mock.reads.push(ref.path);return snapshot(ref);},getDocs:async ref=>{
        if(ref.path==='purchaseRequests' && window.__mock.purchaseDelay)await new Promise(resolve=>setTimeout(resolve,window.__mock.purchaseDelay));
        return readQuery(ref);
      },
@@ -78,7 +78,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      },
      sendPasswordResetEmail:async()=>{calls.push({kind:'reset'});if(window.__mock.error)throw {code:window.__mock.error}}
    };
-   window.__mock={api:mock,docs,calls,setUser,admin:false,error:null,failures:[]};
+   window.__mock={reads:[],api:mock,docs,calls,setUser,admin:false,error:null,failures:[]};
  });
  await page.route('**/*', async route => {
    const url = new URL(route.request().url());
@@ -94,8 +94,8 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    if(!file.startsWith(root)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
    return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
  });
- for(const width of [360,1280]) {
-   await page.setViewportSize({width,height:900});await page.goto('https://auth.test/');
+ for(const width of [360,1280,1366]) {
+   await page.setViewportSize({width,height:width===360?800:width===1366?768:900});await page.goto('https://auth.test/');
    await page.waitForFunction(()=>typeof window.openEmailAuth==='function');
    await page.evaluate(()=>window.selectMarketCountry('AE'));
    await page.evaluate(()=>window.openLogin());
@@ -293,7 +293,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  assert.equal(await page.locator('#adminPanelButton').isVisible(),true);
  await page.evaluate(()=>window.openAdminServices());await page.locator('#adminServiceRequestsList').waitFor();
  pass('no credential persistence; custom-claim admin preserved');
- assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/owner/);
+ assert.match(await page.locator('#adminDeletionRequestsList').textContent(),/owner/);
  assert.equal(await page.locator('#adminServiceRequestsList').count(),1);
  await page.evaluate(()=>window.processDeletionRequest('owner','in_review'));
  assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'in_review');
@@ -309,10 +309,10 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.locator('#adminDeletionFilter').selectOption('active');
  assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/لا توجد طلبات/);
  await page.locator('#adminDeletionFilter').selectOption('completed');
- assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/owner/);
+ assert.match(await page.locator('#adminDeletionRequestsList').textContent(),/owner/);
  pass('admin list, sequential audit transitions, completion cancellation/confirmation and filters');
- for(const width of [360,1280]) {
-   await page.setViewportSize({width,height:900});
+ for(const width of [360,1280,1366]) {
+   await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    const restoredUser=await page.evaluate(()=>window.__mock.api.getAuth().currentUser);
    await page.evaluate(()=>window.__mock.docs.delete('accountDeletionRequests/buyer'));
    await page.evaluate(()=>window.openAccountDeletion());
@@ -327,7 +327,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      window.__mock.docs.set('accountDeletionRequests/buyer',{userId:'buyer',status:'in_review',createdAt:new Date(),updatedAt:new Date()});
      await window.__mock.setUser(window.__mock.api.getAuth().currentUser);
    });
-   await page.setViewportSize({width,height:900});
+   await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    for(const screen of ['account','deletion','messages','admin']) {
      await page.evaluate(async({screen,cid})=>{
        if(screen==='account')await window.openLogin();
@@ -425,12 +425,21 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    window.__mock.docs.set('animals/moderation-ad',{name:'إعلان المراجعة',sellerId:'moderation-user',saleType:'direct',status:'active',images:['data:image/jpeg;base64,AAA','data:image/jpeg;base64,BBB']});
    await window.openAdminPanel();
  });
- await page.locator('.admin-stats').waitFor();
+ await page.locator('.admin-overview').waitFor();
  assert.equal(await page.locator('#adminV2Nav button').count(),7);
- for(const width of [360,1280]){
-   await page.setViewportSize({width,height:900});
+ for(const width of [360,1280,1366]){
+   await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    assert.equal(await page.evaluate(()=>document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1),true);
+   assert.equal(await page.evaluate(()=>['#modal','#modal .box','#modalContent'].every(s=>getComputedStyle(document.querySelector(s)).overflowY==='visible')),true);
+   await page.locator('#adminLogout button').scrollIntoViewIfNeeded();
+   assert.equal(await page.locator('#adminLogout button').isVisible(),true);
+   await page.evaluate(()=>{window.scrollTo(0,0);document.querySelector('.admin-sidebar').scrollTop=0;});
+   pass('document scrolling and complete sidebar '+width);
+   assert.equal(await page.evaluate(()=>window.visualViewport.scale===1&&window.devicePixelRatio===1&&getComputedStyle(document.querySelector('.admin-v2')).zoom==='1'&&parseFloat(getComputedStyle(document.querySelector('#adminV2Nav button')).fontSize)>=14),true);
+   pass('100 percent viewport and readable navigation '+width);
    await page.screenshot({path:process.env.TEMP+`/souq-dashboard-${width}.png`});
+   const numberLayout=await page.evaluate(()=>{const tiles=[...document.querySelectorAll('.admin-overview strong')];const previous=tiles.map(n=>n.textContent);tiles.forEach((n,i)=>n.textContent=['0','7','56','123','9999','0'][i]);const ok=tiles.every(n=>n.scrollWidth<=n.clientWidth+1);tiles.forEach((n,i)=>n.textContent=previous[i]);return ok;});
+   assert.equal(numberLayout,true);pass('overview numbers 0 to 9999 fit '+width);
  }
  pass('dashboard seven tabs, real aggregation adapter, RTL mobile and desktop');
  // All navigation fixtures and interactions are offline.
@@ -440,43 +449,43 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    window.__mock.docs.set('reports/nav-report',{targetType:'animal',targetId:'moderation-ad',reporterId:'moderation-user',status:'open'});
    window.__mock.docs.set('adminAuditLogs/nav-log',{action:'navigation fixture',targetId:'moderation-ad'});
  });
- for(const width of [1280,360]){
-   await page.setViewportSize({width,height:900});
+ for(const width of [1280,1366,360]){
+   await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    for(const [tab,term] of [['المستخدمون','moderation-user'],['الإعلانات','moderation-ad'],['المزادات','nav-auction'],['البلاغات','nav-report'],['سجل الإدارة','nav-log']]){
      await page.getByRole('button',{name:tab,exact:true}).click();
      await page.locator('#adminFilters input').fill(term);
-     await page.locator('#adminRows button').click();
+     await page.locator('#adminRows .admin-actions > button:first-child').click();
      const back=page.locator('.admin-back');await back.waitFor();
-     assert.match(await back.innerText(),new RegExp(tab));
+     assert.match(await back.innerText(),/رجوع إلى/);
      assert.equal(await page.evaluate(()=>{const b=document.querySelector('.admin-back').getBoundingClientRect(),x=document.querySelector('#modal .x').getBoundingClientRect();return b.height>=44 && b.left>=0 && b.right<=innerWidth && !(b.left<x.right&&b.right>x.left&&b.top<x.bottom&&b.bottom>x.top) && document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1;}),true);
      await page.screenshot({path:process.env.TEMP+'/souq-nav-'+width+'-'+term+'.png'});
      await back.click();
      assert.equal(await page.locator('#adminFilters input').inputValue(),term);
      assert.equal(await page.locator('.admin-v2').isVisible(),true);
-     assert.equal(await page.locator('#adminRows button').count(),1);
+     assert.equal(await page.locator('#adminRows .admin-actions > button:first-child').count(),1);
      pass('detail back preserves '+tab+' search and dashboard '+width);
    }
    await page.getByRole('button',{name:'المستخدمون',exact:true}).click();
    await page.getByRole('combobox',{name:'الدولة',exact:true}).selectOption('EG');
    await page.getByRole('button',{name:'الصفحة التالية',exact:true}).click();
    await page.locator('#adminFilters input').fill('nav-user050');
-   await page.locator('#adminRows button').click();
+   await page.locator('#adminRows .admin-actions > button:first-child').click();
    await page.locator('.admin-back').click();
    assert.equal(await page.getByRole('combobox',{name:'الدولة',exact:true}).inputValue(),'EG');
    assert.equal(await page.locator('#adminFilters input').inputValue(),'nav-user050');
    await page.locator('#adminFilters input').fill('');
-   assert.equal(await page.locator('#adminRows button').count(),5);
+   assert.equal(await page.locator('#adminRows .admin-actions > button:first-child').count(),5);
    pass('back preserves server filter and second page '+width);
    await page.getByRole('button',{name:'الإعلانات',exact:true}).click();
    await page.locator('#adminFilters input').fill('moderation-ad');
-   await page.locator('#adminRows button').click();
+   await page.locator('#adminRows .admin-actions > button:first-child').click();
    await page.getByRole('button',{name:'البائع',exact:true}).click();
    await page.locator('.admin-back').click();
    assert.equal(await page.locator('.admin-gallery').count(),1);
    await page.locator('.admin-back').click();
    assert.equal(await page.locator('#adminFilters input').inputValue(),'moderation-ad');
    pass('nested seller details back to ad then original list '+width);
-   await page.locator('#adminRows button').click();
+   await page.locator('#adminRows .admin-actions > button:first-child').click();
    await page.locator('#modal .x').click();
    assert.equal(await page.locator('#modal').isVisible(),false);
    await page.evaluate(()=>window.openAdminPanel());
@@ -490,7 +499,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.getByRole('button',{name:'المزادات',exact:true}).click();
  await page.locator('#adminFilters input').fill('nav-auction');
  await page.evaluate(()=>window.__mock.docs.delete('auctions/nav-auction'));
- await page.locator('#adminRows button').click();
+ await page.locator('#adminRows .admin-actions > button:first-child').click();
  await page.getByText('السجل غير موجود.',{exact:true}).waitFor();
  await page.locator('.admin-back').click();
  assert.equal(await page.locator('#adminFilters input').inputValue(),'nav-auction');
@@ -498,7 +507,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.evaluate(()=>{for(const k of [...window.__mock.docs.keys()])if(k.includes('/nav-'))window.__mock.docs.delete(k);});
  await page.getByRole('button',{name:'المستخدمون',exact:true}).click();
  await page.locator('#adminFilters input').fill('moderation-user');
- await page.locator('#adminRows button').click();
+ await page.locator('#adminRows .admin-actions > button:first-child').click();
  await page.getByRole('button',{name:'تعليق الحساب',exact:true}).click();
  await page.waitForFunction(()=>window.__mock.docs.get('users/moderation-user').status==='suspended');
  await page.getByRole('button',{name:'إعادة التفعيل',exact:true}).click();
@@ -511,7 +520,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
 
  await page.getByRole('button',{name:'الإعلانات',exact:true}).click();
  await page.locator('#adminFilters input').fill('moderation-ad');
- await page.locator('#adminRows button').click();
+ await page.locator('#adminRows .admin-actions > button:first-child').click();
  await page.getByRole('button',{name:'حذف الصورة غير اللائقة',exact:true}).first().waitFor();
  await page.evaluate(()=>window.__mock.docs.get('animals/moderation-ad').images=['data:image/jpeg;base64,BBB','data:image/jpeg;base64,CCC','data:image/jpeg;base64,AAA']);
  await page.getByRole('button',{name:'حذف الصورة غير اللائقة',exact:true}).first().click();
@@ -522,10 +531,83 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.evaluate(()=>window.submitModerationReport('animal','moderation-ad'));
  await page.getByRole('button',{name:'البلاغات',exact:true}).click();
  await page.locator('#adminFilters input').fill('moderation-ad');
- await page.locator('#adminRows button').click();
+ await page.locator('#adminRows .admin-actions > button:first-child').click();
  await page.getByRole('button',{name:'تحت المراجعة',exact:true}).click();
  await page.waitForFunction(()=>[...window.__mock.docs].some(([k,v])=>k.startsWith('reports/')&&v.status==='reviewing'));
  pass('dashboard report creation and administrative review');
+ await page.evaluate(()=>{
+   const d=window.__mock.docs;
+   d.set('users/ui-seller',{displayName:'بائع العرض',country:'AE',city:'دبي',status:'active',accountType:'seller',phoneNumber:'0500000000',createdAt:new Date('2026-09-06T12:00:00Z')});
+   d.set('users/ui-buyer',{displayName:'مشتري العرض',country:'AE',status:'active',accountType:'buyer'});
+   d.set('animals/ui-animal',{name:'ناقة العرض',sellerId:'ui-seller',country:'AE',city:'دبي',price:90000,saleType:'direct',status:'active',createdAt:new Date('2026-09-06T12:00:00Z'),images:['data:image/jpeg;base64,AAA']});
+   d.set('animals/ui-animal2',{name:'غنم العرض',sellerId:'ui-seller',country:'EG',currency:'USD',price:1500,saleType:'direct',status:'active'});
+   d.set('auctions/ui-auction',{animalId:'ui-animal',sellerId:'ui-seller',lastBidderId:'ui-buyer',startPrice:90000,currentPrice:90900,minIncrement:100,status:'active',endTime:new Date('2026-09-07T12:00:00Z')});
+   d.set('purchaseRequests/ui-request',{animalId:'ui-animal',sellerId:'ui-seller',buyerId:'ui-buyer',price:1500,status:'accepted',createdAt:new Date('2026-09-06T12:00:00Z')});
+   d.set('reports/ui-report',{reporterId:'ui-buyer',reportedUserId:'ui-seller',targetType:'animal',targetId:'ui-animal',reason:'مراجعة العرض',status:'open'});
+   d.set('adminAuditLogs/ui-log',{adminUid:'ui-seller',action:'suspend',targetType:'users',targetId:'ui-buyer',reason:'سبب المراجعة',timestamp:new Date('2026-09-06T12:00:00Z')});
+   d.set('serviceRequests/ui-service',{userId:'ui-seller',targetId:'ui-animal',targetType:'animal',serviceType:'featured',country:'AE',amount:15,currency:'AED',status:'pending',paymentStatus:'unpaid',createdAt:new Date('2026-09-06T12:00:00Z')});
+ });
+ for(const width of [1280,1366,360]){
+   await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
+   await page.evaluate(async source=>{const image=new Image();image.src=source;await image.decode();const canvas=document.createElement('canvas');canvas.width=480;canvas.height=320;canvas.getContext('2d').drawImage(image,0,0,480,320);window.__mock.docs.get('animals/ui-animal').images=[canvas.toDataURL('image/jpeg')];},'data:image/png;base64,'+fs.readFileSync(path.join(root,'hero-livestock.png')).toString('base64'));
+   for(const [tab,term,expected]of [['الإعلانات','ui-animal','بائع العرض'],['المزادات','ui-auction','90,900 د.إ'],['البلاغات','ui-report','مشتري العرض'],['سجل الإدارة','ui-log','تعليق الحساب']]){
+     await page.getByRole('button',{name:tab,exact:true}).click();
+     await page.locator('#adminFilters input').fill(term);
+     await page.locator('#adminRows .admin-row').first().waitFor();
+     const text=await page.locator('#adminRows').innerText();
+     assert.match(text,new RegExp(expected));assert.doesNotMatch(text,/ui-seller|ui-buyer|ui-animal|ui-auction|ui-report|ui-log|purchaseRequests|adminAuditLogs/);
+     if(tab==='الإعلانات'){assert.equal(await page.locator('.admin-image-empty').count(),1);assert.match(await page.locator('.admin-image-empty').innerText(),/لا توجد صورة/);pass('missing image neutral fallback '+width);}
+     assert.equal(await page.locator('#adminRows .admin-technical[open]').count(),0);
+     if(tab==='الإعلانات'){assert.match(text,/90,000 د.إ/);assert.match(text,/1,500 USD/);assert.match(text,/الإمارات العربية المتحدة/);assert.match(text,/مصر/);assert.match(text,/2026/);}
+     assert.equal(await page.evaluate(()=>document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1),true);
+     await page.locator('#adminRows').scrollIntoViewIfNeeded();
+     await page.screenshot({path:process.env.TEMP+'/souq-ui-'+width+'-'+term+'.png'});
+     pass('redesigned named cards, badges and hidden technical IDs '+tab+' '+width);
+     if(tab==='الإعلانات'){
+       await page.locator('.admin-card-image').first().evaluate(img=>img.src='data:image/jpeg;base64,AAA');
+       await page.waitForFunction(()=>document.querySelectorAll('#adminRows .admin-image-empty').length===2);
+       pass('actual image load error fallback '+width);
+       await page.getByRole('button',{name:tab,exact:true}).click();
+       await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=20;canvas.height=20;const c=canvas.getContext('2d');c.fillStyle='green';c.fillRect(0,0,20,20);window.__mock.docs.get('animals/ui-animal2').images=[canvas.toDataURL('image/jpeg')];});
+       await page.getByRole('button',{name:tab,exact:true}).click();await page.locator('#adminFilters input').fill('ui-animal2');
+       await page.locator('#adminRows .admin-image-empty').waitFor();
+       pass('legacy solid preview tile fallback '+width);
+       await page.evaluate(()=>delete window.__mock.docs.get('animals/ui-animal2').images);
+     }
+     if(tab==='البلاغات'){
+       await page.locator('#adminRows .admin-actions > button:first-child').click();
+       await page.locator('.admin-detail-card[data-kind=reports]').waitFor();
+       await page.locator('.admin-detail-header').scrollIntoViewIfNeeded();
+       await page.screenshot({path:process.env.TEMP+'/souq-report-details-'+width+'.png'});
+       await page.locator('.admin-back').click();
+     }
+   }
+   await page.getByRole('button',{name:'المستخدمون',exact:true}).click();
+   await page.locator('#adminFilters input').fill('ui-buyer');
+   await page.locator('#adminRows').scrollIntoViewIfNeeded();
+   await page.screenshot({path:process.env.TEMP+'/souq-ui-users-'+width+'.png'});
+   await page.locator('#adminRows .admin-actions > button:first-child').click();
+   await page.locator('.admin-user-records .admin-row').waitFor();
+   assert.equal(await page.getByRole('tab').count(),5);
+   const purchase=await page.locator('.admin-user-records').innerText();
+   assert.match(purchase,/ناقة العرض/);assert.match(purchase,/بائع العرض/);assert.match(purchase,/مشتري العرض/);assert.match(purchase,/1,500 د.إ/);assert.doesNotMatch(purchase,/purchaseRequests|ui-seller|ui-buyer/);
+   await page.locator('.admin-detail-card .admin-technical summary').click();
+   assert.match(await page.locator('.admin-detail-card .admin-technical').innerText(),/ui-buyer/);
+   await page.locator('.admin-detail-card .admin-technical summary').click();
+   await page.locator('.admin-detail-header').scrollIntoViewIfNeeded();
+   await page.screenshot({path:process.env.TEMP+'/souq-ui-user-'+width+'.png'});
+   await page.locator('.admin-back').click();
+   assert.equal(await page.locator('#adminFilters input').inputValue(),'ui-buyer');
+   pass('user purchase cards, five tabs, technical disclosure and Back '+width);
+   await page.getByRole('button',{name:'طلبات الخدمات',exact:true}).click();
+   await page.locator('.admin-service-card').first().waitFor();
+   const service=page.locator('.admin-service-card').filter({hasText:'ناقة العرض'});
+   assert.match(await service.innerText(),/بائع العرض/);assert.match(await service.innerText(),/حالة الطلب/);assert.match(await service.innerText(),/حالة الدفع/);
+   assert.equal(await service.getByRole('button',{name:'اعتماد مدفوع',exact:true}).isEnabled(),false);
+   await page.locator('#adminServiceRequestsList').scrollIntoViewIfNeeded();
+   await page.screenshot({path:process.env.TEMP+'/souq-ui-services-'+width+'.png'});
+   pass('service identity and separate payment status preserve unpaid guard '+width);
+ }
  await page.evaluate(async()=>{window.closeModal();window.__mock.admin=false;await window.openAdminPanel();});
  assert.equal(await page.locator('#modal').isVisible(),false);
  pass('new dashboard denies ordinary user');
