@@ -508,6 +508,8 @@ function startAuctionTimers() {
         timer.innerHTML = "⛔ انتهى المزاد";
         timer.style.color = "#ff8d8d";
 
+        const detailButton = document.getElementById("detail-bid-button-" + auctionId);
+        if (detailButton) { detailButton.disabled = true; detailButton.textContent = "انتهى المزاد"; }
         if (button) {
           button.disabled = true;
           button.textContent = "انتهى المزاد";
@@ -761,7 +763,7 @@ function animalPhotoHtml(animal = {}) {
   if (firstImage) {
     return `
       <div style="position:relative;width:100%;height:230px;overflow:hidden;border-radius:14px;background:#10271c;">
-        <img src="${firstImage}" alt="صورة الحيوان" style="width:100%;height:100%;object-fit:cover;display:block;">
+        <img src="${firstImage}" onerror="this.parentElement.innerHTML='لا توجد صورة'" alt="صورة الحيوان" style="width:100%;height:100%;object-fit:cover;display:block;">
         ${images.length > 1 ? `
           <div style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.75);color:white;padding:6px 10px;border-radius:20px;">
             📷 ${images.length} صور
@@ -772,7 +774,7 @@ function animalPhotoHtml(animal = {}) {
 
   return `
     <div style="font-size:90px;text-align:center;background:#10271c;border-radius:14px;padding:20px;">
-      ${animalIcon(animal.type || "")}
+      ${animalIcon(animal.type || "")}<span style="display:block;font-size:16px;">لا توجد صورة</span>
     </div>
   `;
 }
@@ -892,6 +894,9 @@ window.closeModal = function () {
 window.souqHandleAndroidBack = function () {
   const modal = document.getElementById("modal");
   if (!modal || getComputedStyle(modal).display === "none") return false;
+  const detail = modal.querySelector('.ux-detail[data-back]');
+  if (detail?.dataset.back === 'bids') { window.showMyBids(); return true; }
+  if (detail?.dataset.back === 'requests') { window.showMyPurchaseRequests(); return true; }
   window.closeModal();
   return true;
 };
@@ -973,7 +978,8 @@ async function showAccount() {
         <h2 style="color:#68e6b0;">حسابي</h2>
       </div>
 
-      <label>الاسم</label>
+      <button class="ux-back" onclick="closeModal()">رجوع إلى السوق</button>
+      <label for="profileName">الاسم</label>
       <input id="profileName" type="text" maxlength="50"
         value="${escapeHtml(displayName)}"
         style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0 16px;border-radius:10px;">
@@ -983,7 +989,7 @@ async function showAccount() {
       <input value="${escapeHtml(ownerIdentity)}" aria-label="هوية حسابك الخاصة" disabled dir="ltr"
         style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0 16px;border-radius:10px;text-align:left;">
 
-      <label>استخدام الحساب</label>
+      <label for="profileAccountType">استخدام الحساب</label>
       <select id="profileAccountType" style="width:100%;padding:14px;margin:8px 0 18px;">
         <option value="buyer" ${accountType === "buyer" ? "selected" : ""}>مشتري</option>
         <option value="seller" ${accountType === "seller" ? "selected" : ""}>بائع</option>
@@ -996,7 +1002,7 @@ async function showAccount() {
       </p>
 
       ${planHtml}
-      <p id="profileStatus"></p>
+      <p id="profileStatus" role="status" aria-live="polite"></p>
 
       <button onclick="saveProfile()"
         style="width:100%;padding:15px;background:#00643e;color:white;border:0;border-radius:10px;margin-bottom:10px;">
@@ -1004,6 +1010,7 @@ async function showAccount() {
       </button>
 
       ${buyerButtons}
+      <button class="ux-back" onclick="showMyBids()">مزايداتي</button>
       ${sellerButtons}
 
       <div id="accountDeletionNotice" role="status">${deletion?.status === "pending" || deletion?.status === "in_review" ? "<p><b>طلب حذف حسابك قيد المراجعة.</b></p><p>تم استلام طلب حذف الحساب. سيبقى الحساب متاحًا مؤقتًا إلى حين اكتمال المعالجة.</p>" : deletion?.status === "completed" ? `<p>${deletionStatusText("completed")}</p>` : deletion?.unavailable ? "<p>تعذر التحقق من حالة طلب الحذف. حاول لاحقًا.</p>" : ""}</div>
@@ -1419,6 +1426,7 @@ window.saveProfile = async function () {
   const status = document.getElementById("profileStatus");
   if (!nameInput || !typeInput || !status) return;
 
+  const saveRevision = modalRevision;
   const displayName = nameInput.value.trim();
   const accountType = typeInput.value;
 
@@ -1435,14 +1443,13 @@ window.saveProfile = async function () {
       updatedAt: serverTimestamp()
     }, { merge: true });
 
-    status.innerHTML = "✅ تم الحفظ";
-    await loadMarket();
-
-    closeModal();
-    window.location.hash = "#home";
+    if (modalRevision !== saveRevision || auth.currentUser?.uid !== user.uid) return;
+    await showAccount();
+    const feedback = document.getElementById("profileStatus");
+    if (feedback) feedback.textContent = "✅ تم حفظ بيانات الحساب.";
   } catch (error) {
     console.error(error);
-    status.innerHTML = "❌ تعذر الحفظ";
+    status.textContent = "تعذر الحفظ. بياناتك ما زالت هنا؛ تحقق من الاتصال وحاول مجددًا.";
   }
 };
 
@@ -1465,6 +1472,8 @@ window.showMyListings = async function () {
     </div>
   `);
 
+  const viewRevision = modalRevision;
+  const stillHere = () => modalRevision === viewRevision && auth.currentUser?.uid === user.uid;
   try {
     const animalsQuery = query(
       collection(db, "animals"),
@@ -1506,6 +1515,7 @@ window.showMyListings = async function () {
     );
 
     if (myAnimals.length === 0) {
+      if (!stillHere()) return;
       showModal(`
         <div style="direction:rtl;color:white;padding:15px;text-align:center;">
           <h2 style="color:#68e6b0;">📦 إعلاناتي ومزاداتي</h2>
@@ -1685,6 +1695,7 @@ window.showMyListings = async function () {
       `;
     }).join("");
 
+    if (!stillHere()) return;
     showModal(`
       <div style="direction:rtl;color:white;padding:12px;">
         <h2 style="color:#68e6b0;text-align:center;margin-bottom:6px;">
@@ -1726,6 +1737,7 @@ window.showMyListings = async function () {
   } catch (error) {
     console.error("MY LISTINGS ERROR:", error);
 
+    if (!stillHere()) return;
     showModal(`
       <div style="direction:rtl;color:white;padding:20px;text-align:center;">
         <h2 style="color:#68e6b0;">📦 إعلاناتي ومزاداتي</h2>
@@ -1738,6 +1750,20 @@ window.showMyListings = async function () {
     `);
   }
 };
+
+async function requestDisplayData(requests) {
+  const animals = new Map();
+  await Promise.all([...new Set(requests.map(r=>r.animalId).filter(Boolean))].map(async id=>{
+    try { const snapshot=await getDoc(doc(db,'animals',id)); if(snapshot.exists())animals.set(id,snapshot.data()); } catch { /* Keep the saved request readable when a listing is unavailable. */ }
+  }));
+  for(const r of requests){const animal=animals.get(r.animalId);r.displayCountry=animal?effectiveCountry(animal):(['AE','EG'].includes(r.country)?r.country:null);}
+}
+function requestPriceText(request) {
+  return request.displayCountry ? money(request.price,request.displayCountry) : Number(request.price||0).toLocaleString('en-US')+' (العملة غير متاحة؛ تحقق من الإعلان)';
+}
+function accountLoadError(message,retry) {
+  showModal('<div class="ux-detail"><p role="alert">'+escapeHtml(message)+'</p><button class="ux-back" onclick="'+retry+'()">إعادة المحاولة</button><button class="ux-back" onclick="openLogin()">الرجوع إلى حسابي</button></div>');
+}
 
 window.showMyPurchaseRequests = async function () {
   const user = auth.currentUser;
@@ -1754,6 +1780,8 @@ window.showMyPurchaseRequests = async function () {
     </div>
   `);
 
+  const viewRevision = modalRevision;
+  const stillHere = () => modalRevision === viewRevision && auth.currentUser?.uid === user.uid;
   try {
     const requestsQuery = query(
       collection(db, "purchaseRequests"),
@@ -1776,6 +1804,7 @@ window.showMyPurchaseRequests = async function () {
     );
 
     if (requests.length === 0) {
+      if (!stillHere()) return;
       showModal(`
         <div style="direction:rtl;color:white;padding:15px;text-align:center;">
           <h2 style="color:#68e6b0;">📋 طلباتي</h2>
@@ -1791,6 +1820,7 @@ window.showMyPurchaseRequests = async function () {
       return;
     }
 
+    await requestDisplayData(requests);
     const cards = requests.map(request => {
       let statusText = "⏳ بانتظار رد البائع";
       let statusColor = "#ffd66b";
@@ -1851,7 +1881,7 @@ window.showMyPurchaseRequests = async function () {
 
           <p>
             💰 السعر:
-            <b>${money(request.price)}</b>
+            <b>${requestPriceText(request)}</b>
           </p>
 
           ${request.sellerName ? `
@@ -1870,11 +1900,13 @@ window.showMyPurchaseRequests = async function () {
             ${statusText}
           </div>
 
+          ${request.animalId ? `<button class="ux-back" onclick="openListingDetails(${inlineArgument(request.animalId)},'','requests')">تفاصيل الإعلان</button>` : ""}
           ${acceptedDetails}
         </div>
       `;
     }).join("");
 
+    if (!stillHere()) return;
     showModal(`
       <div style="direction:rtl;color:white;padding:12px;">
         <h2 style="color:#68e6b0;text-align:center;">📋 طلباتي</h2>
@@ -1894,7 +1926,7 @@ window.showMyPurchaseRequests = async function () {
     `);
   } catch (error) {
     console.error("LOAD MY PURCHASE REQUESTS ERROR:", error);
-    alert("❌ تعذر تحميل طلباتك.");
+    if (stillHere()) accountLoadError("تعذر تحميل طلباتك. حاول مرة أخرى.","showMyPurchaseRequests");
   }
 };
 
@@ -1913,6 +1945,8 @@ window.showPurchaseRequests = async function () {
     </div>
   `);
 
+  const viewRevision = modalRevision;
+  const stillHere = () => modalRevision === viewRevision && auth.currentUser?.uid === user.uid;
   try {
     const requestsQuery = query(
       collection(db, "purchaseRequests"),
@@ -1935,6 +1969,7 @@ window.showPurchaseRequests = async function () {
     );
 
     if (requests.length === 0) {
+      if (!stillHere()) return;
       showModal(`
         <div style="direction:rtl;color:white;padding:15px;text-align:center;">
           <h2 style="color:#68e6b0;">📩 طلبات الشراء</h2>
@@ -1946,6 +1981,7 @@ window.showPurchaseRequests = async function () {
       return;
     }
 
+    await requestDisplayData(requests);
     const cards = requests.map(request => {
       let statusText = "⏳ بانتظار الرد";
       let statusColor = "#ffd66b";
@@ -1990,7 +2026,7 @@ window.showPurchaseRequests = async function () {
 
           <p>
             💰 السعر:
-            <b>${money(request.price)}</b>
+            <b>${requestPriceText(request)}</b>
           </p>
 
           <p>
@@ -2016,6 +2052,7 @@ window.showPurchaseRequests = async function () {
       `;
     }).join("");
 
+    if (!stillHere()) return;
     showModal(`
       <div style="direction:rtl;color:white;padding:12px;">
         <h2 style="color:#68e6b0;text-align:center;">📩 طلبات الشراء</h2>
@@ -2024,7 +2061,7 @@ window.showPurchaseRequests = async function () {
     `);
   } catch (error) {
     console.error("LOAD PURCHASE REQUESTS ERROR:", error);
-    alert("❌ تعذر تحميل طلبات الشراء.");
+    if (stillHere()) accountLoadError("تعذر تحميل طلبات الشراء. حاول مرة أخرى.","showPurchaseRequests");
   }
 };
 
@@ -2484,17 +2521,17 @@ function createFirebaseArea() {
       <div id="market-filters"
         style="background:#1d2521;border:1px solid #35443d;border-radius:16px;padding:16px;margin:22px 0 25px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
 
-        <select id="marketRegionFilter" onchange="updateMarketCityFilter()"
+        <select id="marketRegionFilter" aria-label="الإمارة أو المحافظة" onchange="updateMarketCityFilter()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
           <option value="all">جميع المناطق والمحافظات</option>
         </select>
 
-        <select id="marketCityFilter" onchange="applyMarketFilters()"
+        <select id="marketCityFilter" aria-label="المدينة أو المنطقة" onchange="applyMarketFilters()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
           <option value="all">جميع المدن والمناطق</option>
         </select>
 
-        <select id="marketAnimalFilter" onchange="applyMarketFilters()"
+        <select id="marketAnimalFilter" aria-label="نوع الحيوان" onchange="applyMarketFilters()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
           <option value="all">🐾 جميع أنواع الحلال</option>
           <option value="ناقة">🐫 ناقة</option>
@@ -2508,7 +2545,7 @@ function createFirebaseArea() {
           <option value="حمام">🕊️ حمام</option>
         </select>
 
-        <select id="marketSaleTypeFilter" onchange="applyMarketFilters()"
+        <select id="marketSaleTypeFilter" aria-label="طريقة البيع" onchange="applyMarketFilters()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
           <option value="all">جميع طرق البيع</option>
           <option value="direct">🛒 بيع مباشر</option>
@@ -2951,7 +2988,9 @@ function auctionActionHtml(auction, expired, isOwner) {
   `;
 }
 
+let marketRevision = 0;
 async function loadMarket() {
+  const revision = ++marketRevision;
   if (!activeMarketCountry) {
     updateMarketCountryIndicator();
     window.openMarketCountrySelector();
@@ -2970,6 +3009,7 @@ async function loadMarket() {
 
   try {
     const animalSnapshot = await getDocs(collection(db, "animals"));
+    if (revision !== marketRevision) return;
     const animals = {};
 
     animalSnapshot.forEach(animalDoc => {
@@ -3016,6 +3056,8 @@ async function loadMarket() {
             📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
           </p>
 
+          <p>البائع: ${escapeHtml(animal.sellerName || "اسم البائع غير متاح")}</p>
+          <button class="ux-back" onclick="openListingDetails(${inlineArgument(animal.id)})">تفاصيل الإعلان</button>
           <button onclick="requestPurchase(${inlineArgument(animal.id)})"
             style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;">
             طلب شراء
@@ -3036,6 +3078,7 @@ async function loadMarket() {
     }
 
     const auctionSnapshot = await getDocs(collection(db, "auctions"));
+    if (revision !== marketRevision) return;
     const auctions = [];
 
     auctionSnapshot.forEach(auctionDoc => {
@@ -3164,6 +3207,8 @@ async function loadMarket() {
               📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
             </p>
 
+            <p>البائع: ${escapeHtml(auction.sellerName || animal.sellerName || "اسم البائع غير متاح")}</p>
+            <button class="ux-back" onclick="openListingDetails(${inlineArgument(animal.id)}, ${inlineArgument(auction.id)})">تفاصيل المزاد</button>
             ${auctionActionHtml(auction, expired, isOwner)}
 
             ${isOwner ? ownerManagementButton(animal) : ""}
@@ -3178,7 +3223,8 @@ async function loadMarket() {
     startAuctionTimers();
   } catch (error) {
     console.error("LOAD MARKET ERROR:", error);
-    status.innerHTML = "❌ حدث خطأ أثناء تحميل السوق";
+    if (revision !== marketRevision) return;
+    status.innerHTML = "تعذر تحديث السوق. تحقق من الاتصال ثم اضغط إظهار الكل للمحاولة.";
   }
 }
 
@@ -3894,8 +3940,9 @@ window.requestPurchase = async function (animalId) {
 };
 
 window.placeBid = async function (auctionId) {
+  let auctionCountry = "AE";
   if (!auth.currentUser) {
-    alert("يجب تسجيل الدخول برقم الهاتف قبل المزايدة.");
+    alert("يجب تسجيل الدخول قبل المزايدة.");
     window.openLogin();
     return;
   }
@@ -3903,7 +3950,7 @@ window.placeBid = async function (auctionId) {
   try {
     const auctionRef = doc(db, "auctions", auctionId);
     let minimumBid = 0;
-    let auctionCountry = "AE";
+
 
     await runTransaction(db, async transaction => {
       const auctionSnap = await transaction.get(auctionRef);
@@ -3991,6 +4038,19 @@ window.placeBid = async function (auctionId) {
         throw new Error("BID_TOO_LOW:" + requiredBid);
       }
 
+      // Existing participation model: one aggregate per auction and bidder.
+      // Read before writing so the amount and its private history commit atomically.
+      const participationRef = doc(db, "auctionParticipations", auctionId + "_" + auth.currentUser.uid);
+      const participation = await transaction.get(participationRef);
+      transaction.set(participationRef, {
+        auctionId,
+        animalId: auction.animalId,
+        sellerId: auction.sellerId,
+        bidderId: auth.currentUser.uid,
+        lastBidAmount: bidAmount,
+        lastBidAt: serverTimestamp(),
+        createdAt: participation.exists() ? participation.data().createdAt : serverTimestamp()
+      });
       transaction.update(auctionRef, {
         currentPrice: bidAmount,
         lastBidAt: serverTimestamp(),
@@ -4006,8 +4066,10 @@ window.placeBid = async function (auctionId) {
     );
 
     await loadMarket();
+    const detail = document.querySelector(".ux-detail[data-auction]");
+    if (detail?.dataset.auction === auctionId) await window.openListingDetails(detail.dataset.animal,auctionId,detail.dataset.back);
   } catch (error) {
-    console.error("BID ERROR:", error);
+    // Expected auction validation errors are presented below, not logged as crashes.
 
     if (error.message === "OWNER_CANNOT_BID") {
       alert("⛔ لا يمكنك المزايدة على مزادك الخاص.");
@@ -4039,7 +4101,8 @@ window.placeBid = async function (auctionId) {
       return;
     }
 
-    alert("❌ لم يتم حفظ المزايدة.");
+    if (error.message === "AUCTION_NOT_FOUND") { alert("هذا المزاد غير موجود أو أزيل من السوق."); return; }
+    alert("تعذر حفظ المزايدة. تحقق من الاتصال وحاول مجددًا.");
   }
 };
 
@@ -4094,8 +4157,8 @@ window.saveListing = async function (event) {
         !type ||
         !gender ||
         !Number.isFinite(price) ||
-        price <= 0) {
-      alert("تأكد من نوع الحيوان والجنس والسعر.");
+        price <= 0 || price > Number.MAX_SAFE_INTEGER) {
+      alert("حدد نوع الحيوان والجنس والمنطقة والمدينة، وأدخل سعرًا موجبًا صالحًا.");
       return;
     }
 
@@ -4111,7 +4174,8 @@ window.saveListing = async function (event) {
     try {
       images = await getListingImages();
     } catch (error) {
-      alert("تعذر تجهيز الصور أو حجم الصور كبير.");
+      const imageErrors={TOO_MANY_IMAGES:"اختر 5 صور كحد أقصى.",IMAGES_TOO_LARGE:"حجم الصور بعد الضغط كبير. احذف صورة أو اختر صورًا أصغر.",INVALID_IMAGE:"اختر ملفات صور فقط.",IMAGE_LOAD_ERROR:"إحدى الصور لا يمكن فتحها. احذفها واختر صورة أخرى.",IMAGE_READ_ERROR:"تعذر قراءة الصورة. أعد اختيارها."};
+      alert(imageErrors[error.message] || "تعذر تجهيز الصور. أعد اختيارها وحاول مجددًا.");
       return;
     }
 
@@ -4235,9 +4299,13 @@ window.saveListing = async function (event) {
 
 function resetListingForm(form) {
   if (form) form.reset();
+  // Reset validation as well as visibility after an auction submission.
+  window.toggleAuctionFields?.();
+  window.updateListingLocationOptions();
 
   const preview = document.getElementById("imagePreview");
   if (preview) preview.innerHTML = "";
+  window.resetImagePreview?.();
 
   const auctionFields = document.getElementById("auctionFields");
   if (auctionFields) auctionFields.style.display = "none";
@@ -5326,6 +5394,126 @@ window.bid = function () {
   alert("استخدم المزاد الحقيقي في سوق الحلال.");
 };
 
+// Public listing details use the same public documents and action checks as the market.
+window.openListingDetails = async function (animalId, auctionId = '', back = 'market') {
+  const backAction = {bids:['showMyBids()','رجوع إلى مزايداتي'],requests:['showMyPurchaseRequests()','رجوع إلى طلباتي']}[back] || ['closeModal()','رجوع إلى السوق'];
+  const backHtml = `<button class="ux-back" onclick="${backAction[0]}">${backAction[1]}</button>`;
+  showModal(`<section class="ux-detail">${backHtml}<p role="status">جاري تحميل التفاصيل…</p></section>`);
+  const revision = modalRevision;
+  try {
+    const animalSnap = await getDoc(doc(db,'animals',animalId));
+    if (revision !== modalRevision) return;
+    if (!animalSnap.exists() || ['hidden','needs_review'].includes(animalSnap.data().status)) {
+      showModal(`<section class="ux-detail">${backHtml}<p>الإعلان غير متاح حاليًا.</p></section>`); return;
+    }
+    const animal={...animalSnap.data(),id:animalSnap.id};
+    const linkedAuction = auctionId || (animal.saleType === 'auction' ? animal.auctionId : '');
+    const snap=linkedAuction ? await getDoc(doc(db,'auctions',linkedAuction)) : null;
+    if (revision !== modalRevision) return;
+    const auction=snap?.exists() && snap.data().animalId === animalId ? {...snap.data(),id:snap.id} : null;
+    const expired=!auction || auction.status !== 'active' || timestampToMillis(auction.endTime) <= Date.now();
+    const owner=auth.currentUser?.uid === animal.sellerId;
+    const images=(animal.images||[]).map(safeImageData).filter(Boolean);
+    showModal(`<section class="ux-detail" data-animal="${escapeHtml(animalId)}" data-auction="${escapeHtml(auction?.id || '')}" data-back="${escapeHtml(back)}">${backHtml}
+      <h2>${escapeHtml(animal.name || animal.type || 'تفاصيل الإعلان')}</h2>
+      <div class="ux-gallery">${images.length ? images.map((src,i)=>`<figure><img src="${src}" alt="صورة الحيوان ${i+1}" onerror="this.parentElement.textContent='لا توجد صورة'"></figure>`).join('') : '<p class="ux-empty-image">لا توجد صورة</p>'}</div>
+      <p class="ux-price">${money(auction ? auction.currentPrice || auction.startPrice : animal.price,effectiveCountry(auction || animal))}</p>
+      <p>النوع: ${escapeHtml(animal.type || 'غير محدد')}</p>
+      <p>الموقع: ${escapeHtml(animal.location || [animal.city,animal.region].filter(Boolean).join(' - ') || 'غير محدد')}</p>
+      <p>البائع: ${escapeHtml(animal.sellerName || auction?.sellerName || 'اسم البائع غير متاح')}</p>
+      <p>نوع البيع: ${animal.saleType === 'auction' ? 'مزاد إلكتروني' : 'بيع مباشر'}</p>
+      ${listingAnimalDetailsHtml(animal)}${listingDescriptionHtml(animal)}
+      <p>تاريخ الإعلان: ${formatDate(animal.createdAt)}</p>
+      ${auction ? `<p>سعر البداية: ${money(auction.startPrice,effectiveCountry(auction))}</p><p>أقل زيادة: ${money(auction.minIncrement,effectiveCountry(auction))}</p><p>موعد الانتهاء: ${formatDate(auction.endTime)}</p><p ${!expired ? `data-auction-end="${timestampToMillis(auction.endTime)}" data-auction-id="${escapeHtml(auction.id)}"` : ''}>${expired ? 'انتهى المزاد' : getCountdownText(auction.endTime)}</p>${auctionActionHtml(auction,expired,owner).replace('id="bid-button-', 'id="detail-bid-button-')}` : animal.saleType === 'auction' ? '<p>تفاصيل المزاد غير متاحة حاليًا.</p>' : !owner && (!animal.status || animal.status==='active') ? `<button class="ux-back" onclick="requestPurchase(${inlineArgument(animalId)})">طلب شراء</button>` : `<p>${animal.status==='sold' ? 'تم البيع' : 'هذا إعلانك'}</p>`}
+      ${ownerManagementButton(animal)}
+    </section>`);
+  } catch {
+    if(revision===modalRevision)showModal(`<section class="ux-detail">${backHtml}<p role="alert">تعذر تحميل التفاصيل. تحقق من الاتصال وحاول مجددًا.</p></section>`);
+  }
+};
+
+window.showMyBids = async function () {
+  const user = auth.currentUser;
+  if (!user) return window.openLogin();
+  const back = '<button class="ux-back" onclick="openLogin()">الرجوع إلى حسابي</button>';
+  showModal('<section class="ux-detail">' + back + '<p role="status">جاري تحميل مزايداتك...</p></section>');
+  const revision = modalRevision;
+  const stillHere = () => revision === modalRevision && auth.currentUser?.uid === user.uid;
+  try {
+    const [history, current] = await Promise.all([
+      getDocs(query(collection(db, 'auctionParticipations'), where('bidderId', '==', user.uid))),
+      getDocs(query(collection(db, 'auctions'), where('lastBidderId', '==', user.uid)))
+    ]);
+    if (!stillHere()) return;
+    const participations = new Map();
+    // Valid bid amounts only increase. Highest amount wins when old duplicate
+    // documents exist; equal amounts use the newest timestamp, never another user.
+    for (const item of history.docs) {
+      const data = item.data();
+      if (data.bidderId !== user.uid || typeof data.auctionId !== 'string' || !data.auctionId
+          || !Number.isFinite(data.lastBidAmount) || data.lastBidAmount <= 0) continue;
+      const prior = participations.get(data.auctionId);
+      if (!prior || data.lastBidAmount > prior.lastBidAmount ||
+          (data.lastBidAmount === prior.lastBidAmount && timestampToMillis(data.lastBidAt) > timestampToMillis(prior.lastBidAt))) {
+        participations.set(data.auctionId, {...data, legacy: false});
+      }
+    }
+    // Preserve the only verifiable pre-history bid when its user is still last.
+    // Never manufacture a record or infer a previous bidder from the current price.
+    const currentAuctions = new Map();
+    for (const item of current.docs) {
+      const auction = item.data();
+      if (auction.lastBidderId !== user.uid) continue;
+      currentAuctions.set(item.id, auction);
+      const prior = participations.get(item.id);
+      if (!prior || auction.currentPrice > prior.lastBidAmount) {
+        participations.set(item.id, {auctionId:item.id, animalId:auction.animalId,
+          lastBidAmount:auction.currentPrice, lastBidAt:auction.lastBidAt, legacy:true});
+      }
+    }
+    const cards = await Promise.all([...participations.values()].map(async participation => {
+      let auction = currentAuctions.get(participation.auctionId), animal = null;
+      if (!auction) {
+        const snapshot = await getDoc(doc(db,'auctions',participation.auctionId));
+        auction = snapshot.exists() ? snapshot.data() : null;
+      }
+      const animalId = auction?.animalId || participation.animalId;
+      if (typeof animalId === 'string' && animalId) {
+        const snapshot = await getDoc(doc(db,'animals',animalId));
+        animal = snapshot.exists() ? snapshot.data() : null;
+      }
+      if (animal && ['hidden','needs_review'].includes(animal.status)) animal = null;
+      return {participation, auction, animal, animalId};
+    }));
+    if (!stillHere()) return;
+    cards.sort((a,b) => timestampToMillis(b.participation.lastBidAt) - timestampToMillis(a.participation.lastBidAt));
+    const html = cards.map(({participation:p,auction,animal,animalId}) => {
+      const active = auction?.status === 'active' && timestampToMillis(auction.endTime) > Date.now();
+      const status = !auction ? 'المزاد غير متاح' : active ? 'نشط' : auction.status === 'sold' ? 'مغلق — تم البيع' : auction.status === 'not_approved' ? 'مغلق — لم يعتمد البيع' : 'منتهي';
+      const leading = auction?.lastBidderId === user.uid;
+      const country = auction ? effectiveCountry(auction) : animal ? effectiveCountry(animal) : null;
+      const price = value => country ? money(value,country) : Number(value).toLocaleString('en-US')+' (العملة غير متاحة)';
+      return `<article class="ux-card ux-bid-card">
+        ${animal ? animalPhotoHtml(animal) : '<p class="ux-empty-image">لا توجد صورة</p>'}
+        <h3>${escapeHtml(animal?.name || animal?.type || 'إعلان المزاد غير متاح')}</h3>
+        <p class="ux-bid-status">${status}</p>
+        <p>السعر الحالي: <b class="ux-money">${auction ? price(auction.currentPrice) : 'غير متاح'}</b></p>
+        <p>أعلى مزايدة لك: <b class="ux-money">${price(p.lastBidAmount)}</b></p>
+        <p>تاريخ آخر مزايدة لك: ${p.lastBidAt ? formatDate(p.lastBidAt) : 'غير متاح'}</p>
+        ${auction ? `<p>${leading ? (active ? 'أنت المتصدر حاليًا' : 'آخر مزايدة مسجلة باسمك') : 'تجاوزك مزايد آخر'}</p>` : '<p>احتفظنا بمشاركتك، لكن بيانات المزاد لم تعد متاحة.</p>'}
+        ${active ? `<p data-auction-end="${timestampToMillis(auction.endTime)}" data-auction-id="${escapeHtml(p.auctionId)}">${getCountdownText(auction.endTime)}</p>` : ''}
+        ${p.legacy ? '<p>هذه المزايدة معروفة من بيانات المزاد الحالية؛ سجل المشاركات الأقدم قد يكون غير مكتمل.</p>' : ''}
+        ${auction && animal ? `<button class="ux-back" onclick="openListingDetails(${inlineArgument(animalId)},${inlineArgument(p.auctionId)},'bids')">تفاصيل المزاد</button>` : ''}
+      </article>`;
+    }).join('');
+    showModal(`<section class="ux-detail">${back}<h2>مزايداتي</h2>
+      <p>مشاركاتك المحفوظة تبقى هنا حتى بعد أن يتجاوزك مزايد آخر أو ينتهي المزاد.</p>
+      <p class="ux-history-notice">قد لا تظهر المشاركات القديمة التي لم تُحفظ في سجل المشاركة. لا يمكن استرجاع تاريخ لم يسجله النظام.</p>
+      ${html || '<p>لم تشارك في أي مزاد حتى الآن ضمن السجل المتاح.</p>'}</section>`);
+    startAuctionTimers();
+  } catch { if (stillHere()) accountLoadError('تعذر تحميل مزايداتك. حاول مرة أخرى.','showMyBids'); }
+};
+
 window.details = function (name, price, country = "AE") {
   alert(name + "\nالسعر: " + money(price, country));
 };
@@ -5352,7 +5540,7 @@ loadMarket();
 // One in-flight submission per action; restored even when validation returns early.
 for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListingService",
   "sendConversationMessage", "sendConversationOffer", "decideConversationOffer",
-  "decideServiceRequest", "finalizeAuction", "updatePurchaseRequest", "saveListingEdits", "sendPhoneCode", "verifyPhoneCode"]) {
+  "decideServiceRequest", "finalizeAuction", "updatePurchaseRequest", "saveListingEdits", "saveProfile", "sendPhoneCode", "verifyPhoneCode"]) {
   const original = window[action];
   if (typeof original !== "function") continue;
   let busy = false;
@@ -5362,9 +5550,10 @@ for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListi
     busy = true;
     const buttons = [...document.querySelectorAll(`button[onclick^="${action}("], form button[type="submit"]`)]
       .filter(button => !button.disabled);
-    buttons.forEach(button => { button.disabled = true; });
+    const originalLabels = buttons.map(button => button.textContent);
+    buttons.forEach(button => { button.disabled = true; button.setAttribute("aria-busy","true"); if(action === "saveListing" || action === "saveProfile") button.textContent = "جاري الحفظ…"; });
     try { return await original.apply(this, args); }
-    finally { busy = false; buttons.forEach(button => { button.disabled = false; }); }
+    finally { busy = false; buttons.forEach((button,index) => { button.disabled = false; button.removeAttribute("aria-busy"); if(action === "saveListing" || action === "saveProfile") button.textContent = originalLabels[index]; }); }
   };
 }
 

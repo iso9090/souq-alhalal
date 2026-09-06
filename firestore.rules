@@ -492,6 +492,41 @@ service cloud.firestore {
       allow delete: if isOwner('sellerId');
     }
 
+    // Private, existing participation aggregate. A record can only advance with
+    // the same successful auction price update; it cannot fabricate past bids.
+    match /auctionParticipations/{participationId} {
+      allow get: if signedIn() && (
+        !exists(/databases/$(database)/documents/auctionParticipations/$(participationId))
+        || resource.data.bidderId == request.auth.uid
+      );
+      allow list: if signedIn() && resource.data.bidderId == request.auth.uid;
+
+      function validParticipation() {
+        let data = request.resource.data;
+        let auction = get(/databases/$(database)/documents/auctions/$(data.auctionId)).data;
+        let after = getAfter(/databases/$(database)/documents/auctions/$(data.auctionId)).data;
+        return data.keys().hasOnly(['auctionId','animalId','sellerId','bidderId','lastBidAmount','lastBidAt','createdAt'])
+          && data.bidderId == request.auth.uid
+          && participationId == data.auctionId + '_' + request.auth.uid
+          && data.animalId == auction.animalId
+          && data.sellerId == auction.sellerId
+          && auction.sellerId != request.auth.uid
+          && auction.status == 'active' && request.time < auction.endTime
+          && data.lastBidAmount is number
+          && data.lastBidAmount > auction.currentPrice
+          && data.lastBidAmount == after.currentPrice
+          && after.lastBidderId == request.auth.uid
+          && data.lastBidAt == request.time && after.lastBidAt == request.time;
+      }
+      allow create: if activeAccount() && validParticipation()
+        && request.resource.data.createdAt == request.time;
+      allow update: if activeAccount() && resource.data.bidderId == request.auth.uid
+        && validParticipation()
+        && changedKeysOnly(['lastBidAmount','lastBidAt'])
+        && request.resource.data.lastBidAmount > resource.data.lastBidAmount;
+      allow delete: if false;
+    }
+
     match /serviceRequests/{requestId} {
       allow read: if signedIn()
         && (resource.data.userId == request.auth.uid || hasPermission('services_view'));
