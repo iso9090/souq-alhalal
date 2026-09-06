@@ -71,7 +71,7 @@ test('listing management loads owned service requests with authorized query',sou
 test('listing management no longer gets missing service documents directly',!source.includes('getDoc(doc(db, "serviceRequests", requestId))'));
 test('listing management renders all three service actions',source.includes('Object.keys(SERVICES).map')&&source.includes('const servicesHtml = await listingServicesHtml(animal, user.uid)'));
 test('non-owner listing management guard remains',source.includes('if (animal.sellerId !== user.uid)'));
-test('admin UI trusts only Firebase custom claim',source.includes('tokenResult.claims.admin === true')&&!source.includes('adminUid')&&!source.includes('adminPhone'));
+test('admin UI trusts only Firebase custom claim',source.includes('tokenResult.claims.admin === true')&&!source.includes('adminPhone')&&source.includes('adminUid: auth.currentUser.uid'));
 test('non-admin admin button starts hidden',html.includes('id="adminPanelButton"')&&html.includes('id="adminPanelButton" type="button" onclick="openAdminPanel()"'));
 test('admin panel exposes status country and service filters',source.includes('adminServiceStatusFilter')&&source.includes('adminServiceCountryFilter')&&source.includes('adminServiceTypeFilter'));
 test('admin approval uses transaction and trusted target fields',source.includes('window.decideServiceRequest')&&source.includes('await runTransaction')&&source.includes('targetUpdate.featuredUntil')&&source.includes('targetUpdate.bumpedAt')&&source.includes('targetUpdate.verificationStatus = "verified"'));

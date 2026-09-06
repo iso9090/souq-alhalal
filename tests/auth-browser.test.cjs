@@ -23,7 +23,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    const snapshot = ref => ({ id: ref.path.split('/').pop(), exists: () => docs.has(ref.path), data: () => clone(docs.get(ref.path)) });
    const readQuery = ref => {
      const items = [...docs].filter(([key]) => key.startsWith(ref.path + '/') && key.split('/').length === ref.path.split('/').length + 1)
-       .filter(([,data]) => (ref.filters || []).every(([field,op,value]) => op === 'array-contains' ? data[field]?.includes(value) : data[field] === value))
+       .filter(([,data]) => (ref.filters || []).filter(f=>Array.isArray(f)).every(([field,op,value]) => op === 'array-contains' ? data[field]?.includes(value) : op==='>' ? data[field]>value : op==='<=' ? data[field]<=value : data[field] === value))
        .map(([key]) => snapshot({path:key}));
      return { docs: items, forEach: fn => items.forEach(fn), empty: !items.length, size: items.length };
    };
@@ -44,6 +44,8 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      collection:(base,...parts)=>({path:[base.path,...parts].filter(Boolean).join('/')}),
      doc:(base,...parts)=>{const refPath=[base.path,...(parts.length?parts:['auto'+(++sequence)])].filter(Boolean).join('/');return {path:refPath,id:refPath.split('/').pop()}},
      query:(ref,...filters)=>({...ref,filters}),where:(...args)=>args,
+     limit:n=>({limit:n}),orderBy:field=>({orderBy:field}),startAfter:cursor=>({cursor}),
+     getCountFromServer:async ref=>({data:()=>({count:readQuery(ref).size})}),
      getDoc:async ref=>snapshot(ref),getDocs:async ref=>{
        if(ref.path==='purchaseRequests' && window.__mock.purchaseDelay)await new Promise(resolve=>setTimeout(resolve,window.__mock.purchaseDelay));
        return readQuery(ref);
@@ -88,7 +90,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
  });
  for(const width of [360,1280]) {
-   await page.setViewportSize({width,height:900});await page.goto('http://auth.test/');
+   await page.setViewportSize({width,height:900});await page.goto('https://auth.test/');
    await page.waitForFunction(()=>typeof window.openEmailAuth==='function');
    await page.evaluate(()=>window.selectMarketCountry('AE'));
    await page.evaluate(()=>window.openLogin());
@@ -192,7 +194,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.locator('#emailAuthForm button[type=submit]').click();await page.locator('#accountDeletionNotice').waitFor();
  assert.match(await page.locator('#accountDeletionNotice').innerText(),/طلب حذف حسابك قيد المراجعة/);
  assert.equal(await page.locator('#accountDeletionButton').isDisabled(),true);
- await page.evaluate(()=>window.openAdminPanel());
+ await page.evaluate(()=>window.openAdminServices());
  assert.equal(await page.locator('#adminDeletionRequestsList').count(),0);
  await page.evaluate(()=>window.processDeletionRequest('owner','completed'));
  assert.equal(await page.evaluate(()=>window.__mock.docs.get('accountDeletionRequests/owner').status),'pending');
@@ -284,7 +286,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  assert.equal(await page.evaluate(()=>JSON.stringify([...window.__mock.docs.values()]).includes('Sample-password1!')),false);
  await page.evaluate(async()=>{window.__mock.admin=true;await window.__mock.setUser(window.__mock.api.getAuth().currentUser)});
  assert.equal(await page.locator('#adminPanelButton').isVisible(),true);
- await page.evaluate(()=>window.openAdminPanel());await page.locator('#adminServiceRequestsList').waitFor();
+ await page.evaluate(()=>window.openAdminServices());await page.locator('#adminServiceRequestsList').waitFor();
  pass('no credential persistence; custom-claim admin preserved');
  assert.match(await page.locator('#adminDeletionRequestsList').innerText(),/owner/);
  assert.equal(await page.locator('#adminServiceRequestsList').count(),1);
@@ -326,7 +328,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
        if(screen==='account')await window.openLogin();
        if(screen==='deletion')await window.openAccountDeletion();
        if(screen==='messages')await window.showConversation(cid);
-       if(screen==='admin')await window.openAdminPanel();
+       if(screen==='admin')await window.openAdminServices();
      },{screen,cid});
      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,(typeof screen === "undefined" ? "auth" : screen)+" document overflow "+width);
      assert.equal(await page.evaluate(()=>{const el=document.getElementById('modalContent');return el.scrollWidth>el.clientWidth+1}),false,screen+" modal overflow "+width);
@@ -335,7 +337,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    assert.match(await page.locator('#accountDeletionNotice').innerText(),/طلب حذف حسابك قيد المراجعة/);
    assert.equal(await page.locator('#accountDeletionButton').isDisabled(),true);
    if(width===360){await page.locator('#accountDeletionNotice').scrollIntoViewIfNeeded();await page.screenshot({path:process.env.TEMP+'/souq-pending-review.png'});}
-   await page.evaluate(()=>window.openAdminPanel());
+   await page.evaluate(()=>window.openAdminServices());
    if(width===360){await page.locator('#adminDeletionRequestsList').scrollIntoViewIfNeeded();await page.screenshot({path:process.env.TEMP+'/souq-deletion-admin.png'});}
    await page.evaluate(async()=>{window.closeModal();await window.selectMarketCountry('EG')});
    assert.equal(await page.evaluate(()=>window.__mock.api.getAuth().currentUser.uid),'buyer');
@@ -401,6 +403,59 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  await page.evaluate(()=>window.showConversation('legacy-auction'));
  assert.equal(await page.getByText(guidance,{exact:true}).isVisible(),false);
  pass('auction never renders direct contact guidance');
+ await page.evaluate(async()=>{
+   for(const status of ['sold','not_approved','hidden','needs_review']){
+     window.__mock.docs.set('animals/result-'+status,{name:'نتيجة '+status,sellerId:'owner',saleType:'auction',country:'AE',status});
+     window.__mock.docs.set('auctions/result-'+status,{animalId:'result-'+status,sellerId:'owner',country:'AE',status:status==='not_approved'?'not_approved':'sold',currentPrice:110,minIncrement:10,endTime:new Date(Date.now()-60000),updatedAt:new Date()});
+   }
+   window.closeModal();await window.selectMarketCountry('AE');
+ });
+ assert.match(await page.locator('#auction-list').innerText(),/نتيجة sold/);
+ assert.match(await page.locator('#auction-list').innerText(),/نتيجة not_approved/);
+ assert.doesNotMatch(await page.locator('#auction-list').innerText(),/نتيجة hidden|نتيجة needs_review/);
+ pass('sold and declined auction results remain visible while moderated ads stay hidden');
+ await page.evaluate(async()=>{
+   window.__mock.admin=true;
+   window.__mock.docs.set('users/moderation-user',{uid:'moderation-user',displayName:'مستخدم الاختبار',status:'active',accountType:'seller'});
+   window.__mock.docs.set('animals/moderation-ad',{name:'إعلان المراجعة',sellerId:'moderation-user',saleType:'direct',status:'active',images:['data:image/jpeg;base64,AAA','data:image/jpeg;base64,BBB']});
+   await window.openAdminPanel();
+ });
+ await page.locator('.admin-stats').waitFor();
+ assert.equal(await page.locator('#adminV2Nav button').count(),7);
+ for(const width of [360,1280]){
+   await page.setViewportSize({width,height:900});
+   assert.equal(await page.evaluate(()=>document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1),true);
+   await page.screenshot({path:process.env.TEMP+`/souq-dashboard-${width}.png`});
+ }
+ pass('dashboard seven tabs, real aggregation adapter, RTL mobile and desktop');
+ await page.getByRole('button',{name:'المستخدمون',exact:true}).click();
+ await page.locator('#adminFilters input').fill('moderation-user');
+ await page.locator('#adminRows button').click();
+ await page.getByRole('button',{name:'تعليق الحساب',exact:true}).click();
+ await page.waitForFunction(()=>window.__mock.docs.get('users/moderation-user').status==='suspended');
+ await page.getByRole('button',{name:'إعادة التفعيل',exact:true}).click();
+ await page.waitForFunction(()=>window.__mock.docs.get('users/moderation-user').status==='active');
+ pass('dashboard user search, details, suspension and reactivation write audit');
+ await page.getByRole('button',{name:'الإعلانات',exact:true}).click();
+ await page.locator('#adminFilters input').fill('moderation-ad');
+ await page.locator('#adminRows button').click();
+ await page.getByRole('button',{name:'حذف الصورة غير اللائقة',exact:true}).first().waitFor();
+ await page.evaluate(()=>window.__mock.docs.get('animals/moderation-ad').images=['data:image/jpeg;base64,BBB','data:image/jpeg;base64,CCC','data:image/jpeg;base64,AAA']);
+ await page.getByRole('button',{name:'حذف الصورة غير اللائقة',exact:true}).first().click();
+ await page.waitForFunction(()=>window.__mock.docs.get('animals/moderation-ad').images.length===2);
+ assert.deepEqual(await page.evaluate(()=>window.__mock.docs.get('animals/moderation-ad').images),['data:image/jpeg;base64,BBB','data:image/jpeg;base64,CCC']);
+ assert.equal(await page.evaluate(()=>window.__mock.docs.get('animals/moderation-ad').imagesLocked),true);
+ pass('dashboard removes only selected image and records hash without base64');
+ await page.evaluate(()=>window.submitModerationReport('animal','moderation-ad'));
+ await page.getByRole('button',{name:'البلاغات',exact:true}).click();
+ await page.locator('#adminFilters input').fill('moderation-ad');
+ await page.locator('#adminRows button').click();
+ await page.getByRole('button',{name:'تحت المراجعة',exact:true}).click();
+ await page.waitForFunction(()=>[...window.__mock.docs].some(([k,v])=>k.startsWith('reports/')&&v.status==='reviewing'));
+ pass('dashboard report creation and administrative review');
+ await page.evaluate(async()=>{window.closeModal();window.__mock.admin=false;await window.openAdminPanel();});
+ assert.equal(await page.locator('#modal').isVisible(),false);
+ pass('new dashboard denies ordinary user');
  assert.deepEqual(await page.evaluate(()=>window.__mock.failures),[]);
  assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
  console.log(`SUMMARY | ${count}/${count} passed; all Firebase traffic mocked`);

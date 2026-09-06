@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/fireba
 
 import {
   getFirestore,
+  limit, orderBy, startAfter, getCountFromServer,
   collection,
   getDocs,
   query,
@@ -1108,30 +1109,15 @@ async function requireAdminClaim(forceRefresh = false) {
   }
 }
 
-async function enrichAdminServiceRequest(request) {
-  let targetName = request.targetId;
-  let sellerName = request.userId.slice(0, 10);
-  try {
-    const userSnap = await getDoc(doc(db, "users", request.userId));
-    if (userSnap.exists()) sellerName = userSnap.data().displayName || sellerName;
-
-    if (request.targetType === "animal") {
-      const animalSnap = await getDoc(doc(db, "animals", request.targetId));
-      if (animalSnap.exists()) targetName = animalSnap.data().name || animalSnap.data().type || targetName;
-    } else {
-      const auctionSnap = await getDoc(doc(db, "auctions", request.targetId));
-      if (auctionSnap.exists()) {
-        const animalSnap = await getDoc(doc(db, "animals", auctionSnap.data().animalId));
-        if (animalSnap.exists()) targetName = animalSnap.data().name || animalSnap.data().type || targetName;
-      }
-    }
-  } catch (error) {
-    console.error("ADMIN REQUEST DETAILS ERROR:", error);
-  }
-  return { ...request, targetName, sellerName };
+function appendAdminAudit(transaction, action, targetType, targetId, reason) {
+  transaction.set(doc(collection(db, "adminAuditLogs")), {
+    adminUid: auth.currentUser.uid, action, targetType, targetId,
+    reason: reason.slice(0, 500), timestamp: serverTimestamp(), metadata: {}
+  });
 }
 
-window.openAdminPanel = async function () {
+let adminServicesCursor = null;
+window.openAdminServices = async function (next = false) {
   if (!await requireAdminClaim(true)) {
     alert("غير مصرح لك بفتح لوحة الإدارة.");
     return;
@@ -1139,14 +1125,15 @@ window.openAdminPanel = async function () {
 
   showModal(`<div style="direction:rtl;color:white;padding:16px;text-align:center;"><h2 style="color:#68e6b0;">لوحة الإدارة</h2><p>جاري تحميل طلبات الخدمات...</p></div>`);
   try {
-    const snapshot = await getDocs(collection(db, "serviceRequests"));
+    const snapshot = await getDocs(query(collection(db, "serviceRequests"), orderBy('__name__'), ...(next && adminServicesCursor ? [startAfter(adminServicesCursor)] : []), limit(50)));
+    adminServicesCursor = snapshot.docs.at(-1);
     const requests = snapshot.docs.map(requestDoc => ({ id: requestDoc.id, ...requestDoc.data() }));
-    adminServiceRequests = await Promise.all(requests.map(enrichAdminServiceRequest));
+    adminServiceRequests = requests.map(request => ({...request, targetName: request.targetId, sellerName: request.userId}));
     adminServiceRequests.sort((a, b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
 
     showModal(`
       <div style="direction:rtl;color:white;padding:12px;">
-        <h2 style="text-align:center;color:#68e6b0;">لوحة الإدارة</h2>
+        <button type="button" onclick="openAdminPanel()">العودة للوحة الإدارة</button><p>عرض أول 50 طلبًا. استخدم لوحة الإدارة للإحصاء الشامل.</p><h2 style="text-align:center;color:#68e6b0;">لوحة الإدارة</h2>
         <h3 style="color:#ffd66b;">طلبات الخدمات</h3>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;">
           <select id="adminServiceStatusFilter" onchange="renderAdminServiceRequests()">
@@ -1169,6 +1156,8 @@ window.openAdminPanel = async function () {
           </select>
         </div>
         <div id="adminServiceRequestsList"></div>
+        <button onclick="openAdminServices()">أول صفحة خدمات</button>
+        ${snapshot.size === 50 ? '<button onclick="openAdminServices(true)">الصفحة التالية للخدمات</button>' : ''}
         <section style="border-top:1px solid #b88a32;margin-top:24px;padding-top:16px;">
           <h3>طلبات حذف الحسابات</h3>
           <p>هذه الشاشة لمتابعة الحالة فقط. معالجة البيانات تتم خارجها وفق إجراءات الإدارة.</p>
@@ -1177,6 +1166,8 @@ window.openAdminPanel = async function () {
             <option value="all">كل الحالات</option><option value="active">قيد المراجعة</option><option value="completed">تم التنفيذ</option>
           </select>
           <div id="adminDeletionRequestsList" aria-live="polite"></div>
+          <button onclick="loadAdminDeletionRequests()">أول صفحة طلبات حذف</button>
+          <button id="adminDeletionNext" onclick="loadAdminDeletionRequests(true)">الصفحة التالية لطلبات الحذف</button>
         </section>
       </div>
     `);
@@ -1190,22 +1181,20 @@ window.openAdminPanel = async function () {
 
 let adminDeletionRequests = [];
 let adminDeletionBusy = false;
-window.loadAdminDeletionRequests = async function () {
+let adminDeletionCursor = null;
+window.loadAdminDeletionRequests = async function (next = false) {
   const container = document.getElementById("adminDeletionRequestsList");
   if (!container || !await requireAdminClaim(true)) return;
   container.textContent = "جاري تحميل طلبات الحذف…";
   try {
-    const snapshot = await getDocs(collection(db, "accountDeletionRequests"));
+    const snapshot = await getDocs(query(collection(db, "accountDeletionRequests"), orderBy('__name__'), ...(next && adminDeletionCursor ? [startAfter(adminDeletionCursor)] : []), limit(50)));
+    adminDeletionCursor = snapshot.docs.at(-1);
+    const nextButton = document.getElementById('adminDeletionNext');
+    if (nextButton) nextButton.hidden = snapshot.size < 50;
     adminDeletionRequests = snapshot.docs.map(item => {
       const data = item.data();
       return { id: item.id, userId: data.userId, status: data.status, createdAt: data.createdAt, processedAt: data.processedAt };
     }).sort((a,b) => timestampToMillis(b.createdAt) - timestampToMillis(a.createdAt));
-    await Promise.all(adminDeletionRequests.map(async item => {
-      try {
-        const profile = await getDoc(doc(db, "users", item.userId));
-        if (profile.exists()) item.displayName = profile.data().displayName || "";
-      } catch { /* UID remains usable when a profile is unavailable. */ }
-    }));
     window.renderAdminDeletionRequests();
   } catch { container.textContent = "تعذر تحميل طلبات الحذف. أعد فتح لوحة الإدارة للمحاولة مجددًا."; }
 };
@@ -1227,6 +1216,8 @@ window.processDeletionRequest = async function (uid, nextStatus) {
   if (adminDeletionBusy || !["in_review", "completed"].includes(nextStatus) || !await requireAdminClaim(true)) return;
   if (adminDeletionBusy) return;
   if (nextStatus === "completed" && !confirm("لا تضغط تم التنفيذ إلا بعد إتمام معالجة حذف/إخفاء البيانات المطلوبة خارج هذه الشاشة وفق إجراءات الإدارة. هل تؤكد اكتمال المعالجة؟")) return;
+  const auditReason = prompt("سبب معالجة طلب الحذف (إلزامي)");
+  if (!auditReason?.trim()) return;
   adminDeletionBusy = true;
   try {
     const user = auth.currentUser;
@@ -1236,6 +1227,7 @@ window.processDeletionRequest = async function (uid, nextStatus) {
       const expected = nextStatus === "in_review" ? "pending" : "in_review";
       if (!snapshot.exists() || snapshot.data().status !== expected) return false;
       transaction.update(ref, { status: nextStatus, updatedAt: serverTimestamp(), processedAt: serverTimestamp(), processedBy: user.uid });
+      appendAdminAudit(transaction, nextStatus, "accountDeletionRequests", uid, auditReason.trim());
       return true;
     });
     if (!changed) alert("تغيّرت حالة الطلب. تم تحديث القائمة.");
@@ -1302,6 +1294,9 @@ window.decideServiceRequest = async function (requestId, decision) {
     ? prompt("ملاحظة الرفض — اختيارية", "")
     : "";
   if (decision === "rejected" && adminNote === null) return;
+  if (!confirm("هل تؤكد اتخاذ القرار على طلب الخدمة؟")) return;
+  const auditReason = prompt("سبب القرار الإداري (إلزامي)");
+  if (!auditReason?.trim()) return;
   const allowedOverrideReasons = ['تجريبي', 'مجاني', 'تعويض', 'عرض ترويجي', 'قرار إداري', 'أخرى'];
   let paymentOverrideReason = "";
   if (isPaymentOverride) {
@@ -1331,6 +1326,7 @@ window.decideServiceRequest = async function (requestId, decision) {
         };
         if (adminNote.trim()) rejection.adminNote = adminNote.trim().slice(0, 1000);
         transaction.update(requestRef, rejection);
+        appendAdminAudit(transaction, "service_rejected", "serviceRequests", requestId, auditReason.trim());
         return;
       }
 
@@ -1376,6 +1372,7 @@ window.decideServiceRequest = async function (requestId, decision) {
         approval.paymentOverrideReason = paymentOverrideReason;
       }
       transaction.update(requestRef, approval);
+      appendAdminAudit(transaction, "service_approved", "serviceRequests", requestId, auditReason.trim());
     });
 
     alert(decision === "rejected"
@@ -1383,7 +1380,7 @@ window.decideServiceRequest = async function (requestId, decision) {
       : isPaymentOverride
         ? "✅ تم اعتماد الطلب استثنائيًا بدون دفع."
         : "✅ تم اعتماد الطلب المدفوع.");
-    await window.openAdminPanel();
+    await window.openAdminServices();
     await loadMarket();
   } catch (error) {
     console.error("ADMIN SERVICE DECISION ERROR:", error);
@@ -2417,6 +2414,14 @@ window.logoutUser = async function () {
 };
 
 onAuthStateChanged(auth, async user => {
+  // Clear administrative data immediately when the authentication session changes.
+  if (document.getElementById('adminV2Body') || document.getElementById('adminServiceRequestsList')) {
+    window.closeModal();
+    const content = document.getElementById('modalContent');
+    if (content) content.innerHTML = '';
+    adminServiceRequests = [];
+    adminDeletionRequests = [];
+  }
   const loginButton = document.querySelector(".login");
   const adminButton = document.getElementById("adminPanelButton");
   currentUserIsAdmin = false;
@@ -3009,6 +3014,8 @@ async function loadMarket() {
           ` : ""}
 
           ${ownerManagementButton(animal)}
+          <button onclick="submitModerationReport('animal', ${inlineArgument(animal.id)})">إبلاغ عن الإعلان</button>
+          <button onclick="submitModerationReport('user', ${inlineArgument(animal.sellerId)})">إبلاغ عن البائع</button>
         </div>
       `).join("");
     }
@@ -3043,7 +3050,7 @@ async function loadMarket() {
       .filter(auction => effectiveCountry(auction) === activeMarketCountry)
       .filter(auction => {
         const animal = animals[auction.animalId];
-        if (!animal) return false;
+        if (!animal || ['hidden', 'needs_review'].includes(animal.status)) return false;
         return animalMatchesMarketFilters(animal, "auction");
       })
       .sort(marketplaceSort);
@@ -3135,6 +3142,8 @@ async function loadMarket() {
             </p>
 
             ${listingDescriptionHtml(animal)}
+            <button onclick="submitModerationReport('auction', ${inlineArgument(auction.id)})">إبلاغ عن المزاد</button>
+            <button onclick="submitModerationReport('user', ${inlineArgument(auction.sellerId)})">إبلاغ عن البائع</button>
 
             <p style="color:#aaa;font-size:13px;margin-top:14px;">
               📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
@@ -5343,3 +5352,16 @@ for (const action of ["saveListing", "placeBid", "requestPurchase", "submitListi
     finally { busy = false; buttons.forEach(button => { button.disabled = false; }); }
   };
 }
+
+let adminDashboardPromise;
+function getAdminDashboard() {
+  if (!adminDashboardPromise) adminDashboardPromise = import('./admin-dashboard.js').then(({installAdminDashboard}) => installAdminDashboard({db,auth,collection,doc,getDoc,getDocs,query,where,limit,orderBy,startAfter,getCountFromServer,runTransaction,serverTimestamp,setDoc,requireAdminClaim,showModal,escapeHtml,safeImageData,formatDate,openServices:()=>window.openAdminServices()})).catch(error=>{adminDashboardPromise=null;throw error;});
+  return adminDashboardPromise;
+}
+window.openAdminPanel = async function () {
+  if (!await requireAdminClaim(true)) { alert('غير مصرح لك بفتح لوحة الإدارة.'); return; }
+  try { await (await getAdminDashboard()).open(); } catch { alert('تعذر تحميل لوحة الإدارة.'); }
+};
+window.submitModerationReport = async function(type,id) {
+  try { await (await getAdminDashboard()).report(type,id); } catch { alert('تعذر إرسال البلاغ.'); }
+};

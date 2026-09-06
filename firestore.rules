@@ -7,11 +7,19 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return signedIn() && request.auth.token.admin == true;
+      return activeAccount() && request.auth.token.get('admin', false) == true;
     }
 
+    function activeAccount() {
+      return signedIn() && (!exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', 'active') == 'active');
+    }
+    function validAudit(kind, id) {
+      let log = getAfter(/databases/$(database)/documents/adminAuditLogs/$(request.resource.data.moderationLogId)).data;
+      return log.adminUid == request.auth.uid && log.targetType == kind && log.targetId == id && log.timestamp == request.time;
+    }
     function isOwner(fieldName) {
-      return signedIn() && resource.data[fieldName] == request.auth.uid;
+      return activeAccount() && resource.data[fieldName] == request.auth.uid;
     }
 
     function changedKeysOnly(fields) {
@@ -119,7 +127,7 @@ service cloud.firestore {
     }
 
     function conversationIsParticipant(conversationId) {
-      return signedIn()
+      return activeAccount()
         && request.auth.uid in get(
           /databases/$(database)/documents/conversations/$(conversationId)
         ).data.participants;
@@ -128,7 +136,7 @@ service cloud.firestore {
     match /users/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
 
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly([
           'uid',
@@ -145,7 +153,7 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.lastLoginAt == request.time;
 
-      allow update: if signedIn()
+      allow update: if activeAccount()
         && request.auth.uid == uid
         && changedKeysOnly([
           'phoneNumber',
@@ -159,13 +167,17 @@ service cloud.firestore {
           || request.resource.data.accountType in ['buyer', 'seller', 'both']
         );
 
+      allow update: if isAdmin() && uid != request.auth.uid
+        && changedKeysOnly(['status', 'moderationLogId'])
+        && request.resource.data.status in ['active','suspended','blocked','deletion_requested']
+        && validAudit('users', uid);
       allow delete: if false;
     }
 
     match /animals/{animalId} {
       allow read: if true;
 
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.saleType in ['direct', 'auction']
         && request.resource.data.country in ['AE', 'EG']
@@ -181,10 +193,17 @@ service cloud.firestore {
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time
         && hasNoVerificationFields(request.resource.data)
-        && hasNoPromotionFields(request.resource.data);
+        && hasNoPromotionFields(request.resource.data)
+        && !request.resource.data.keys().hasAny(['imagesLocked','moderationLocked','moderationLogId']);
 
       allow update: if (
         isOwner('sellerId')
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['imagesLocked','moderationLocked','moderationLogId'])
+        && (!resource.data.get('imagesLocked', false) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['images']))
+        && (!resource.data.get('moderationLocked', false)
+          || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['status'])
+          || (resource.data.status == 'active'
+            && request.resource.data.status in ['sold', 'not_approved']))
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
           'sellerId',
           'saleType',
@@ -255,13 +274,24 @@ service cloud.firestore {
         )
       );
 
-      allow delete: if isOwner('sellerId');
+      allow update: if isAdmin()
+        && changedKeysOnly(['images','imagesLocked','moderationLocked','status','moderationLogId'])
+        && request.resource.data.moderationLocked == true
+        && request.resource.data.status in ['active','hidden','needs_review','sold','not_approved']
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['images']) || (
+          request.resource.data.images is list
+          && request.resource.data.images.size() < resource.data.images.size()
+          && request.resource.data.images.toSet().difference(resource.data.images.toSet()).size() == 0
+          && request.resource.data.imagesLocked == true
+          && (request.resource.data.images.size() > 0 || request.resource.data.status == 'needs_review')))
+        && validAudit('animals', animalId);
+      allow delete: if isOwner('sellerId') && !resource.data.get('moderationLocked', false);
     }
 
     match /auctions/{auctionId} {
       allow read: if true;
 
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.country in ['AE', 'EG']
         && getAfter(
@@ -288,7 +318,7 @@ service cloud.firestore {
         && hasNoPromotionFields(request.resource.data);
 
       allow update: if (
-        signedIn()
+        activeAccount()
         && (
           (
             resource.data.keys().hasAny(['country'])
@@ -306,6 +336,8 @@ service cloud.firestore {
         (
           resource.data.sellerId != request.auth.uid
           && resource.data.status == 'active'
+          && (!exists(/databases/$(database)/documents/animals/$(resource.data.animalId))
+            || get(/databases/$(database)/documents/animals/$(resource.data.animalId)).data.get('status', 'active') == 'active')
           && resource.data.endTime is timestamp
           && request.time < resource.data.endTime
           && changedKeysOnly([
@@ -363,7 +395,7 @@ service cloud.firestore {
       allow read: if signedIn()
         && (resource.data.userId == request.auth.uid || isAdmin());
 
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.resource.data.keys().hasOnly([
           'userId',
           'serviceType',
@@ -592,11 +624,11 @@ service cloud.firestore {
     match /purchaseRequests/{requestId} {
       allow read: if signedIn()
         && (
-          resource.data.buyerId == request.auth.uid
+          isAdmin() || resource.data.buyerId == request.auth.uid
           || resource.data.sellerId == request.auth.uid
         );
 
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.resource.data.buyerId == request.auth.uid
         && request.resource.data.sellerId != request.auth.uid
         && request.resource.data.status == 'pending'
@@ -618,7 +650,7 @@ service cloud.firestore {
           /databases/$(database)/documents/animals/$(request.resource.data.animalId)
         ).data.status == 'active';
 
-      allow update: if signedIn()
+      allow update: if activeAccount()
         && resource.data.sellerId == request.auth.uid
         && resource.data.status == 'pending'
         && changedKeysOnly(['status', 'updatedAt'])
@@ -645,7 +677,7 @@ service cloud.firestore {
       allow list: if signedIn()
         && request.auth.uid in resource.data.participants;
 
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.resource.data.contextType == 'direct'
         && !request.resource.data.keys().hasAny(['contactStatus', 'acceptedOfferId', 'contactUnlockedAt'])
         && request.resource.data.participants is list
@@ -723,7 +755,7 @@ service cloud.firestore {
           )
         );
 
-      allow update: if signedIn()
+      allow update: if activeAccount()
         && request.auth.uid in resource.data.participants
         && (
           (
@@ -966,7 +998,7 @@ service cloud.firestore {
 
         allow list: if false;
 
-        allow create: if signedIn()
+        allow create: if activeAccount()
           && contactUid == request.auth.uid
           && conversationIsParticipant(conversationId)
           && get(
@@ -997,7 +1029,7 @@ service cloud.firestore {
     match /accountDeletionRequests/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if signedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if signedIn()
+      allow create: if activeAccount()
         && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['userId', 'status', 'createdAt', 'updatedAt'])
         && request.resource.data.userId == request.auth.uid
@@ -1014,6 +1046,44 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /reports/{reportId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.reporterId == request.auth.uid);
+      allow create: if activeAccount()
+        && request.resource.data.keys().hasOnly(['reporterId','targetType','targetId','reportedUserId','reason','details','status','createdAt'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.targetType in ['user','animal','auction']
+        && request.resource.data.targetId is string && request.resource.data.targetId.size() <= 128
+        && reportId == request.auth.uid + '_' + request.resource.data.targetType + '_' + request.resource.data.targetId
+        && request.resource.data.status == 'open' && request.resource.data.createdAt == request.time
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+        && request.resource.data.details is string && request.resource.data.details.size() <= 2000
+        && ((request.resource.data.targetType == 'user'
+          && exists(/databases/$(database)/documents/users/$(request.resource.data.targetId))
+          && request.resource.data.reportedUserId == request.resource.data.targetId)
+          || (request.resource.data.targetType == 'animal'
+          && get(/databases/$(database)/documents/animals/$(request.resource.data.targetId)).data.sellerId == request.resource.data.reportedUserId)
+          || (request.resource.data.targetType == 'auction'
+          && get(/databases/$(database)/documents/auctions/$(request.resource.data.targetId)).data.sellerId == request.resource.data.reportedUserId));
+      allow update: if isAdmin() && changedKeysOnly(['status','reviewedAt','reviewedBy','resolutionNotes','moderationLogId'])
+        && request.resource.data.status in ['reviewing','resolved','rejected']
+        && request.resource.data.reviewedAt == request.time && request.resource.data.reviewedBy == request.auth.uid
+        && request.resource.data.resolutionNotes is string && request.resource.data.resolutionNotes.size() <= 500
+        && validAudit('reports', reportId);
+      allow delete: if false;
+    }
+    match /adminAuditLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.keys().hasOnly(['adminUid','action','targetType','targetId','reason','timestamp','metadata'])
+        && request.resource.data.adminUid == request.auth.uid && request.resource.data.timestamp == request.time
+        && request.resource.data.action is string && request.resource.data.action.size() <= 100
+        && request.resource.data.targetType in ['users','animals','reports','serviceRequests','accountDeletionRequests']
+        && request.resource.data.targetId is string && request.resource.data.targetId.size() <= 300
+        && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+        && request.resource.data.metadata is map && request.resource.data.metadata.keys().hasOnly(['imageHash'])
+        && (!request.resource.data.metadata.keys().hasAny(['imageHash']) || request.resource.data.metadata.imageHash.matches('^[a-f0-9]{64}$'));
+      allow update, delete: if false;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

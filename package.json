@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "test": "node tests/ui.test.mjs",
-    "test:rules": "node tests/rules.test.mjs",
+    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs",
     "test:browser": "node tests/browser.test.cjs && node tests/auth-browser.test.cjs"
   },
   "devDependencies": {
