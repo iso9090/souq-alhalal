@@ -16,7 +16,7 @@
   <title>سوق الحلال الإلكتروني</title>
 
   <link rel="stylesheet" href="style.css?v=48">
-  <link rel="stylesheet" href="launch.css?v=2">
+  <link rel="stylesheet" href="launch.css?v=3">
 
   <style>
     /* ترتيب الواجهة الرئيسية: الصورة أولاً ثم النص والأزرار */
@@ -487,15 +487,15 @@
       <b>صور الحيوان</b>
       <small>اختر حتى 5 صور من الهاتف</small>
 
-      <input id="animalImages" type="file" accept="image/*" multiple
-        style="display:block;width:100%;margin-top:15px;">
+      <div class="ux-field"><label for="animalImages">صور الحيوان — حتى 5 صور</label><input id="animalImages" type="file" accept="image/*" multiple
+        style="display:block;width:100%;margin-top:15px;"></div>
 
       <div id="imagePreview"
         style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:15px;"></div>
     </div>
 
     <div class="fields">
-      <select id="animalType" required>
+      <div class="ux-field"><label for="animalType">نوع الحيوان *</label><select id="animalType" required>
         <option value="" selected disabled>اختر نوع الحيوان</option>
         <option value="ناقة">🐫 ناقة</option>
         <option value="غنم">🐑 غنم</option>
@@ -506,77 +506,77 @@
         <option value="غزال">🦌 غزال</option>
         <option value="نعام">🐦 نعام</option>
         <option value="حمام">🕊️ حمام</option>
-      </select>
+      </select></div>
 
-      <input id="animalBreed" placeholder="السلالة">
-      <input id="animalAge" placeholder="العمر">
+      <div class="ux-field"><label for="animalBreed">السلالة / وصف مختصر</label><input id="animalBreed" placeholder="السلالة"></div>
+      <div class="ux-field"><label for="animalAge">العمر</label><input id="animalAge" placeholder="العمر"></div>
 
-      <select id="animalGender" required>
+      <div class="ux-field"><label for="animalGender">الجنس *</label><select id="animalGender" required>
         <option value="" selected disabled>اختر الجنس</option>
         <option value="male">ذكر</option>
         <option value="female">أنثى</option>
-      </select>
+      </select></div>
 
       <div style="width:100%;">
         <label for="animalBirthDate" style="display:block;margin-bottom:7px;">تاريخ الميلاد — اختياري</label>
         <input id="animalBirthDate" type="date" style="width:100%;">
       </div>
 
-      <input id="animalIdentifier" placeholder="رقم/معرّف الحيوان — اختياري">
+      <div class="ux-field"><label for="animalIdentifier">رقم الحيوان — اختياري</label><input id="animalIdentifier" placeholder="رقم/معرّف الحيوان — اختياري"></div>
 
-      <select id="animalVaccinationStatus" onchange="toggleVaccinationDate('animalVaccinationStatus', 'animalVaccinationDateField', 'animalVaccinationDate')">
+      <div class="ux-field"><label for="animalVaccinationStatus">حالة التطعيم</label><select id="animalVaccinationStatus" onchange="toggleVaccinationDate('animalVaccinationStatus', 'animalVaccinationDateField', 'animalVaccinationDate')">
         <option value="unknown" selected>حالة التطعيم: غير محدد</option>
         <option value="vaccinated">حالة التطعيم: مطعّم</option>
         <option value="not_vaccinated">حالة التطعيم: غير مطعّم</option>
-      </select>
+      </select></div>
 
       <div id="animalVaccinationDateField" style="display:none;width:100%;">
         <label for="animalVaccinationDate" style="display:block;margin-bottom:7px;">تاريخ آخر تطعيم — اختياري</label>
         <input id="animalVaccinationDate" type="date" style="width:100%;">
       </div>
 
-      <select id="animalVetInspectionStatus" onchange="toggleVetInspectionDate('animalVetInspectionStatus', 'animalVetInspectionDateField', 'animalVetInspectionDate')">
+      <div class="ux-field"><label for="animalVetInspectionStatus">الفحص البيطري</label><select id="animalVetInspectionStatus" onchange="toggleVetInspectionDate('animalVetInspectionStatus', 'animalVetInspectionDateField', 'animalVetInspectionDate')">
         <option value="unknown" selected>الفحص البيطري: غير محدد</option>
         <option value="inspected">الفحص البيطري: تم الفحص</option>
         <option value="not_inspected">الفحص البيطري: لم يتم الفحص</option>
-      </select>
+      </select></div>
 
       <div id="animalVetInspectionDateField" style="display:none;width:100%;">
         <label for="animalVetInspectionDate" style="display:block;margin-bottom:7px;">تاريخ آخر فحص — اختياري</label>
         <input id="animalVetInspectionDate" type="date" style="width:100%;">
       </div>
 
-      <select id="animalCountry" required onchange="updateListingLocationOptions()">
+      <div class="ux-field"><label for="animalCountry">الدولة *</label><select id="animalCountry" required onchange="updateListingLocationOptions()">
         <option value="AE" selected>🇦🇪 الإمارات العربية المتحدة</option>
         <option value="EG">🇪🇬 جمهورية مصر العربية</option>
-      </select>
+      </select></div>
 
-      <select id="animalRegion" required onchange="updateListingCityOptions()"></select>
-      <select id="animalCity" required onchange="updateFullLocation()"></select>
+      <div class="ux-field"><label for="animalRegion">الإمارة / المحافظة *</label><select id="animalRegion" required onchange="updateListingCityOptions()"></select></div>
+      <div class="ux-field"><label for="animalCity">المدينة / المنطقة *</label><select id="animalCity" required onchange="updateFullLocation()"></select></div>
       <input id="animalLocation" type="hidden" value="الذيد - الشارقة">
 
-      <select id="method" onchange="toggleAuctionFields()">
+      <div class="ux-field"><label for="method">طريقة البيع *</label><select id="method" onchange="toggleAuctionFields()">
         <option value="بيع مباشر">🛒 بيع مباشر</option>
         <option value="مزاد إلكتروني">🔨 مزاد إلكتروني</option>
-      </select>
+      </select></div>
 
-      <input id="animalPrice" required type="number" min="1" placeholder="سعر البيع (AED)">
+      <div class="ux-field"><label for="animalPrice">السعر / سعر بداية المزاد *</label><input id="animalPrice" required type="number" min="1" max="9007199254740991" placeholder="سعر البيع (AED)"></div>
 
       <div id="auctionFields" style="display:none;width:100%;">
         <div style="background:#10271c;border:1px solid #1d6044;border-radius:12px;padding:14px;margin-bottom:14px;color:#68e6b0;text-align:center;">
           🔨 بيانات المزاد الإلكتروني
         </div>
 
-        <label style="display:block;margin-bottom:7px;">أقل زيادة للمزايدة</label>
+        <label for="auctionIncrement" style="display:block;margin-bottom:7px;">أقل زيادة للمزايدة</label>
         <input id="auctionIncrement" type="number" min="1" placeholder="مثال: 200"
           style="width:100%;box-sizing:border-box;margin-bottom:14px;">
 
-        <label style="display:block;margin-bottom:7px;">تاريخ ووقت انتهاء المزاد</label>
+        <label for="auctionEndTime" style="display:block;margin-bottom:7px;">تاريخ ووقت انتهاء المزاد</label>
         <input id="auctionEndTime" type="datetime-local"
           style="width:100%;box-sizing:border-box;margin-bottom:14px;">
       </div>
 
-      <textarea id="animalDescription" placeholder="الوصف والحالة الصحية"></textarea>
+      <div class="ux-field ux-wide"><label for="animalDescription">الوصف والحالة الصحية</label><textarea maxlength="2000" id="animalDescription" placeholder="الوصف والحالة الصحية"></textarea></div>
       <button type="submit">حفظ العرض</button>
     </div>
   </form>
@@ -635,41 +635,30 @@ document.addEventListener("DOMContentLoaded", toggleAuctionFields);
 </script>
 
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-  const imageInput = document.getElementById("animalImages");
-  const preview = document.getElementById("imagePreview");
-  if (!imageInput || !preview) return;
-
-  imageInput.addEventListener("change", function () {
-    preview.innerHTML = "";
-    const files = Array.from(imageInput.files || []);
-
-    if (files.length > 5) {
-      alert("يمكن اختيار 5 صور كحد أقصى.");
-      imageInput.value = "";
-      return;
-    }
-
-    files.forEach(function (file) {
-      if (!file.type.startsWith("image/")) return;
-
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        const img = document.createElement("img");
-        img.src = event.target.result;
-        img.style.width = "100%";
-        img.style.height = "100px";
-        img.style.objectFit = "cover";
-        img.style.borderRadius = "10px";
-        preview.appendChild(img);
-      };
-      reader.readAsDataURL(file);
+document.addEventListener('DOMContentLoaded', function () {
+  const input=document.getElementById('animalImages'),preview=document.getElementById('imagePreview');
+  let selected=[], urls=[];
+  const sync=()=>{const transfer=new DataTransfer();selected.forEach(file=>transfer.items.add(file));input.files=transfer.files;};
+  function render(){
+    urls.forEach(url=>URL.revokeObjectURL(url));urls=[];preview.replaceChildren();
+    selected.forEach((file,index)=>{
+      const card=document.createElement('div'),img=document.createElement('img'),remove=document.createElement('button');
+      card.className='ux-image-preview';img.alt='الصورة '+(index+1);img.src=URL.createObjectURL(file);urls.push(img.src);
+      img.onerror=()=>{const label=document.createElement('span');label.textContent='تعذر فتح الصورة؛ احذفها واختر أخرى.';img.replaceWith(label);};
+      remove.type='button';remove.textContent='حذف الصورة '+(index+1);remove.onclick=()=>{selected.splice(index,1);sync();render();};
+      card.append(img,remove);preview.append(card);
     });
+  }
+  input.addEventListener('change',()=>{
+    const next=Array.from(input.files||[]);
+    if(next.length>5 || next.some(file=>!file.type.startsWith('image/'))){alert(next.length>5?'يمكن اختيار 5 صور كحد أقصى.':'اختر ملفات صور فقط.');sync();return;}
+    selected=next;render();
   });
+  window.resetImagePreview=()=>{selected=[];urls.forEach(url=>URL.revokeObjectURL(url));urls=[];preview.replaceChildren();};
 });
 </script>
 
-<script type="module" src="app.js?v=63"></script>
+<script type="module" src="app.js?v=64"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
 <script src="market-ui.js?v=40"></script>
