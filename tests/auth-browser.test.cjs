@@ -95,6 +95,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      return route.fulfill({contentType:'text/javascript',body:code});
    }
    if(url.hostname!=='auth.test'){external.push(url.origin);return route.abort()}
+   if(url.pathname==='/image-provider.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'image-provider.js'),'utf8').replace(/export async function uploadImages[\s\S]*$/,`export async function uploadImages(files){validateImageCount(files);return ['data:image/jpeg;base64,YWJj'];}`)});
    const file=path.join(root,decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
    if(!file.startsWith(root)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
    return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
@@ -104,12 +105,10 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await page.waitForFunction(()=>typeof window.openEmailAuth==='function');
    await page.evaluate(()=>window.selectMarketCountry('AE'));
    await page.evaluate(()=>window.openLogin());
-   await page.locator('#phoneNumber').fill('0501234567');
-   await page.evaluate(()=>window.sendPhoneCode());
-   await page.getByRole('button',{name:'استخدم البريد الإلكتروني بدلًا من ذلك',exact:true}).click();
+   assert.equal(await page.locator('.v2-social button').count(),3);
    assert.equal(await page.locator('#authEmail').count(),1);
    assert.equal(await page.locator('#phoneNumber').count(),0);
-   pass('phone billing fallback and provider switch '+width);
+   pass('public email/social login without phone '+width);
    for(const mode of ['login','signup','reset']){
      await page.evaluate(mode=>window.openEmailAuth(mode),mode);
      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,(typeof screen === "undefined" ? "auth" : screen)+" document overflow "+width);
@@ -222,6 +221,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    const region=document.getElementById('animalRegion');region.selectedIndex=1;window.updateListingCityOptions();
    const city=document.getElementById('animalCity');city.selectedIndex=1;window.updateFullLocation();
    const form=document.getElementById('animalType').closest('form');
+   const imageFiles=new DataTransfer();imageFiles.items.add(new File(['fixture'],'test.jpg',{type:'image/jpeg'}));document.getElementById('animalImages').files=imageFiles.files;
    await window.saveListing({preventDefault(){},target:form});
  });
  const listingId=await page.evaluate(()=>[...window.__mock.docs.keys()].find(k=>k.startsWith('animals/'))?.split('/')[1]);
@@ -239,6 +239,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    document.getElementById('animalRegion').selectedIndex=1;window.updateListingCityOptions();document.getElementById('animalCity').selectedIndex=1;window.updateFullLocation();
    document.getElementById('method').value='مزاد إلكتروني';window.toggleAuctionFields();
    document.getElementById('auctionIncrement').value='10';document.getElementById('auctionEndTime').value='2099-01-01T12:00';
+   const imageFiles=new DataTransfer();imageFiles.items.add(new File(['fixture'],'test.jpg',{type:'image/jpeg'}));document.getElementById('animalImages').files=imageFiles.files;
    await window.saveListing({preventDefault(){},target:document.getElementById('animalType').closest('form')});
  });
  const auctionId=await page.evaluate(()=>[...window.__mock.docs.keys()].find(k=>k.startsWith('auctions/'))?.split('/')[1]);assert.ok(auctionId);
@@ -431,7 +432,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await window.openAdminPanel();
  });
  await page.locator('.admin-overview').waitFor();
- assert.equal(await page.locator('#adminV2Nav button').count(),9);
+ assert.equal(await page.locator('#adminV2Nav button').count(),10);
  for(const width of [360,1280,1366]){
    await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    assert.equal(await page.evaluate(()=>document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1),true);
@@ -502,7 +503,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await page.locator('#adminServiceRequestsList').waitFor();
    await page.getByRole('button',{name:'العودة للوحة الإدارة',exact:true}).click();
    await page.locator('#adminV2Nav').waitFor();
-   assert.equal(await page.locator('#adminV2Nav button').count(),9);
+   assert.equal(await page.locator('#adminV2Nav button').count(),10);
    pass('main close exits and inline service screen returns to dashboard '+width);
  }
  await selectAdminTab('المزادات');

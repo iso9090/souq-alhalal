@@ -25,7 +25,7 @@ const admin = env.authenticatedContext('admin', { admin: true }).firestore();
 const anon = env.unauthenticatedContext().firestore();
 
 const animalData = (country, saleType='direct') => ({
-  sellerId:'seller', saleType, country,
+  sellerId:'seller', saleType, country, images:['https://res.cloudinary.com/demo/image/upload/test.jpg'],
   region: country === 'EG' ? 'القاهرة' : 'الشارقة',
   city: country === 'EG' ? 'القاهرة' : 'الذيد',
   status:'active', createdAt:serverTimestamp(), updatedAt:serverTimestamp()

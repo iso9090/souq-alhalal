@@ -10,7 +10,20 @@ if(relative==='__mock-sdk.js'){res.setHeader('Content-Type','text/javascript');r
 if(!/^[a-zA-Z0-9_.-]+\.(html|js|css|png|jpg|svg)$/.test(relative)){res.writeHead(404);return res.end()}
 const file=path.join(root,relative);if(!fs.existsSync(file)){res.writeHead(404);return res.end()}
 res.setHeader('Content-Type',({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml'})[path.extname(file)]);
-if(relative==='index.html'){let html=fs.readFileSync(file,'utf8');html=html.replace('<head>','<head><script>('+installMock.toString()+')();window.addEventListener("load",()=>('+seedMock.toString()+')());</script>');html=html.replace('<body>','<body><div style="background:#fff3cd;padding:10px;text-align:center">معاينة محلية — جميع الحسابات والعمليات محاكاة؛ لا اتصال بـFirebase</div>');return res.end(html)}
+if(relative==='index.html'){
+  let html=fs.readFileSync(file,'utf8');
+  const preview=async function(){
+    await window.__seedPreview();
+    const image=new Image();image.src='hero-livestock.png';await image.decode();
+    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=Math.round(image.height*900/image.width);canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);
+    const photo=canvas.toDataURL('image/jpeg',.8);
+    for(const [key,animal]of window.__mock.docs)if(key.startsWith('animals/'))animal.images=[photo,photo,photo];
+    await window.selectMarketCountry('AE');
+  };
+  html=html.replace('<head>','<head><script>('+installMock.toString()+')();window.__seedPreview='+seedMock.toString()+';window.addEventListener("load",'+preview.toString()+');</script>');
+  html=html.replace('<body class="marketplace-v2">','<body class="marketplace-v2"><div style="background:#fff3cd;padding:10px;text-align:center;font-size:13px">معاينة محلية — بيانات اختبارية وصورة المشروع الأصلية؛ لا اتصال بالإنتاج <button onclick="window.__mock.admin=false;window.__mock.setUser(null);closeModal()">كزائر</button> <button onclick="window.__mock.admin=true;window.__mock.setUser({uid:\'owner\',email:\'preview@example.test\'}).then(()=>openAdminPanel())">كمالك</button></div>');
+  return res.end(html);
+}
 if(relative.endsWith('.js'))return res.end(fs.readFileSync(file,'utf8').replace(/https:\/\/www\.gstatic\.com\/firebasejs\/[^"']+/g,'/__mock-sdk.js'));
 res.end(fs.readFileSync(file));
 }).listen(4174,'127.0.0.1',()=>console.log('MOCK ONLY http://127.0.0.1:4174/'));

@@ -2,10 +2,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/ui.test.mjs && node tests/admin-permissions.test.mjs && node tests/migration.test.mjs",
-    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs && node tests/assistants-rules.test.mjs && node tests/participation-rules.test.mjs",
+    "test": "node tests/ui.test.mjs && node tests/admin-permissions.test.mjs && node tests/migration.test.mjs && node tests/marketplace-v2.test.mjs",
+    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs && node tests/assistants-rules.test.mjs && node tests/participation-rules.test.mjs && node tests/marketplace-v2-rules.test.mjs",
     "test:browser": "node tests/browser.test.cjs && node tests/auth-browser.test.cjs && node tests/assistants-browser.test.cjs && node tests/user-seller-browser.test.cjs && node tests/my-bids-browser.test.cjs",
-    "preview:mock": "node tests/user-seller-preview.cjs"
+    "preview:mock": "node tests/user-seller-preview.cjs",
+    "test:v2-browser": "node tests/marketplace-v2-browser.test.cjs",
+    "lint": "node scripts/validate-site.mjs",
+    "build": "node scripts/build-site.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

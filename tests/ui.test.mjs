@@ -1,3 +1,4 @@
+import * as Images from '../image-provider.js';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const source=fs.readFileSync(new URL('../app.js', import.meta.url),'utf8').replace(/\r\n/g, '\n');
@@ -13,7 +14,7 @@ function extractFunction(name){
 const config=source.slice(source.indexOf('const COUNTRIES ='),source.indexOf('window.getSelectedListingCurrency'));
 const filterFns=['timestampToDate','timestampToMillis','getAnimalLocationInfo','getMarketFilters','animalMatchesMarketFilters'].map(extractFunction).join('\n');
 const values={};
-const context={window:{},document:{addEventListener(){},getElementById(id){return values[id]?{value:values[id]}:null;}},console};
+const context={Images,window:{},document:{addEventListener(){},getElementById(id){return values[id]?{value:values[id]}:null;}},console};
 vm.createContext(context);
 vm.runInContext('let activeMarketCountry=null;\n'+config+'\n'+filterFns+'\nglobalThis.api={COUNTRIES,SERVICES,effectiveCountry,money,normalizePhoneNumber,getAnimalLocationInfo,animalMatchesMarketFilters,isServiceApproved,isFeaturedListing,isBumpedListing,isVerifiedListing,marketplaceSort,setCountry:(v)=>activeMarketCountry=v};',context);
 const a=context.api;

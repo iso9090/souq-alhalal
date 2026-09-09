@@ -107,6 +107,7 @@ export function installAdminDashboard(api) {
   }
   function shell(tab){
     showModal(`<section class="admin-v2" dir="rtl"><aside class="admin-sidebar"><div class="admin-brand"><span aria-hidden="true">◈</span><strong>سوق الحلال الإلكتروني</strong><small>مركز الإدارة</small></div><div class="admin-identity"><span class="admin-avatar">♙</span><b>${esc(auth.currentUser?.displayName||'مسؤول المنصة')}</b><small>${api.getAccess().role==='super_admin'?'Super Admin':'مساعد مدير'}</small></div><nav id="adminV2Nav" aria-label="تبويبات الإدارة"></nav><div id="adminLogout"></div></aside><div class="admin-workspace"><div class="admin-topbar"><div><small>لوحة الإدارة / ${esc(tabs[tab])}</small><h2>${esc(tabs[tab])}</h2></div><span class="admin-badge green">إدارة آمنة</span></div><div id="adminV2Body" aria-live="polite">جاري التحميل…</div></div></section>`);
+    if(api.getAccess().role==='super_admin')document.getElementById('adminV2Nav').append(button('إدارة واجهة الصفحة الرئيسية',()=>window.openHomePageAdmin()));
     for(const [key,label]of Object.entries(tabs)){if(!canRead(key))continue;const b=button(label,()=>key==='services'?api.openServices():open(key));b.dataset.icon=icons[key]||'♙';b.setAttribute('aria-label',label);b.setAttribute('aria-current',String(key===tab));document.getElementById('adminV2Nav').append(b);}
     document.getElementById('adminLogout').append(button('تسجيل الخروج',()=>api.logout()));
     const identity=document.querySelector('.admin-identity b');
