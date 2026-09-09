@@ -273,6 +273,7 @@ service cloud.firestore {
 
     function validListingImages(data) {
       return data.images is list && data.images.size() >= 1 && data.images.size() <= 3
+        && data.images.toSet().size() == data.images.size()
         && data.images[0] is string && data.images[0].size() > 0
         && (data.images.size() < 2 || (data.images[1] is string && data.images[1].size() > 0))
         && (data.images.size() < 3 || (data.images[2] is string && data.images[2].size() > 0));

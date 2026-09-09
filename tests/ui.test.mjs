@@ -39,7 +39,10 @@ filters('AE'); test('AE filter includes legacy AE',a.animalMatchesMarketFilters(
 filters('EG','القاهرة','القاهرة'); test('EG region/city filter includes EG',a.animalMatchesMarketFilters(eg)); test('EG filter excludes AE',!a.animalMatchesMarketFilters(ae));
 filters('EG'); test('all regions/cities remain inside active EG market',a.animalMatchesMarketFilters(eg)&&!a.animalMatchesMarketFilters(ae)&&!a.animalMatchesMarketFilters(legacy));
 test('listing form has country/region/city selectors',html.includes('id="animalCountry"')&&html.includes('id="animalRegion"')&&html.includes('id="animalCity"'));
-test('first visit is blocked until country selection',source.includes('if (!activeMarketCountry) {\n    updateMarketCountryIndicator();\n    window.openMarketCountrySelector();\n    return;'));
+let openedCountry=0;
+const countryGate={marketRevision:0,activeMarketCountry:null,updateMarketCountryIndicator(){},window:{openMarketCountrySelector(){openedCountry++;}},document:{getElementById(){return {style:{display:'none'}};}},createFirebaseArea(){throw Error('Country gate bypassed');}};
+await vm.runInNewContext('async '+extractFunction('loadMarket')+'; loadMarket();',countryGate);
+test('first visit is blocked until country selection',openedCountry===1);
 test('country selector persists only to localStorage',source.includes('localStorage.setItem(ACTIVE_MARKET_COUNTRY_KEY, country)')&&!source.includes('souqActiveCountry:'));
 test('market filters have no all-countries selector',!source.includes('id="marketCountryFilter"')&&!source.includes('جميع الدول'));
 test('country switch reloads market immediately',source.includes('marketArea.remove()')&&source.includes('await loadMarket()'));

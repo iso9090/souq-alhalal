@@ -714,9 +714,15 @@ function ownerManagementButton(animal) {
 async function ensureUserProfile(user, initialDisplayName = "") {
   if (!user) return false;
   try {
+    let profileActive = true;
     const userRef = doc(db, "users", user.uid);
     await runTransaction(db, async transaction => {
       const snapshot = await transaction.get(userRef);
+      // Match the existing Rules policy: inactive accounts cannot update their profile.
+      if (snapshot.exists() && (snapshot.data().status || "active") !== "active") {
+        profileActive = false;
+        return;
+      }
       const phone = typeof user.phoneNumber === "string" ? user.phoneNumber : "";
       const values = {
         ...(phone ? { phoneNumber: phone } : {}),
@@ -736,7 +742,7 @@ async function ensureUserProfile(user, initialDisplayName = "") {
         });
       }
     });
-    return true;
+    return profileActive;
   } catch (error) {
     console.error("USER PROFILE ERROR:", error.code || "unknown");
     return false;
@@ -899,6 +905,7 @@ async function showAccount() {
       </div>
 
       <button class="ux-back" onclick="closeModal()">رجوع إلى السوق</button>
+      ${profile?.status && profile.status !== 'active' ? `<p role="status">${socialError('', 'app/account-inactive')}</p>` : ''}
       <label for="profileName">الاسم</label>
       <input id="profileName" type="text" maxlength="50"
         value="${escapeHtml(displayName)}"
@@ -2150,7 +2157,10 @@ window.submitEmailAuth = async function (event, mode) {
         : await signInWithEmailAndPassword(auth, email, password);
       const saved = await ensureUserProfile(result.user, mode === "signup" ? name : "");
       if (!saved) {
-        status.textContent = "تم تسجيل الدخول، لكن تعذر حفظ بيانات الحساب. افتح حسابي وأكمل الاسم عند عودة الاتصال.";
+        const profile = await getUserProfile();
+        status.textContent = profile?.status && profile.status !== 'active'
+          ? socialError('', 'app/account-inactive')
+          : "تم تسجيل الدخول، لكن تعذر حفظ بيانات الحساب. افتح حسابي وأكمل الاسم عند عودة الاتصال.";
       } else if (form.isConnected) {
         await showAccount();
       }
@@ -2414,7 +2424,7 @@ onAuthStateChanged(auth, async user => {
     stopUnreadMessagesListener();
   }
 
-  await loadMarket();
+  await loadMarket({preserveModal:true});
 });
 
 function createFirebaseArea() {
@@ -2915,11 +2925,13 @@ function auctionActionHtml(auction, expired, isOwner) {
 }
 
 let marketRevision = 0;
-async function loadMarket() {
+async function loadMarket({preserveModal=false}={}) {
   const revision = ++marketRevision;
   if (!activeMarketCountry) {
     updateMarketCountryIndicator();
-    window.openMarketCountrySelector();
+    // Auth refreshes may finish after a popup/redirect result opens an account message.
+    // Keep that dialog; country selection remains available from the market controls.
+    if(!preserveModal||document.getElementById('modal')?.style.display!=='flex')window.openMarketCountrySelector();
     return;
   }
 
@@ -5449,7 +5461,29 @@ let socialBusy=false;
 function socialError(provider,code){
   if(code==='auth/account-exists-with-different-credential')return MarketV2.text('هذا البريد مرتبط بطريقة دخول أخرى. سجّل الدخول بالطريقة الأصلية للحفاظ على حسابك.','This email uses another sign-in method. Use that method to preserve your account.');
   if(code==='auth/popup-closed-by-user'||code==='auth/cancelled-popup-request')return MarketV2.text('تم إلغاء تسجيل الدخول.','Sign-in cancelled.');
+  if(code==='auth/network-request-failed')return MarketV2.text('تعذر الاتصال بالشبكة. تحقق من الإنترنت وحاول مرة أخرى.','Network connection failed. Check your connection and try again.');
+  if(code==='auth/user-disabled'||code==='app/account-inactive')return MarketV2.text('هذا الحساب موقوف. يرجى التواصل مع الدعم.','This account is restricted. Please contact support.');
+  if(code==='app/profile-unavailable')return MarketV2.text('تم التحقق من تسجيل الدخول، لكن تعذر تحميل بيانات حسابك. حاول مجددًا عند عودة الاتصال.','Sign-in was authenticated, but your account details could not be loaded. Try again when connected.');
+  if(code==='app/session-changed')return MarketV2.text('تغيرت جلسة الدخول. افتح حسابك مجددًا.','Your sign-in session changed. Open your account again.');
+  if(code==='auth/unauthorized-domain')return MarketV2.text('تسجيل الدخول غير متاح من هذا العنوان. استخدم الموقع المعتمد أو تواصل مع الدعم.','Sign-in is unavailable from this address. Use the approved website or contact support.');
   return MarketV2.text('تسجيل الدخول عبر '+provider+' غير متاح حاليًا',provider+' sign-in is currently unavailable');
+}
+async function completeSocialSignIn(user){
+  if(!user||auth.currentUser?.uid!==user.uid)throw {code:'app/session-changed'};
+  const saved=await ensureUserProfile(user);
+  if(auth.currentUser?.uid!==user.uid)throw {code:'app/session-changed'};
+  if(!saved){
+    let snapshot;try{snapshot=await getDoc(doc(db,'users',user.uid));}catch{}
+    if(snapshot?.exists()&&(snapshot.data().status||'active')!=='active')throw {code:'app/account-inactive'};
+    throw {code:'app/profile-unavailable'};
+  }
+  await showAccount();
+}
+async function showSocialFailure(provider,code){
+  if(auth.currentUser)await showAccount();else window.openEmailAuth();
+  let node=document.getElementById('emailAuthStatus');
+  if(!node){node=document.createElement('p');node.id='emailAuthStatus';node.setAttribute('role','status');document.getElementById('modalContent')?.prepend(node);}
+  node.textContent=socialError(provider,code);
 }
 window.socialLogin=async(provider)=>{
   if(socialBusy||auth.currentUser)return;
@@ -5467,18 +5501,17 @@ window.socialLogin=async(provider)=>{
     try{
       const result=await signInWithPopup(auth,identity);
       // Existing UID is the document key; profile data and permissions are never replaced.
-      await ensureUserProfile(result.user);
-      await showAccount();
+      await completeSocialSignIn(result.user);
     }catch(error){if(error.code==='auth/popup-blocked')await redirect();else throw error;}
-  }catch(error){if(status)status.textContent=socialError(provider,error.code);try{sessionStorage.removeItem('souqSocialRedirect');}catch{}}
+  }catch(error){if(status?.isConnected)status.textContent=socialError(provider,error.code);else await showSocialFailure(provider,error.code);try{sessionStorage.removeItem('souqSocialRedirect');}catch{}}
   finally{socialBusy=false;buttons.forEach(b=>b.disabled=false);}
 };
 async function finishSocialRedirect(){
   let provider;try{provider=sessionStorage.getItem('souqSocialRedirect');}catch{return;}
-  if(!provider)return;
-  try{const result=await getRedirectResult(auth);if(result?.user){await ensureUserProfile(result.user);await showAccount();}else{window.openEmailAuth();const node=document.getElementById('emailAuthStatus');if(node)node.textContent=MarketV2.text('لم يكتمل تسجيل الدخول. أعد المحاولة أو استخدم البريد وكلمة المرور.','Sign-in did not complete. Try again or use email and password.');}}
-  catch(error){window.openEmailAuth();const node=document.getElementById('emailAuthStatus');if(node)node.textContent=socialError(provider,error.code);}
-  finally{sessionStorage.removeItem('souqSocialRedirect');}
+  if(!['Google','Facebook','X'].includes(provider))return;
+  try{const result=await getRedirectResult(auth);if(result?.user){await completeSocialSignIn(result.user);}else{window.openEmailAuth();const node=document.getElementById('emailAuthStatus');if(node)node.textContent=MarketV2.text('لم يكتمل تسجيل الدخول. أعد المحاولة أو استخدم البريد وكلمة المرور.','Sign-in did not complete. Try again or use email and password.');}}
+  catch(error){await showSocialFailure(provider,error.code);}
+  finally{try{sessionStorage.removeItem('souqSocialRedirect');}catch{}}
 }
 
 async function loadHomeHero(animals){

@@ -1,6 +1,6 @@
-import {compressImage,MAX_IMAGES} from './image-provider.js';
+import {prepareImageSelection,MAX_IMAGES} from './image-provider.js';
 const input=document.getElementById('animalImages'),preview=document.getElementById('imagePreview');
-let selected=[],urls=[],busy=false;
+let selected=[],urls=[],busy=false,selectionRevision=0;
 const counter=document.createElement('p');counter.id='imageCounter';counter.dir='ltr';counter.setAttribute('aria-live','polite');preview.before(counter);
 const sync=()=>{const data=new DataTransfer();selected.forEach(file=>data.items.add(file));input.files=data.files;};
 const button=(label,fn)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=fn;return b;};
@@ -23,15 +23,17 @@ async function acceptFiles(files,replaceIndex){
   const replacing=Number.isInteger(replaceIndex);
   if((replacing?selected.length:selected.length+files.length)>MAX_IMAGES){alert('الحد الأقصى 3 صور. احذف صورة أو استبدلها.');sync();return;}
   busy=true;input.disabled=true;
+  const revision=selectionRevision;
+  preview.querySelectorAll('button').forEach(button=>button.disabled=true);
   try{
-    const validated=[];
-    for(const file of files){const blob=await compressImage(file);validated.push(new File([blob],file.name,{type:blob.type,lastModified:file.lastModified}));}
-    if(replacing&&validated.length)selected[replaceIndex]=validated[0];else selected.push(...validated);
+    const validated=await prepareImageSelection(files,selected,replaceIndex);
+    if(revision!==selectionRevision)return;
+    selected=validated;
     sync();render();
-  }catch{alert('تعذر فتح الصورة. اختر صورة JPEG أو PNG أو WebP صالحة.');sync();}
-  finally{busy=false;input.disabled=false;}
+  }catch(error){if(revision===selectionRevision){alert(error.message==='DUPLICATE_IMAGE'?(document.documentElement.lang==='en'?'This photo is already selected. Choose a different photo.':'هذه الصورة مكررة. اختر صورة مختلفة.'):'تعذر فتح الصورة. اختر صورة JPEG أو PNG أو WebP صالحة.');sync();}}
+  finally{busy=false;input.disabled=false;preview.querySelectorAll('button').forEach(button=>button.disabled=false);}
 }
 input.accept='image/jpeg,image/png,image/webp';
 input.addEventListener('change',()=>acceptFiles([...input.files]));
-window.resetImagePreview=()=>{selected=[];sync();render();};
+window.resetImagePreview=()=>{selectionRevision++;selected=[];sync();render();};
 render();

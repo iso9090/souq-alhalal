@@ -64,7 +64,29 @@ export async function uploadImage(file, user, purpose='listing', config=imagePro
 }
 export async function uploadImages(files,user,purpose='listing') {
   validateImageCount(files);
+  // Validate all files before the first remote request; UI checks are not a server boundary.
+  const prepared=await prepareImageSelection(files);
   const result=[];
-  for(const file of files) result.push(await uploadImage(file,user,purpose));
+  for(const file of prepared) result.push(await uploadImage(file,user,purpose));
+  return result;
+}
+async function imageDigest(blob){
+  const bytes=await crypto.subtle.digest('SHA-256',await blob.arrayBuffer());
+  return Array.from(new Uint8Array(bytes),byte=>byte.toString(16).padStart(2,'0')).join('');
+}
+export async function prepareImageSelection(files,existing=[],replaceIndex){
+  const replacing=Number.isInteger(replaceIndex);
+  if(replacing&&(replaceIndex<0||replaceIndex>=existing.length||files.length!==1))throw Error('INVALID_REPLACEMENT');
+  if(!files.length)return [...existing];
+  validateImageCount(Array(replacing?existing.length:existing.length+files.length));
+  const result=[...existing],digests=new Set();
+  for(let i=0;i<existing.length;i++)if(!replacing||i!==replaceIndex)digests.add(await imageDigest(existing[i]));
+  for(const file of files){
+    const blob=await compressImage(file),digest=await imageDigest(blob);
+    if(digests.has(digest))throw Error('DUPLICATE_IMAGE');
+    digests.add(digest);
+    const prepared=new File([blob],file.name,{type:blob.type,lastModified:file.lastModified});
+    if(replacing)result[replaceIndex]=prepared;else result.push(prepared);
+  }
   return result;
 }

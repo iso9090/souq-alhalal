@@ -95,7 +95,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      return route.fulfill({contentType:'text/javascript',body:code});
    }
    if(url.hostname!=='auth.test'){external.push(url.origin);return route.abort()}
-   if(url.pathname==='/image-provider.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'image-provider.js'),'utf8').replace(/export async function uploadImages[\s\S]*$/,`export async function uploadImages(files){validateImageCount(files);return ['data:image/jpeg;base64,YWJj'];}`)});
+   if(url.pathname==='/image-provider.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'image-provider.js'),'utf8').replace(/export async function uploadImages\b[\s\S]*?\n\}/,`export async function uploadImages(files){validateImageCount(files);return ['data:image/jpeg;base64,YWJj'];}`)});
    const file=path.join(root,decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
    if(!file.startsWith(root)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
    return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
