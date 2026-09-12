@@ -2,6 +2,18 @@ import {safeImage} from './image-provider.js';
 export const CATEGORIES = [['all','الكل','All','▦'],['ناقة','جمال','Camels','🐪'],['غنم','أغنام','Sheep','🐑'],['ماعز','ماعز','Goats','🐐'],['بقر','أبقار','Cattle','🐄'],['دجاج','دجاج / دواجن','Poultry','🐔'],['صقور','صقور','Falcons','🦅'],['غزال','غزال','Deer','🦌'],['نعام','نعام','Ostriches','🐦'],['حمام','حمام','Pigeons','🕊'],['حيوانات أليفة','حيوانات أليفة','Pets','🐾'],['أخرى','أخرى','Other','⋯']];
 export const PETS=['قطط','كلاب','طيور زينة','أرانب','أسماك','أخرى'];
 export const text=(ar,en)=>document.documentElement.lang==='en'?en:ar;
+// Decorative category silhouettes, never listing imagery or verification marks.
+export function categoryIcon(value){
+  const paths={
+    all:'M4 4h9v9H4zm15 0h9v9h-9zM4 19h9v9H4zm15 0h9v9h-9z',
+    'ناقة':'M2 17l3-4 5 1 3-8 4 1 3 8 3-1 1-10 4-2 3 3-1 3-4 1-1 12-3 1-1 8h-3l-1-8H9l-2 8H4l1-12Z',
+    'غنم':'M4 10q-2-5 4-5 3-5 7-1 6-3 7 3l7 1 2 4-3 5h-5l-2 6-1 7h-3l-1-7H9l-1 7H5l-1-9q-6-3-2-8Z',
+    'ماعز':'M3 14l3-2 10 1 4-5-1-5 3 4 3-5v5l6 3-2 4-5-1-3 9-1 8h-3l-1-8H9l-2 8H4l1-10-3-4Z',
+    'بقر':'M2 10l18 1 2-5-1-3 4 3 4-3-1 4 3 3-1 6-5 1-2 6-1 7h-3l-1-7H9l-1 7H5l-1-9-1-8-2 7H0Z',
+    'أخرى':'M4 13a3 3 0 1 1 0 6 3 3 0 0 1 0-6m12 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6m12 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6'
+  };
+  return `<svg class="v3-category-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="${paths[value]||paths['أخرى']}"/></svg>`;
+}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function gallery(images=[],alt='صورة الحيوان') {
   const valid=(Array.isArray(images)?images:[]).map(safeImage).filter(Boolean);

@@ -105,10 +105,11 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await page.waitForFunction(()=>typeof window.openEmailAuth==='function');
    await page.evaluate(()=>window.selectMarketCountry('AE'));
    await page.evaluate(()=>window.openLogin());
-   assert.equal(await page.locator('.v2-social button').count(),3);
+   assert.equal(await page.locator('.v2-social button').count(),1);
    assert.equal(await page.locator('#authEmail').count(),1);
    assert.equal(await page.locator('#phoneNumber').count(),0);
-   pass('public email/social login without phone '+width);
+   assert.equal(await page.getByRole('button',{name:'الدخول برقم الهاتف',exact:true}).count(),1);
+   pass('Google and email login with explicit phone backup '+width);
    for(const mode of ['login','signup','reset']){
      await page.evaluate(mode=>window.openEmailAuth(mode),mode);
      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,(typeof screen === "undefined" ? "auth" : screen)+" document overflow "+width);

@@ -56,10 +56,10 @@ let count=0;const pass=name=>{count++;console.log('PASS | '+name);};
   }
   await page.evaluate(()=>{window.__mock.docs.get('users/owner').status='active';window.__mock.admin=false;});
   await open();await page.evaluate(()=>window.__mock.error='auth/popup-blocked');await login('X');
-  assert.equal(await page.evaluate(()=>window.__mock.calls.filter(c=>c.kind==='redirect').length),1);
-  assert.equal(await page.evaluate(()=>sessionStorage.getItem('souqSocialRedirect')),'X');pass('blocked popup prepares redirect marker');
+  assert.equal(await page.evaluate(()=>window.__mock.calls.filter(c=>c.kind==='redirect').length),0);
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('souqSocialRedirect')),null);pass('cross-origin blocked popup never initiates unsupported redirect');
   await open();await page.evaluate(()=>{window.__mock.error='auth/popup-blocked';window.__mock.redirectError='auth/network-request-failed';});await login('Google');
-  assert.match(await page.locator('#emailAuthStatus').innerText(),/الشبكة/);assert.equal(await page.evaluate(()=>sessionStorage.getItem('souqSocialRedirect')),null);pass('redirect startup failure clears marker and restores controls');
+  assert.match(await page.locator('#emailAuthStatus').innerText(),/حظر المتصفح/);assert.equal(await page.evaluate(()=>sessionStorage.getItem('souqSocialRedirect')),null);pass('blocked popup explains browser setting and restores controls');
   for(const [provider,id]of [['Google','google.com'],['Facebook','facebook.com'],['X','twitter.com']]){
    await page.evaluate(({provider,id})=>{sessionStorage.setItem('souqSocialRedirect',provider);sessionStorage.setItem('testRedirect',JSON.stringify({success:true,id}));},{provider,id});await page.reload();
    await page.waitForFunction(()=>window.__mock?.api.getAuth().currentUser?.uid==='owner'&&!sessionStorage.getItem('souqSocialRedirect'));

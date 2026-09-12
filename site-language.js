@@ -1,5 +1,7 @@
 // Static interface strings only. Listing names, descriptions and account data are not translated.
 const dictionary={
+ 'الإمارة':'Emirate','المحافظة':'Governorate','المدينة':'City','النوع':'Type',
+ 'طريقة دخول احتياطية مؤقتة':'Temporary backup sign-in method','الدخول برقم الهاتف':'Sign in with phone','شعار سوق الحلال':'Souq Al Halal logo',
  'تسجيل الدخول':'Log in','إنشاء حساب جديد':'Create an account','البريد الإلكتروني':'Email address','كلمة المرور':'Password','تأكيد كلمة المرور':'Confirm password','الاسم':'Name','نسيت كلمة المرور؟':'Forgot password?','العودة لتسجيل الدخول':'Back to log in','إرسال رابط إعادة التعيين':'Send reset link',
  'لا تحتاج رقم هاتف أو SMS. يمكنك استخدام حسابك للبيع والشراء.':'Use your email account to buy and sell. No phone number or SMS is required.',
  '8 أحرف على الأقل':'At least 8 characters','حرف إنجليزي كبير (A–Z)':'An uppercase letter (A–Z)','حرف إنجليزي صغير (a–z)':'A lowercase letter (a–z)','رقم واحد على الأقل (0–9)':'At least one number (0–9)','رمز خاص واحد على الأقل مثل ! أو @':'At least one symbol, such as ! or @',

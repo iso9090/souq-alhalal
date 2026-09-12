@@ -638,7 +638,7 @@ window.updateMarketRegionFilter = function (reload = true) {
   const regionSelect = document.getElementById("marketRegionFilter");
   if (!activeMarketCountry || !regionSelect) return;
 
-  regionSelect.innerHTML = `<option value="all">جميع المناطق والمحافظات</option>`;
+  regionSelect.innerHTML = `<option value="all">${activeMarketCountry === 'AE' ? 'الإمارة' : 'المحافظة'}</option>`;
 
   Object.keys(COUNTRIES[activeMarketCountry]?.regions || {}).forEach(regionName => {
     const option = document.createElement("option");
@@ -655,7 +655,7 @@ window.updateMarketCityFilter = function (reload = true) {
   const citySelect = document.getElementById("marketCityFilter");
   if (!activeMarketCountry || !regionSelect || !citySelect) return;
 
-  citySelect.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
+  citySelect.innerHTML = `<option value="all">المدينة</option>`;
 
   if (regionSelect.value !== "all") {
     const cities = COUNTRIES[activeMarketCountry]?.regions[regionSelect.value] || [];
@@ -729,9 +729,11 @@ async function ensureUserProfile(user, initialDisplayName = "") {
         lastLoginAt: serverTimestamp()
       };
       if (!snapshot.exists()) {
+        const google = user.providerData?.some(provider => provider.providerId === 'google.com');
         transaction.set(userRef, {
-          uid: user.uid, displayName: initialDisplayName,
+          uid: user.uid, displayName: initialDisplayName || (google ? (user.displayName || '').slice(0, 50) : ''),
           accountType: initialDisplayName ? "both" : "buyer", status: "active",
+          ...(google ? { email: user.email || '', phone, authProvider: 'google' } : {}),
           createdAt: serverTimestamp(), ...values
         });
       } else {
@@ -2043,7 +2045,7 @@ window.updatePurchaseRequest = async function (requestId, newStatus) {
 };
 
 function authMethodButtons() {
-  return '<div class="v2-social">'+['Google','Facebook','X'].map(provider=>'<button type="button" onclick="socialLogin(\''+provider+'\')">'+MarketV2.text('المتابعة باستخدام ','Continue with ')+provider+'</button>').join('')+'</div><p class="v2-or">'+MarketV2.text('أو','or')+'</p>';
+  return `<div class="v2-social"><button type="button" class="google-sign-in" onclick="socialLogin('Google')"><img src="google-g.png" width="20" height="20" alt=""><span>${MarketV2.text('الدخول باستخدام Google','Sign in with Google')}</span></button></div><p class="v2-or">${MarketV2.text('أو','or')}</p>`;
 }
 
 function authErrorText(code) {
@@ -2116,7 +2118,8 @@ window.openEmailAuth = function (mode = "login") {
   if (!["login", "signup", "reset"].includes(mode)) mode = "login";
   const title = mode === "signup" ? "إنشاء حساب جديد" : mode === "reset" ? "نسيت كلمة المرور؟" : "تسجيل الدخول";
   showModal(`<div class="email-auth" dir="rtl">
-    <h2>${title}</h2>${authMethodButtons("email")}
+    <img class="auth-logo" src="logo-souq-alhalal.png" width="72" height="72" alt="شعار سوق الحلال">
+    <h2>${title}</h2>${mode === 'login' ? authMethodButtons() : ''}
     <form id="emailAuthForm" onsubmit="submitEmailAuth(event, '${mode}')" novalidate>
       ${mode === "signup" ? '<label for="emailDisplayName">الاسم</label><input id="emailDisplayName" autocomplete="name" maxlength="50" required>' : ""}
       <label for="authEmail">البريد الإلكتروني</label>
@@ -2126,13 +2129,14 @@ window.openEmailAuth = function (mode = "login") {
       ${mode === "signup" ? `<ul id="passwordRequirements" class="password-requirements">${['8 أحرف على الأقل', 'حرف إنجليزي كبير (A–Z)', 'حرف إنجليزي صغير (a–z)', 'رقم واحد على الأقل (0–9)', 'رمز خاص واحد على الأقل مثل ! أو @'].map(label => `<li><span>○</span> ${label}</li>`).join('')}</ul><label for="authPasswordConfirm">تأكيد كلمة المرور</label>${passwordField('authPasswordConfirm', 'new-password')}<p id="passwordMatch" aria-live="polite"></p><p>لا تحتاج رقم هاتف أو SMS. يمكنك استخدام حسابك للبيع والشراء.</p>` : ""}
       <p id="emailAuthStatus" role="status" aria-live="polite"></p>
       <button type="submit">${mode === "reset" ? "إرسال رابط إعادة التعيين" : title}</button>
-      ${mode === "login" ? '<button type="button" onclick="openEmailAuth(\'signup\')">إنشاء حساب جديد</button><button type="button" onclick="openEmailAuth(\'reset\')">نسيت كلمة المرور؟</button>' : '<button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>'}
-    </form></div>`);
+      ${mode === "login" ? '<div class="auth-secondary-actions"><button type="button" onclick="openEmailAuth(\'reset\')">نسيت كلمة المرور؟</button><button type="button" onclick="openEmailAuth(\'signup\')">إنشاء حساب جديد</button></div>' : '<button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>'}
+    </form><div class="phone-auth-backup"><p>طريقة دخول احتياطية مؤقتة</p><button type="button" onclick="openPhoneLogin()">الدخول برقم الهاتف</button></div></div>`);
+  document.querySelector('#modal .box').scrollTop = 0;
 };
 
 window.submitEmailAuth = async function (event, mode) {
   event.preventDefault();
-  if (emailAuthBusy || !["login", "signup", "reset"].includes(mode)) return;
+  if (emailAuthBusy || socialBusy || !["login", "signup", "reset"].includes(mode)) return;
   const form = document.getElementById("emailAuthForm");
   const status = document.getElementById("emailAuthStatus");
   if (!form || !status) return;
@@ -2143,7 +2147,7 @@ window.submitEmailAuth = async function (event, mode) {
   const invalid = validateEmailForm(mode, email, password, confirmation, name);
   if (invalid) { status.textContent = invalid; return; }
   emailAuthBusy = true;
-  const buttons = [...form.querySelectorAll("button")];
+  const buttons = [...document.querySelectorAll('.email-auth button')];
   buttons.forEach(button => { button.disabled = true; });
   status.textContent = "جاري تنفيذ الطلب…";
   const resetMessage = "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني إذا كان الحساب مسجلاً لدينا.";
@@ -2262,9 +2266,9 @@ async function openLegacyPhoneLogin() {
   }
 
   showModal(`
-    <div style="direction:rtl;color:white;padding:10px;">
+    <div class="phone-auth" style="direction:rtl;color:white;padding:10px;">
       <h2 style="text-align:center;color:#68e6b0;">تسجيل الدخول</h2>
-      ${authMethodButtons("phone")}
+      <button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>
       <p style="text-align:center;color:#aaa;">اختر الدولة ثم أدخل رقم هاتفك</p>
       <select aria-label="دولة رقم الهاتف" id="loginCountry" onchange="updateLoginPhoneCountry()"
         style="width:100%;box-sizing:border-box;padding:14px;margin:10px 0;">
@@ -2284,6 +2288,10 @@ async function openLegacyPhoneLogin() {
       <p id="loginStatus"></p>
     </div>
   `);
+};
+
+window.openPhoneLogin = () => {
+  if (!emailAuthBusy && !socialBusy) return openLegacyPhoneLogin();
 };
 
 window.updateLoginPhoneCountry = function () {
@@ -2466,7 +2474,7 @@ function createFirebaseArea() {
 
         <select id="marketAnimalFilter" aria-label="نوع الحيوان" onchange="applyMarketFilters()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
-          <option value="all">🐾 جميع أنواع الحلال</option>
+          <option value="all">النوع</option>
           <option value="ناقة">🐫 ناقة</option>
           <option value="غنم">🐑 غنم</option>
           <option value="ماعز">🐐 ماعز</option>
@@ -2485,14 +2493,13 @@ function createFirebaseArea() {
           <option value="auction">🔨 مزاد إلكتروني</option>
         </select>
 
-        <button onclick="resetMarketFilters()"
-          style="width:100%;background:#5c635f;color:white;border:0;padding:13px;border-radius:10px;">
-          🔄 إظهار الكل
-        </button>
       </div>
 
       <div id="categoryTiles" class="v2-categories"></div>
-      <p id="firebase-status" style="text-align:center;color:#aaa;"></p>
+      <div class="v3-market-meta">
+        <p id="firebase-status" style="text-align:center;color:#aaa;"></p>
+        <button class="v3-reset" onclick="resetMarketFilters()">🔄 إظهار الكل</button>
+      </div>
 
       <div id="direct-sales-anchor" aria-hidden="true"></div>
       <h2 style="margin-top:40px;color:#68e6b0;">🛒 البيع المباشر</h2>
@@ -2509,7 +2516,7 @@ function createFirebaseArea() {
   const sellSection = document.getElementById("sell");
 
   if (main && sellSection) {
-    main.insertBefore(area, sellSection);
+    main.insertBefore(area, document.getElementById('how-it-works') || sellSection);
   } else {
     (main || document.body).appendChild(area);
   }
@@ -5422,7 +5429,8 @@ window.scheduleMarketSearch=()=>{clearTimeout(marketSearchTimer);marketSearchTim
 function renderCategoryTiles(){
   const area=document.getElementById('categoryTiles');if(!area)return;
   const current=document.getElementById('marketAnimalFilter')?.value||'all';
-  area.innerHTML=MarketV2.CATEGORIES.map(([value,ar,en,icon])=>`<button type="button" aria-pressed="${value===current}" onclick="chooseMarketCategory(${inlineArgument(value)})"><span class="v2-category-icon" aria-hidden="true">${icon}</span>${MarketV2.text(ar,en)}</button>`).join('');
+  const primary = ['all','ناقة','غنم','ماعز','بقر','أخرى'];
+  area.innerHTML=MarketV2.CATEGORIES.filter(([value])=>primary.includes(value)).map(([value,ar,en])=>`<button type="button" aria-pressed="${value===current}" onclick="chooseMarketCategory(${inlineArgument(value)})">${MarketV2.categoryIcon(value)}${MarketV2.text(ar,en)}</button>`).join('');
 }
 window.chooseMarketCategory=value=>{document.getElementById('marketAnimalFilter').value=value;renderCategoryTiles();loadMarket();};
 window.updatePetCategory=()=>{
@@ -5466,6 +5474,7 @@ function socialError(provider,code){
   if(code==='app/profile-unavailable')return MarketV2.text('تم التحقق من تسجيل الدخول، لكن تعذر تحميل بيانات حسابك. حاول مجددًا عند عودة الاتصال.','Sign-in was authenticated, but your account details could not be loaded. Try again when connected.');
   if(code==='app/session-changed')return MarketV2.text('تغيرت جلسة الدخول. افتح حسابك مجددًا.','Your sign-in session changed. Open your account again.');
   if(code==='auth/unauthorized-domain')return MarketV2.text('تسجيل الدخول غير متاح من هذا العنوان. استخدم الموقع المعتمد أو تواصل مع الدعم.','Sign-in is unavailable from this address. Use the approved website or contact support.');
+  if(code==='auth/popup-blocked')return MarketV2.text('حظر المتصفح نافذة Google. اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة، أو استخدم البريد أو الهاتف.','Your browser blocked the Google window. Allow popups for this site and try again, or use email or phone.');
   return MarketV2.text('تسجيل الدخول عبر '+provider+' غير متاح حاليًا',provider+' sign-in is currently unavailable');
 }
 async function completeSocialSignIn(user){
@@ -5486,25 +5495,29 @@ async function showSocialFailure(provider,code){
   node.textContent=socialError(provider,code);
 }
 window.socialLogin=async(provider)=>{
-  if(socialBusy||auth.currentUser)return;
+  if(socialBusy||emailAuthBusy||auth.currentUser)return;
   if(!['Google','Facebook','X'].includes(provider))return;
   socialBusy=true;
   const status=document.getElementById('emailAuthStatus');
-  const buttons=[...document.querySelectorAll('.v2-social button')];buttons.forEach(b=>b.disabled=true);
+  const card=document.querySelector('.email-auth');
+  const buttons=[...document.querySelectorAll('.email-auth button')];buttons.forEach(b=>b.disabled=true);
+  card?.setAttribute('aria-busy','true');
+  if(status)status.textContent=MarketV2.text('جارٍ تسجيل الدخول باستخدام '+provider+'…','Signing in with '+provider+'…');
   try{
     const identity=provider==='Google'?new GoogleAuthProvider():provider==='Facebook'?new FacebookAuthProvider():new TwitterAuthProvider();
     // Google prohibits embedded WebView OAuth; the existing Android wrapper is unchanged.
     if(/; wv\)|\bwv\b/i.test(navigator.userAgent)){if(status)status.textContent=MarketV2.text('افتح الموقع في متصفح الهاتف للدخول بهذا الخيار، أو استخدم البريد وكلمة المرور.','Open the site in your phone browser for social sign-in, or use email and password.');return;}
     const redirect=async()=>{sessionStorage.setItem('souqSocialRedirect',provider);await signInWithRedirect(auth,identity);};
     // Popup also avoids cross-site redirect storage restrictions on GitHub Pages.
-    // Retain redirect as a blocked-popup fallback; its hosting setup is documented.
+    // Redirect is safe only where Firebase's helper is same-origin. GitHub Pages
+    // needs an explicitly configured proxy/custom auth domain before using it.
     try{
       const result=await signInWithPopup(auth,identity);
       // Existing UID is the document key; profile data and permissions are never replaced.
       await completeSocialSignIn(result.user);
-    }catch(error){if(error.code==='auth/popup-blocked')await redirect();else throw error;}
+    }catch(error){if(error.code==='auth/popup-blocked'&&location.hostname===firebaseConfig.authDomain)await redirect();else throw error;}
   }catch(error){if(status?.isConnected)status.textContent=socialError(provider,error.code);else await showSocialFailure(provider,error.code);try{sessionStorage.removeItem('souqSocialRedirect');}catch{}}
-  finally{socialBusy=false;buttons.forEach(b=>b.disabled=false);}
+  finally{socialBusy=false;buttons.forEach(b=>b.disabled=false);card?.removeAttribute('aria-busy');}
 };
 async function finishSocialRedirect(){
   let provider;try{provider=sessionStorage.getItem('souqSocialRedirect');}catch{return;}

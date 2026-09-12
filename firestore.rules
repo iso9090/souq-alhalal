@@ -242,13 +242,26 @@ service cloud.firestore {
           'accountType',
           'status',
           'createdAt',
-          'lastLoginAt'
+          'lastLoginAt',
+          'email', 'phone', 'authProvider'
         ])
         && request.resource.data.uid == uid
         && request.resource.data.status == 'active'
         && request.resource.data.accountType in ['buyer', 'seller', 'both']
         && request.resource.data.createdAt == request.time
-        && request.resource.data.lastLoginAt == request.time;
+        && request.resource.data.lastLoginAt == request.time
+        // Optional Google metadata is accepted only from the authenticated identity.
+        // Legacy phone/email creation is unchanged. These fields grant no permissions.
+        && (!request.resource.data.keys().hasAny(['email', 'phone', 'authProvider']) || (
+          request.resource.data.keys().hasAll(['email', 'phone', 'authProvider'])
+          && request.auth.token.firebase.sign_in_provider == 'google.com'
+          && request.resource.data.authProvider == 'google'
+          && request.resource.data.accountType == 'buyer'
+          && request.resource.data.email is string
+          && request.resource.data.email == request.auth.token.get('email', '')
+          && request.resource.data.phone is string
+          && request.resource.data.phone == request.auth.token.get('phone_number', '')
+        ));
 
       allow update: if activeAccount()
         && request.auth.uid == uid

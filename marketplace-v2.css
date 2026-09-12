@@ -138,3 +138,60 @@ body.marketplace-v2 #firebase-market :is(#direct-sales,#auction-list) .v2-card p
 body.marketplace-v2 #firebase-market .v2-price{margin:6px 0!important}
 html[dir=ltr] body.marketplace-v2 #modalContent>div:not(.admin-v2),html[dir=ltr] body.marketplace-v2 .email-auth{direction:ltr!important;text-align:left}
 @media(max-width:767px){body.marketplace-v2 .home-benefits{display:grid!important;grid-template-columns:1fr 1fr!important;gap:12px!important;padding:15px 0!important}body.marketplace-v2 .home-benefits .benefit-card{min-height:26px!important}body.marketplace-v2 .home-benefits .benefit-card b{font-size:12px!important}body.marketplace-v2 .hero-actions-approved{flex-direction:row!important;flex-wrap:nowrap!important;width:100%!important;height:auto!important}body.marketplace-v2 .hero-actions-approved .hero-action{width:auto!important;flex:1;min-height:44px!important}body.marketplace-v2 #home.hero{margin-top:12px!important}body.marketplace-v2 #home p{font-size:14px!important;line-height:1.8!important}}
+/* V3: focused marketplace and a single primary Google entry point. */
+body.marketplace-v2 main{max-width:1360px!important}
+body.marketplace-v2 header{padding-inline:max(20px,calc((100vw - 1320px)/2));border-bottom:1px solid #e8e4d9}
+body.marketplace-v2 #home.hero{min-height:410px;align-items:flex-start!important;justify-content:center;padding:48px!important;border-radius:20px!important;margin-top:24px!important}
+body.marketplace-v2 #home>div:not(.hero-photo-wrap):not(#featuredHero){width:48%!important;position:relative}
+body.marketplace-v2 #home h1{font-size:clamp(30px,3.1vw,46px)!important;line-height:1.45!important;max-width:530px}
+body.marketplace-v2 #home p{font-size:17px!important;color:#496153!important;margin-block:16px 24px}
+body.marketplace-v2 #home .hero-photo-wrap{height:100%;width:62%!important;inset-inline-start:auto;inset-inline-end:0;margin:0!important}
+body.marketplace-v2 #home .hero-livestock-photo{height:100%!important;border-radius:0!important;object-position:center top!important}
+body.marketplace-v2 #home::after{background:linear-gradient(270deg,#fbf8f0 38%,#fbf8f0e6 43%,#fbf8f060 60%,transparent 75%)}
+html[dir=ltr] body.marketplace-v2 #home::after{background:linear-gradient(90deg,#fbf8f0 38%,#fbf8f0e6 43%,#fbf8f060 60%,transparent 75%)}
+body.marketplace-v2 #home .hero-actions-approved{width:100%!important;gap:12px!important}
+body.marketplace-v2 #home .hero-action{justify-content:center!important;flex:1;padding:14px 10px!important;white-space:nowrap}
+body.marketplace-v2 .v2-tabs{border-radius:14px;margin-block:10px 20px}
+body.marketplace-v2 .v2-tabs>button{border-radius:10px;font-size:20px;padding:13px}
+body.marketplace-v2 .v2-categories{gap:10px;margin-bottom:6px}
+body.marketplace-v2 .v2-categories button{font-weight:600;flex:1 0 85px}
+body.marketplace-v2 #modal .box:has(.email-auth),body.marketplace-v2 #modal .box:has(.phone-auth){width:min(460px,calc(100vw - 24px))!important;max-width:460px!important;background:#fffefa!important;border:1px solid #e3dccb!important;border-radius:20px!important;padding:24px!important;color:#193d37!important}
+body.marketplace-v2 #modalContent .email-auth{width:100%;max-width:100%;padding:0!important;color:#193d37!important}
+body.marketplace-v2 #modalContent .auth-logo{display:block;width:60px!important;height:60px!important;object-fit:contain;margin:0 auto 10px!important;border-radius:0!important;background:transparent}
+body.marketplace-v2 #modalContent .email-auth h2{color:#075643!important;text-align:center;font-size:25px!important;margin:0 0 18px!important}
+body.marketplace-v2 #modalContent .email-auth label{color:#294b3c!important;font-size:14px;display:block;margin:14px 0 7px}
+body.marketplace-v2 #modalContent .email-auth input{background:white!important;color:#193d37!important;border:1px solid #cdd7cf!important;border-radius:9px!important;min-height:48px;font-size:16px!important;max-width:100%;padding:12px!important}
+body.marketplace-v2 #modalContent .email-auth button{width:100%;max-width:100%;min-height:46px;margin:5px 0!important;box-shadow:none!important;font-size:14px!important}
+body.marketplace-v2 #modalContent .email-auth button[type=submit]{background:#075643!important;color:white!important;border:1px solid #075643!important;border-radius:9px!important}
+body.marketplace-v2 #modalContent .email-auth form>button[type=button],body.marketplace-v2 #modalContent .auth-secondary-actions button{background:transparent!important;color:#075643!important;border:0!important;text-decoration:underline;text-underline-offset:4px}
+body.marketplace-v2 .auth-secondary-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.marketplace-v2 #modalContent .email-auth input{margin:0!important}
+body.marketplace-v2 #modalContent .email-auth #emailAuthStatus:empty{margin:8px 0!important}
+body.marketplace-v2 #modalContent .email-auth .google-sign-in{display:flex;align-items:center;justify-content:center;gap:12px;background:white!important;color:#1f1f1f!important;border:1px solid #747775!important;border-radius:9px!important;padding:12px!important;font-weight:500}
+body.marketplace-v2 #modalContent .google-sign-in img{width:20px!important;height:20px!important;object-fit:contain;flex:none;margin:0!important;border-radius:0!important}
+body.marketplace-v2 #modalContent .email-auth .password-field{position:relative;display:flex;align-items:center}
+body.marketplace-v2 #modalContent .email-auth .password-field input{padding-inline-end:52px!important;width:100%}
+body.marketplace-v2 #modalContent .email-auth .password-toggle{position:absolute;inset-inline-end:3px;top:50%;transform:translateY(-50%);width:44px!important;height:44px;min-height:44px;margin:0!important;padding:8px!important;background:transparent!important;color:#466452!important;border:0!important}
+body.marketplace-v2 #modalContent .email-auth p{color:#53685b!important;line-height:1.65;font-size:13px}
+body.marketplace-v2 #modalContent .email-auth #emailAuthStatus:not(:empty){padding:10px;border-inline-start:3px solid #af813e;background:#f7f2e6}
+body.marketplace-v2 #modalContent .v2-or{display:flex;align-items:center;gap:14px;margin:16px 0!important}
+body.marketplace-v2 .v2-or:before,body.marketplace-v2 .v2-or:after{content:'';flex:1;height:1px;background:#e5e3db}
+body.marketplace-v2 .phone-auth-backup{border-top:1px solid #e8e4da;margin-top:10px;padding-top:8px;text-align:center}
+body.marketplace-v2 #modalContent .phone-auth-backup button{background:#f5f3ec!important;color:#506454!important;border:1px solid #deded4!important;border-radius:9px!important}
+body.marketplace-v2 .email-auth[aria-busy=true] .google-sign-in:after{content:'';width:15px;height:15px;border:2px solid #d4ded7;border-top-color:#075643;border-radius:50%;animation:auth-spin .8s linear infinite;flex:none}
+@keyframes auth-spin{to{transform:rotate(360deg)}}
+@media(max-width:767px){
+ body.marketplace-v2 #home.hero{padding:0!important;min-height:0;display:flex!important;overflow:hidden}
+ body.marketplace-v2 #home .hero-photo-wrap{position:relative!important;inset:auto!important;height:220px;width:100%!important;z-index:0;margin:0!important;order:-1}
+ body.marketplace-v2 #home .hero-livestock-photo{object-position:center 40%!important}
+ body.marketplace-v2 #home::after{display:none}
+ body.marketplace-v2 #home>div:not(.hero-photo-wrap):not(#featuredHero){width:100%!important;padding:24px 20px!important}
+ body.marketplace-v2 #home h1{font-size:28px!important;line-height:1.5!important}
+ body.marketplace-v2 #home p{font-size:14px!important;margin-block:10px 18px}
+ body.marketplace-v2 .v2-tabs>button{font-size:17px;padding:12px 5px;gap:7px}
+ body.marketplace-v2 .v2-categories{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible}
+ body.marketplace-v2 #modal .box:has(.email-auth){padding:20px!important}
+ body.marketplace-v2 .brand .site-logo{width:48px!important;height:48px!important;flex-basis:48px!important}
+ body.marketplace-v2 #primaryNav a{width:100%}
+}
+@media(prefers-reduced-motion:reduce){body.marketplace-v2 .email-auth[aria-busy=true] .google-sign-in:after{animation:none}}
