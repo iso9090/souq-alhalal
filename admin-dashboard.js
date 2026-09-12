@@ -106,9 +106,11 @@ export function installAdminDashboard(api) {
     await render();return node;
   }
   function shell(tab){
-    showModal(`<section class="admin-v2" dir="rtl"><aside class="admin-sidebar"><div class="admin-brand"><span aria-hidden="true">◈</span><strong>سوق الحلال الإلكتروني</strong><small>مركز الإدارة</small></div><div class="admin-identity"><span class="admin-avatar">♙</span><b>${esc(auth.currentUser?.displayName||'مسؤول المنصة')}</b><small>${api.getAccess().role==='super_admin'?'Super Admin':'مساعد مدير'}</small></div><nav id="adminV2Nav" aria-label="تبويبات الإدارة"></nav><div id="adminLogout"></div></aside><div class="admin-workspace"><div class="admin-topbar"><div><small>لوحة الإدارة / ${esc(tabs[tab])}</small><h2>${esc(tabs[tab])}</h2></div><span class="admin-badge green">إدارة آمنة</span></div><div id="adminV2Body" aria-live="polite">جاري التحميل…</div></div></section>`);
-    if(api.getAccess().role==='super_admin')document.getElementById('adminV2Nav').append(button('إدارة واجهة الصفحة الرئيسية',()=>window.openHomePageAdmin()));
+    const today=new Intl.DateTimeFormat('ar-AE',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Dubai'}).format(new Date());
+    showModal(`<section class="admin-v2 admin-v3" dir="rtl"><aside class="admin-sidebar"><div class="admin-brand"><span aria-hidden="true">🐪</span><strong>سوق الحلال<br> الإلكتروني</strong><small>بيع وشراء الحلال بكل ثقة</small></div><div class="admin-identity"><span class="admin-avatar">♙</span><b>${esc(auth.currentUser?.displayName||'مسؤول المنصة')}</b><small>${api.getAccess().role==='super_admin'?'Super Admin':'مساعد مدير'}</small></div><nav id="adminV2Nav" aria-label="تبويبات الإدارة"></nav><div id="adminLogout"></div></aside><div class="admin-workspace"><header class="admin-topbar"><div><small>${tab==='home'?'مرحبًا بك مجددًا،':'لوحة الإدارة'}</small><h2>${esc(tab==='home'?(auth.currentUser?.displayName||'مسؤول المنصة'):tabs[tab])}</h2><p>${tab==='home'?'نظرة على نشاط السوق من البيانات المسجلة.':'إدارة '+esc(tabs[tab])}</p></div><div class="admin-header-tools"><time>${esc(today)}</time><button type="button" id="adminHeaderLogout" aria-label="تسجيل الخروج من لوحة الإدارة">⇥ تسجيل الخروج</button></div></header><div id="adminV2Body" aria-live="polite">جاري التحميل…</div><footer class="admin-footer"><span>من الإمارات.. للحلال قيمة أكبر</span><span>سوق الحلال الإلكتروني © ${new Date().getFullYear()}</span></footer></div></section>`);
+    document.getElementById('adminHeaderLogout').onclick=()=>api.logout();
     for(const [key,label]of Object.entries(tabs)){if(!canRead(key))continue;const b=button(label,()=>key==='services'?api.openServices():open(key));b.dataset.icon=icons[key]||'♙';b.setAttribute('aria-label',label);b.setAttribute('aria-current',String(key===tab));document.getElementById('adminV2Nav').append(b);}
+    if(api.getAccess().role==='super_admin')document.getElementById('adminV2Nav').append(button('إدارة واجهة الصفحة الرئيسية',()=>window.openHomePageAdmin()));
     document.getElementById('adminLogout').append(button('تسجيل الخروج',()=>api.logout()));
     const identity=document.querySelector('.admin-identity b');
     if(!auth.currentUser?.displayName&&auth.currentUser?.uid)nameOf('users',auth.currentUser.uid).then(name=>{if(identity.isConnected&&name!=='اسم غير متاح')identity.textContent=name;});
@@ -139,27 +141,82 @@ export function installAdminDashboard(api) {
     try {await runTransaction(db,async tx=>{const ref=doc(db,kind,id),snap=await tx.get(ref);if(!snap.exists())throw Error('missing');const patch=await makePatch(snap.data(),reason);const logId=audit(tx,action,kind,id,reason,patch.metadata||{});delete patch.metadata;tx.update(ref,{...patch,moderationLogId:logId});});await detail(kind,id,false);}
     finally{busy=false;document.querySelector('.admin-v2')?.querySelectorAll('button').forEach(b=>{b.disabled=false;});}
   }
-  async function open(tab) {
+  async function open(tab,initialFilters={}) {
     if(!await requireAdminClaim(true)){alert('غير مصرح لك بفتح لوحة الإدارة.');return;}
     if(tab===undefined)tab=Object.keys(tabs).find(canRead);if(!tab||!canRead(tab)){alert('غير مصرح لك بفتح هذا القسم.');return;}
-    reads.clear();current=tab;viewKind=tab;cursor=null;filters={};trail=[];viewLabel=tab==='users'?'قائمة المستخدمين':'قائمة '+tabs[tab];generation++;
+    reads.clear();current=tab;viewKind=tab;cursor=null;filters={...initialFilters};trail=[];viewLabel=tab==='users'?'قائمة المستخدمين':'قائمة '+tabs[tab];generation++;
     shell(tab);
     try {if(tab==='home')await home();else if(tab==='assistants')await assistants.render(panel());else if(tab==='services')await api.openServices();else await list(false);}catch{if(panel())panel().textContent='تعذر تحميل البيانات. أعد اختيار التبويب للمحاولة.';}
   }
   async function count(kind,conditions=[]) {return (await getCountFromServer(query(collection(db,kind),...conditions))).data().count;}
   async function home() {
-    const token=generation, cards=[];
-    for(const [kind,title,statuses] of [['users','المستخدمون',['active','suspended','blocked']],['animals','الإعلانات',['active','hidden','needs_review','sold','not_approved']],['auctions','المزادات',['active','sold','not_approved']],['purchaseRequests','طلبات الشراء',['pending','accepted','rejected']],['reports','البلاغات',['open','reviewing','resolved','rejected']],['serviceRequests','الخدمات',['pending','approved','rejected','cancelled']]]) {
-      if(!canRead(kind))continue;cards.push([title,kind,[]]);for(const s of statuses)cards.push([title+' · '+value(s),kind,[where('status','==',s)]]);
+    const token=generation, cards=[],totalByKind=new Map();
+    const active=()=>token===generation&&panel();
+    const safeCount=async(kind,conditions=[])=>{try{const n=await count(kind,conditions);return Number.isInteger(n)&&n>=0?n:null;}catch{return null;}};
+    const overview=[['purchaseRequests','طلبات الشراء','purple'],['users','المستخدمون','violet'],['animals','الإعلانات','green'],['auctions','المزادات','blue'],['adminAccess','المساعدون','gold'],['visits','زيارات الموقع','sky'],['reports','البلاغات','red'],['serviceRequests','الخدمات','teal']].filter(([kind])=>kind==='visits'||canRead(kind));
+    const totals=await Promise.all(overview.map(async([kind])=>kind==='visits'?null:safeCount(kind,kind==='adminAccess'?[where('role','==','admin_assistant')]:[])));
+    if(!active())return;
+    panel().innerHTML='<div class="admin-stats admin-overview"></div><div class="admin-insights"><section class="admin-insight" id="adminRecent"><h3>آخر الأنشطة الإدارية</h3><p class="admin-muted">جاري التحميل…</p></section><section class="admin-insight" id="adminDistribution"><h3>توزيع الإعلانات حسب طريقة البيع</h3><p class="admin-muted">جاري التحميل…</p></section><section class="admin-insight" id="adminRegistrations"><h3>تسجيل المستخدمين</h3><p class="admin-muted">جاري التحميل…</p></section></div><p id="adminVisitAvailability" class="admin-notice" tabindex="-1">زيارات الموقع: لا يوجد مصدر إحصاءات زيارات معتمد في البيانات الحالية؛ لا تُعرض أعداد أو نسب تقديرية.</p><details class="admin-breakdown"><summary>تفاصيل الإحصاءات حسب الحالة</summary><div class="admin-stats"></div></details><p class="admin-notice">المزادات النشطة تشمل السجلات التي قد انتهى وقتها وتنتظر قرار البائع. لا يتوفر سجل كامل للمزايدات التاريخية.</p>';
+    const shapes={users:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M20 21v-2a4 4 0 0 0-3-3.9 M16 3a4 4 0 0 1 0 8',animals:'M3 10v4h4l10 5V5L7 10H3 M7 14l2 7h4l-3-6 M21 9v6',auctions:'M14 3l7 7-4 4-7-7z M3 20l9-9 M2 22h12',purchaseRequests:'M2 3h3l3 12h11l3-8H6 M10 21h.01 M19 21h.01',reports:'M5 22V3l7-1 7 4v10l-7-4-7 1',serviceRequests:'M6 3h9l4 4v15H6z M14 3v5h5 M9 12h7 M9 16h7',adminAccess:'M3 21v-3c0-5 8-5 8 0v3 M7 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M15 21v-3c0-5 7-5 7 0v3 M18 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8',visits:'M2 12s4-8 10-8 10 8 10 8-4 8-10 8S2 12 2 12 M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8'};
+    const route=kind=>kind==='serviceRequests'?'services':kind==='adminAccess'?'assistants':kind;
+    overview.forEach(([kind,title,color],i)=>{
+      const n=totals[i];totalByKind.set(kind,n);
+      const tile=button('',()=>{if(kind!=='visits')return open(route(kind));const note=document.getElementById('adminVisitAvailability');if(note){note.hidden=false;note.focus();}});
+      tile.className='admin-metric '+color;tile.dataset.kind=kind;tile.setAttribute('aria-label','عرض '+title);
+      tile.innerHTML=`<span class="admin-metric-title">${esc(title)}</span><span class="admin-metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${shapes[kind]}"/></svg></span><strong>${n===null?'غير متاح':new Intl.NumberFormat('en-US').format(n)}</strong><span class="admin-metric-foot">${kind==='visits'?'عرض حالة توفر البيانات':n===null?'تعذر قراءة العدد · افتح القسم':'من السجلات الفعلية'}</span><span class="admin-metric-arrow" aria-hidden="true">←</span>`;
+      panel().querySelector('.admin-overview').append(tile);
+    });
+    const root=panel();
+    root.querySelector('#adminVisitAvailability').hidden=true;
+    root.querySelector('.admin-breakdown').append(root.lastElementChild);
+    const update=(id,html)=>{if(active()&&root.isConnected)root.querySelector('#'+id).innerHTML=html;};
+    async function registrations(){
+      if(!canRead('users')){update('adminRegistrations','<h3>تسجيل المستخدمين</h3><p class="admin-muted">غير متاح ضمن صلاحياتك.</p>');return;}
+      // Calendar boundaries in UAE time; only persisted createdAt values contribute.
+      const shifted=new Date(Date.now()+4*3600000),day=86400000;
+      const today=Date.UTC(shifted.getUTCFullYear(),shifted.getUTCMonth(),shifted.getUTCDate())-4*3600000;
+      const days=Array.from({length:7},(_,i)=>new Date(today-(6-i)*day));
+      const values=await Promise.all(days.map(start=>safeCount('users',[where('createdAt','>=',start),where('createdAt','<',new Date(+start+day))])));
+      if(values.some(n=>n===null)){update('adminRegistrations','<h3>تسجيل المستخدمين</h3><p class="admin-muted">تعذر تحميل الرسم. لا تُستبدل البيانات المفقودة بأصفار.</p>');return;}
+      const maximum=Math.max(1,...values),points=values.map((n,i)=>`${35+i*58},${160-n/maximum*125}`);
+      const labels=days.map(date=>new Intl.DateTimeFormat('ar-AE',{weekday:'short',timeZone:'Asia/Dubai'}).format(date));
+      update('adminRegistrations',`<h3>تسجيل المستخدمين <span aria-hidden="true">♟</span></h3><p class="admin-muted">آخر 7 أيام · بتوقيت الإمارات · حسب تاريخ التسجيل</p><svg class="admin-line-chart" viewBox="0 0 420 205" role="img" aria-label="تسجيل المستخدمين خلال آخر سبعة أيام"><path d="M35 35H390 M35 97H390 M35 160H390" stroke="#e6edf4" fill="none"/><path d="M35 160 L${points.join(' L')} L383 160Z" fill="#12ac9826"/><polyline points="${points.join(' ')}" fill="none" stroke="#009d8d" stroke-width="3"/>${values.map((n,i)=>`<circle cx="${35+i*58}" cy="${160-n/maximum*125}" r="5" fill="#00a593" stroke="white" stroke-width="2"/><text x="${35+i*58}" y="190" text-anchor="middle">${esc(labels[i])}</text>`).join('')}<text x="15" y="38">${maximum}</text><text x="15" y="164">0</text></svg><ul class="admin-chart-values">${values.map((n,i)=>`<li><span>${esc(labels[i])}</span> <b>${n}</b></li>`).join('')}</ul>${values.every(n=>n===0)?'<p class="admin-muted">لا توجد تسجيلات مؤرخة خلال هذه الفترة.</p>':''}`);
     }
-    if(canRead('users'))for(const role of ['buyer','seller','both'])cards.push(['نوع الحساب · '+value(role),'users',[where('accountType','==',role)]]);
-    if(canRead('animals'))for(const sale of ['direct','auction'])cards.push(['نوع البيع · '+value(sale),'animals',[where('saleType','==',sale)]]);
-    if(canRead('auctions'))cards.push(['مزادات انتهى وقتها','auctions',[where('endTime','<=',new Date())]]);
-    const results=await Promise.all(cards.map(async([title,kind,conditions])=>{try{return [title,await count(kind,conditions)];}catch{return [title,'تعذر الإحصاء'];}}));
-    if(token!==generation||!panel())return;
-    const tile=([title,n])=>`<article><span class="admin-stat-icon" aria-hidden="true">${title.includes('المستخدم')?'♟':title.includes('الإعلانات')?'⚑':title.includes('المزادات')?'⚒':title.includes('الشراء')?'🛒':title.includes('البلاغ')?'⚑':'▤'}</span><span>${esc(title)}</span><strong>${esc(n)}</strong></article>`;
-    panel().innerHTML='<p class="admin-muted">نظرة عامة على السوق، بأعداد مستقلة عن صفحات العرض.</p><div class="admin-stats admin-overview">'+results.filter((_,i)=>cards[i][2].length===0).map(tile).join('')+'</div><details class="admin-breakdown"><summary>تفاصيل الإحصاءات حسب الحالة</summary><div class="admin-stats">'+results.filter((_,i)=>cards[i][2].length>0).map(tile).join('')+'</div></details><p class="admin-notice">قد يشمل عدد المزادات النشطة مزادات انتهى وقتها وتنتظر قرار البائع. سجل المزايدات التاريخي غير متاح حاليًا.</p>';
-
+    async function distribution(){
+      if(!canRead('animals')){update('adminDistribution','<h3>توزيع الإعلانات</h3><p class="admin-muted">غير متاح ضمن صلاحياتك.</p>');return;}
+      const counts=await Promise.all(['direct','auction'].map(type=>safeCount('animals',[where('saleType','==',type)]))),total=totalByKind.get('animals');
+      if(total===null||counts.some(n=>n===null)||counts[0]+counts[1]>total){update('adminDistribution','<h3>توزيع الإعلانات</h3><p class="admin-muted">تعذر عرض توزيع متسق. أعد فتح الرئيسية لتحديث البيانات.</p>');return;}
+      if(total===0){update('adminDistribution','<h3>توزيع الإعلانات حسب طريقة البيع</h3><p class="admin-empty">لا توجد إعلانات مسجلة.</p>');return;}
+      const groups=[['بيع مباشر',counts[0],'#b8781f'],['مزادات',counts[1],'#39a3f4'],['غير مصنف',total-counts[0]-counts[1],'#aebbc8']];
+      const first=counts[0]/total*100,second=(counts[0]+counts[1])/total*100;
+      update('adminDistribution',`<h3>توزيع الإعلانات حسب طريقة البيع</h3><div class="admin-distribution"><div class="admin-donut" role="img" aria-label="توزيع ${total} إعلان" style="background:conic-gradient(#b8781f 0% ${first}%,#39a3f4 ${first}% ${second}%,#aebbc8 ${second}% 100%)"><span><b>${total}</b><small>إعلان</small></span></div><ul>${groups.map(([name,n,color])=>`<li><i style="background:${color}" aria-hidden="true"></i><span>${name}</span><b>${Math.round(n/total*100)}%</b><small>${n} إعلان</small></li>`).join('')}</ul></div><p class="admin-muted">النسب محسوبة من الأعداد الفعلية وقت القراءة.</p>`);
+    }
+    async function recent(){
+      if(!canRead('adminAuditLogs')){update('adminRecent','<h3>آخر الأنشطة الإدارية</h3><p class="admin-muted">غير متاح ضمن صلاحياتك.</p>');return;}
+      try {
+        const snap=await getDocs(query(collection(db,'adminAuditLogs'),orderBy('timestamp','desc'),limit(5)));
+        update('adminRecent','<h3>آخر الأنشطة الإدارية <span aria-hidden="true">◷</span></h3><div class="admin-recent-items"></div>');
+        if(!active()||!root.isConnected)return;
+        const holder=root.querySelector('.admin-recent-items');
+        for(const entry of snap.docs){const data=entry.data(),b=button('',()=>detail('adminAuditLogs',entry.id));b.className='admin-recent-event';b.innerHTML=`<span class="admin-activity-icon" aria-hidden="true">▤</span><span><b>${esc(value(data.action))}</b><small>${esc(dateText(data.timestamp))}</small></span><span aria-hidden="true">←</span>`;holder.append(b);}
+        if(snap.empty)holder.innerHTML='<p class="admin-empty">لا توجد أنشطة إدارية مسجلة.</p>';
+      }catch{update('adminRecent','<h3>آخر الأنشطة الإدارية</h3><p class="admin-muted">تعذر تحميل الأنشطة.</p>');}
+    }
+    async function breakdown(){
+      for(const [kind,title,statuses] of [['users','المستخدمون',['active','suspended','blocked']],['animals','الإعلانات',['active','hidden','needs_review','sold','not_approved']],['auctions','المزادات',['active','sold','not_approved']],['purchaseRequests','طلبات الشراء',['pending','accepted','rejected']],['reports','البلاغات',['open','reviewing','resolved','rejected']],['serviceRequests','الخدمات',['pending','approved','rejected','cancelled']]]) {
+        if(canRead(kind))for(const status of statuses)cards.push([title+' · '+value(status),kind,[where('status','==',status)],{status}]);
+      }
+      if(canRead('users'))for(const role of ['buyer','seller','both'])cards.push(['نوع الحساب · '+value(role),'users',[where('accountType','==',role)],{accountType:role}]);
+      if(canRead('animals'))for(const sale of ['direct','auction'])cards.push(['نوع البيع · '+value(sale),'animals',[where('saleType','==',sale)],{saleType:sale}]);
+      const counts=await Promise.all(cards.map(([,kind,conditions])=>safeCount(kind,conditions)));
+      if(!active()||!root.isConnected)return;
+      cards.forEach(([title,kind,,selected],i)=>{const b=button('',()=>open(route(kind),selected));b.setAttribute('aria-label','عرض '+title);b.innerHTML=`<span>${esc(title)}</span><strong>${counts[i]===null?'غير متاح':counts[i]}</strong>`;root.querySelector('.admin-breakdown .admin-stats').append(b);});
+    }
+    await Promise.all([registrations(),distribution(),recent(),breakdown()]);
+    if(active()&&root.isConnected){
+      const values=root.querySelector('.admin-chart-values');
+      if(values){const disclosure=document.createElement('details'),summary=document.createElement('summary');disclosure.className='admin-chart-details';summary.textContent='عرض الأعداد اليومية';values.replaceWith(disclosure);disclosure.append(summary,values);}
+    }
   }
   async function list(next) {
     const token=++generation,kind=current;
