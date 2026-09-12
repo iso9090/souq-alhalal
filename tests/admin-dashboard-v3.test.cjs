@@ -51,7 +51,7 @@ let count=0;const pass=s=>console.log(`PASS ${++count} | ${s}`);
   assert.equal(await page.locator('.admin-metric').count(),8);
   assert.equal(await page.locator('.admin-metric[data-kind=users] strong').innerText(),'12');
   assert.equal(await page.locator('.admin-metric[data-kind=adminAccess] strong').innerText(),'1');
-  assert.equal(await page.locator('.admin-metric[data-kind=visits] strong').innerText(),'غير متاح');pass('eight cards; exact aggregate counts; visits unavailable instead of fake zero');
+  assert.equal(await page.locator('.admin-metric[data-kind=visits] strong').innerText(),'لا توجد بيانات بعد');pass('eight cards; exact aggregate counts; visits unavailable instead of fake zero');
   assert.equal(await page.locator('.admin-chart-values b').evaluateAll(nodes=>nodes.reduce((sum,n)=>sum+Number(n.textContent),0)),11);pass('daily registration chart excludes undated profiles and counts all seven days');
   assert.match(await page.locator('#adminDistribution').innerText(),/75%/);assert.match(await page.locator('#adminDistribution').innerText(),/25%/);pass('donut ratios computed from actual fixture totals');
   assert.match(await page.locator('.admin-recent-event').first().innerText(),/new fixture action/);pass('latest activities sorted by recorded timestamp');
@@ -59,7 +59,7 @@ let count=0;const pass=s=>console.log(`PASS ${++count} | ${s}`);
   for(const [kind,selector] of [['users','#adminRows'],['animals','#adminRows'],['auctions','#adminRows'],['purchaseRequests','#adminRows'],['reports','#adminRows'],['serviceRequests','#adminServiceRequestsList'],['adminAccess','.admin-assistants-grid']]){
    await home();await page.locator(`.admin-metric[data-kind=${kind}]`).click();await page.locator(selector).waitFor();pass('interactive card opens '+kind);
   }
-  await home();await page.locator('.admin-metric[data-kind=visits]').click();assert.equal(await page.locator('#adminVisitAvailability').evaluate(n=>n===document.activeElement),true);pass('visits card opens truthful data-availability explanation');
+  await home();await page.locator('.admin-metric[data-kind=visits]').click();await page.locator('.commercial-admin').waitFor();assert.match(await page.locator('.commercial-admin').innerText(),/لا توجد بيانات بعد/);pass('visits card opens truthful data-availability explanation');
   for(const kind of ['users','animals','auctions','purchaseRequests','reports','serviceRequests']){
    for(const key of ['Enter','Space']){
     await home();const card=page.locator(`.admin-metric[data-kind=${kind}]`);await card.focus();await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');

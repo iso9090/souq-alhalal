@@ -434,7 +434,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await window.openAdminPanel();
  });
  await page.locator('.admin-overview').waitFor();
- assert.equal(await page.locator('#adminV2Nav button').count(),10);
+ assert.equal(await page.locator('#adminV2Nav button').count(),12);
  for(const width of [360,1280,1366]){
    await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    assert.equal(await page.evaluate(()=>document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1),true);
@@ -507,7 +507,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await page.locator('#adminServiceRequestsList').waitFor();
    await page.getByRole('button',{name:'العودة للوحة الإدارة',exact:true}).click();
    await page.locator('#adminV2Nav').waitFor({state:'attached'});
-   assert.equal(await page.locator('#adminV2Nav button').count(),10);
+   assert.equal(await page.locator('#adminV2Nav button').count(),12);
    pass('main close exits and inline service screen returns to dashboard '+width);
  }
  await selectAdminTab('المزادات');

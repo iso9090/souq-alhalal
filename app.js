@@ -1,3 +1,4 @@
+import {installCommercialPublic} from './commercial-public.js';
 import * as SiteLanguage from './site-language.js';
 import * as Images from './image-provider.js';
 import * as MarketV2 from './marketplace-v2.js';
@@ -55,6 +56,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+installCommercialPublic({db,collection,doc,getDoc,getDocs,query,where,orderBy,startAfter,limit,setDoc,serverTimestamp}).catch(()=>{});
 
 auth.languageCode = "ar";
 

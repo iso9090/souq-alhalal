@@ -2,6 +2,67 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Commercial content is separate from livestock. Advertiser contacts are never public.
+    function commercialOwner() { return isAdmin() && delegationReady(); }
+    function validCommercialAd() {
+      let d=request.resource.data;
+      return d.keys().hasOnly(['title','advertiserName','description','cta','imageUrl','targetUrl','placement','priority','status','startAt','endAt','createdAt','updatedAt','createdBy','updatedBy','approvedAt','approvedBy'])
+        && d.title is string && d.title.size()>0 && d.title.size()<=120
+        && d.advertiserName is string && d.advertiserName.size()<=120
+        && d.description is string && d.description.size()<=300 && d.cta is string && d.cta.size()<=40
+        && d.imageUrl is string && d.imageUrl.size()<=2000 && d.imageUrl.matches('https://res[.]cloudinary[.]com/[a-zA-Z0-9_./,%:-]+')
+        && d.targetUrl is string && d.targetUrl.size()<=2000 && d.targetUrl.matches('https://[^ @/]+(/[^ ]*)?')
+        && d.placement in ['hero','hero_side_1','hero_side_2','hero_side_3','middle','footer_1','footer_2','footer_3','footer_4','footer_5']
+        && d.status in ['draft','pending','approved','active','paused','rejected','expired']
+        && d.priority is int && d.priority>=0 && d.priority<=999
+        && d.startAt is timestamp && d.endAt is timestamp && d.endAt>d.startAt
+        && d.createdAt is timestamp && d.updatedAt==request.time && d.createdBy is string && d.updatedBy==request.auth.uid
+        && (d.status in ['approved','active'] ? d.approvedBy==request.auth.uid && d.approvedAt==request.time : d.approvedBy=='' && d.approvedAt==null);
+    }
+    match /commercialAds/{id} {
+      allow read: if commercialOwner() || resource.data.status=='active';
+      allow create: if commercialOwner() && validCommercialAd() && request.resource.data.createdAt==request.time && request.resource.data.createdBy==request.auth.uid;
+      allow update: if commercialOwner() && validCommercialAd() && request.resource.data.createdAt==resource.data.createdAt && request.resource.data.createdBy==resource.data.createdBy;
+      allow delete: if false;
+    }
+    match /commercialAdContacts/{id} {
+      allow read: if commercialOwner();
+      allow create,update: if commercialOwner() && request.resource.data.keys().hasOnly(['advertiserEmail','advertiserPhone'])
+        && request.resource.data.advertiserEmail is string && request.resource.data.advertiserEmail.size()<=254
+        && request.resource.data.advertiserPhone is string && request.resource.data.advertiserPhone.size()<=40;
+      allow delete: if false;
+    }
+    match /platformTelemetry/{id} {
+      allow get: if id=='config'; allow list: if false;
+      allow create,update: if id=='config' && commercialOwner() && request.resource.data.keys().hasOnly(['enabled','updatedAt','updatedBy'])
+        && request.resource.data.enabled is bool && request.resource.data.updatedAt==request.time && request.resource.data.updatedBy==request.auth.uid;
+      allow delete: if false;
+    }
+    function telemetryOn(){return exists(/databases/$(database)/documents/platformTelemetry/config) && get(/databases/$(database)/documents/platformTelemetry/config).data.enabled==true;}
+    function boundedEvents(v){return v is list && v.size()<=20 && v.toSet().size()==v.size()
+      && (v.size()==0 || (v.join(',').matches('[a-zA-Z0-9_-]{1,128}(,[a-zA-Z0-9_-]{1,128}){0,19}') && v.join(',').split(',')==v));}
+    function validSession(){
+      let d=request.resource.data;let p=d.pages;
+      return d.keys().hasOnly(['startedAt','updatedAt','pageViews','pages','views','clicks']) && d.startedAt is timestamp && d.updatedAt==request.time
+        && p.keys().hasOnly(['home','market','services','admin','other'])
+        && p.home is int && p.home>=0 && p.market is int && p.market>=0 && p.services is int && p.services>=0 && p.admin is int && p.admin>=0 && p.other is int && p.other>=0
+        && d.pageViews is int && d.pageViews>=1 && d.pageViews<=1000 && d.pageViews==p.home+p.market+p.services+p.admin+p.other
+        && boundedEvents(d.views) && boundedEvents(d.clicks) && d.views.hasAll(d.clicks);
+    }
+    match /analyticsSessions/{id} {
+      allow read: if commercialOwner();
+      allow create: if telemetryOn() && id.matches('[a-f0-9]{32}') && validSession() && request.resource.data.pageViews<=20
+        && request.resource.data.startedAt<=request.time && request.resource.data.startedAt>=request.time-duration.value(5,'m');
+      allow update: if telemetryOn() && validSession() && request.resource.data.startedAt==resource.data.startedAt
+        && request.time<=resource.data.startedAt+duration.value(24,'h')
+        && request.resource.data.pageViews>=resource.data.pageViews && request.resource.data.pageViews<=resource.data.pageViews+20
+        && request.resource.data.pages.home>=resource.data.pages.home && request.resource.data.pages.market>=resource.data.pages.market
+        && request.resource.data.pages.services>=resource.data.pages.services && request.resource.data.pages.admin>=resource.data.pages.admin && request.resource.data.pages.other>=resource.data.pages.other
+        && request.resource.data.views.hasAll(resource.data.views) && request.resource.data.clicks.hasAll(resource.data.clicks);
+      allow delete: if false;
+    }
+
     function signedIn() {
       return request.auth != null;
     }
