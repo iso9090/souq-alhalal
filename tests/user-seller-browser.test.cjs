@@ -11,7 +11,6 @@ page.on('dialog',async d=>{dialogs.push(d.message());await d.accept(d.type()==='
 await page.addInitScript(installMock);
 await page.route('**/*',async route=>{const u=new URL(route.request().url());
 if(u.hostname==='www.gstatic.com')return route.fulfill({contentType:'text/javascript',body:exportsList.map(n=>`export const ${n}=window.__mock.api.${n};`).join('\n')});
-if(u.hostname==='ux.test'&&u.pathname==='/image-provider.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'image-provider.js'),'utf8').replace(/export async function uploadImages\b[\s\S]*?\n\}/,`export async function uploadImages(files){validateImageCount(files);const urls=[];for(const file of files){const blob=await compressImage(file);urls.push(await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(blob)}));}return urls;}`)});
 if(u.hostname!=='ux.test'){external.push(u.origin);return route.abort()}
 const file=path.resolve(root,'.'+decodeURIComponent(u.pathname==='/'?'/index.html':u.pathname));if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
 return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});

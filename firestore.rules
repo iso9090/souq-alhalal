@@ -408,12 +408,7 @@ service cloud.firestore {
       allow update: if (
         isOwner('sellerId')
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['images'])
-          || validListingImages(request.resource.data)
-          || (resource.data.get('images', []).size() > 3
-            && request.resource.data.images is list
-            && request.resource.data.images.size() > 0
-            && request.resource.data.images.size() < resource.data.images.size()
-            && resource.data.images.hasAll(request.resource.data.images)))
+          || validListingImages(request.resource.data))
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['type','subcategory']) || validPetCategory(request.resource.data))
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['imagesLocked','moderationLocked','moderationLogId'])
         && (!resource.data.get('imagesLocked', false) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['images']))
@@ -497,6 +492,7 @@ service cloud.firestore {
         && request.resource.data.status in ['active','hidden','needs_review','sold','not_approved']
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['images']) || (
           request.resource.data.images is list
+          && request.resource.data.images.size() <= 3
           && request.resource.data.images.size() < resource.data.images.size()
           && request.resource.data.images.toSet().difference(resource.data.images.toSet()).size() == 0
           && request.resource.data.imagesLocked == true
@@ -509,6 +505,8 @@ service cloud.firestore {
       allow read: if true;
 
       allow create: if activeAccount()
+        && !request.resource.data.keys().hasAny(['images'])
+        && validListingImages(getAfter(/databases/$(database)/documents/animals/$(request.resource.data.animalId)).data)
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.country in ['AE', 'EG']
         && getAfter(

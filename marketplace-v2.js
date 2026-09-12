@@ -15,13 +15,14 @@ export function categoryIcon(value){
   return `<svg class="v3-category-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="${paths[value]||paths['أخرى']}"/></svg>`;
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function gallery(images=[],alt='صورة الحيوان') {
+export function gallery(images=[],alt='صورة الحيوان',options={}) {
   const valid=(Array.isArray(images)?images:[]).map(safeImage).filter(Boolean);
   if(!valid.length)return '<div class="v2-no-photo">▧<span>'+text('لا توجد صورة','No photo available')+'</span></div>';
-  return `<div class="v2-gallery" role="region" aria-label="${esc(alt)}" data-index="0">
+  const thumbs=options.thumbnails===true&&valid.length>1;
+  return `<div class="v2-gallery${thumbs?' v2-gallery--thumbs':''}" role="region" aria-label="${esc(alt)}" data-index="0">
     <div class="v2-slides">${valid.map((src,i)=>`<img src="${src}" alt="${esc(alt)} ${i+1}" loading="lazy" ${i?'hidden':''} onerror="this.dataset.failed='true'"><span class="v2-image-error">${text('لا توجد صورة','Image unavailable')}</span>`).join('')}</div>
-    ${valid.length>1?`<button type="button" class="v2-prev" data-slide="-1" aria-label="${text('الصورة السابقة','Previous image')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button><button type="button" class="v2-next" data-slide="1" aria-label="${text('الصورة التالية','Next image')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button><div class="v2-dots">${valid.map((_,i)=>`<button type="button" data-dot="${i}" aria-label="${text('الصورة','Image')} ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div>`:''}
-    <span class="v2-photo-count" dir="ltr">▣ ${valid.length}</span></div>`;
+    ${valid.length>1?`<button type="button" class="v2-prev" data-slide="-1" aria-label="${text('الصورة السابقة','Previous image')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button><button type="button" class="v2-next" data-slide="1" aria-label="${text('الصورة التالية','Next image')}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>${thumbs?`<div class="v2-thumbnails" role="group" aria-label="${text('صور الإعلان','Listing photos')}">${valid.slice(1).map((src,i)=>`<button type="button" data-dot="${i+1}" aria-label="${text('عرض الصورة','Show image')} ${i+2}" aria-pressed="false"><img src="${src}" alt="" loading="lazy"></button>`).join('')}</div>`:`<div class="v2-dots">${valid.map((_,i)=>`<button type="button" data-dot="${i}" aria-label="${text('الصورة','Image')} ${i+1}" aria-pressed="${i===0}"></button>`).join('')}</div>`}`:''}
+    <span class="v2-photo-count" ${options.thumbnails?'data-gallery-counter aria-live="polite"':''} dir="ltr">${options.thumbnails?'1 / ':'▣ '}${valid.length}</span></div>`;
 }
 export const favoriteIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>';
 export function showSlide(gallery,index) {
@@ -30,7 +31,8 @@ export function showSlide(gallery,index) {
   index=(index+images.length)%images.length;
   gallery.dataset.index=String(index);
   images.forEach((img,i)=>img.hidden=i!==index);
-  gallery.querySelectorAll('[data-dot]').forEach((dot,i)=>dot.setAttribute('aria-pressed',String(i===index)));
+  gallery.querySelectorAll('[data-dot]').forEach(dot=>dot.setAttribute('aria-pressed',String(Number(dot.dataset.dot)===index)));
+  const counter=gallery.querySelector('[data-gallery-counter]');if(counter)counter.textContent=(index+1)+' / '+images.length;
 }
 export function activeFeatured(settings,animals,country,now=Date.now()) {
   const millis=v=>typeof v?.toMillis==='function'?v.toMillis():new Date(v).getTime();
