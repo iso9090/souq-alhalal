@@ -1,3 +1,4 @@
+import {installAdminNotifications} from './admin-notifications.js';
 import {installCommercialAdmin} from './commercial-admin.js';
 import {can,VIEW} from './admin-permissions.js';
 import {installAssistants} from './admin-assistants.js';
@@ -16,6 +17,7 @@ export function installAdminDashboard(api) {
   const icons={home:'⌂',users:'♙',animals:'▣',auctions:'⚒',services:'◇',reports:'⚑',adminAuditLogs:'▤',purchaseRequests:'▧'};
   const permitted=p=>can(api.getAccess(),p);
   const canRead=kind=>['commercialAds','visitorAnalytics'].includes(kind)?api.getAccess().role==='super_admin':Boolean(VIEW[kind])&&permitted(VIEW[kind]);
+  const notifications=installAdminNotifications(api,canRead,tab=>open(tab));
   let viewKind='home';
   const actionPermission=(kind,action)=>kind==='users'?({'تعليق الحساب':'users_suspend','حظر الحساب':'users_block'}[action]||'users_manage'):({animals:'listings_manage',auctions:'auctions_manage',purchaseRequests:'purchase_requests_manage',reports:'reports_manage'}[kind]);
   const refs={sellerId:'users',buyerId:'users',reporterId:'users',reportedUserId:'users',lastBidderId:'users',winnerId:'users',adminUid:'users',reviewedBy:'users',animalId:'animals'};
@@ -130,6 +132,7 @@ export function installAdminDashboard(api) {
     disposeNavigation();
     const today=new Intl.DateTimeFormat('ar-AE',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Dubai'}).format(new Date());
     showModal(`<section class="admin-v2 admin-v3" dir="rtl"><aside class="admin-sidebar"><div class="admin-brand"><span aria-hidden="true">🐪</span><strong>سوق الحلال<br> الإلكتروني</strong><small>بيع وشراء الحلال بكل ثقة</small></div><div class="admin-identity"><span class="admin-avatar">♙</span><b>${esc(auth.currentUser?.displayName||'مسؤول المنصة')}</b><small>${api.getAccess().role==='super_admin'?'Super Admin':'مساعد مدير'}</small></div><nav id="adminV2Nav" aria-label="تبويبات الإدارة"></nav><div id="adminLogout"></div></aside><div class="admin-workspace"><header class="admin-topbar"><div><small>${tab==='home'?'مرحبًا بك مجددًا،':'لوحة الإدارة'}</small><h2>${esc(tab==='home'?(auth.currentUser?.displayName||'مسؤول المنصة'):tabs[tab])}</h2><p>${tab==='home'?'نظرة على نشاط السوق من البيانات المسجلة.':'إدارة '+esc(tabs[tab])}</p></div><div class="admin-header-tools"><time>${esc(today)}</time><button type="button" id="adminHeaderLogout" aria-label="تسجيل الخروج من لوحة الإدارة">⇥ تسجيل الخروج</button></div></header><div id="adminV2Body" aria-live="polite">جاري التحميل…</div><footer class="admin-footer"><span>من الإمارات.. للحلال قيمة أكبر</span><span>سوق الحلال الإلكتروني © ${new Date().getFullYear()}</span></footer></div></section>`);
+    notifications.mount(document.querySelector('.admin-header-tools'));
     document.getElementById('adminHeaderLogout').onclick=()=>api.logout();
     for(const [key,label]of Object.entries(tabs)){if(!canRead(key))continue;const b=button(label,()=>key==='services'?api.openServices():open(key));b.dataset.icon=icons[key]||'♙';b.setAttribute('aria-label',label);b.setAttribute('aria-current',String(key===tab));document.getElementById('adminV2Nav').append(b);}
     if(api.getAccess().role==='super_admin')document.getElementById('adminV2Nav').append(button('إدارة واجهة الصفحة الرئيسية',()=>window.openHomePageAdmin()));
