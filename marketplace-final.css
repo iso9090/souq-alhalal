@@ -135,3 +135,12 @@ body.marketplace-v2 .v2-card .v2-gallery--thumbs>.v2-next{right:70px}
 #modalContent .listing-actions .listing-action:focus-visible{outline:3px solid #bc862e!important;outline-offset:3px}
 #modalContent .listing-offer-note{margin:0;text-align:center;color:#5c6963;font-size:13px;line-height:1.6}
 @media(max-width:380px){#modalContent .listing-actions-secondary{grid-template-columns:minmax(0,1fr)}}
+
+/* Approved promotions only. Emphasis stays within the grid footprint. */
+body.marketplace-v2 .v2-card.listing-card--featured{border:2px solid #bb871f!important;background:linear-gradient(145deg,#fff9e7 0%,#fff 46%,#fffdf5 100%)!important;box-shadow:0 3px 14px #ad781c26!important}
+body.marketplace-v2 .listing-featured-badge{display:flex;align-items:center;justify-content:center;gap:7px;position:relative;margin:0 0 7px;padding:7px 10px;border-radius:8px;background:#936000;color:#fff;font-family:"Noto Sans Arabic","Segoe UI",sans-serif;font-size:13px;font-weight:700;line-height:1.5}
+body.marketplace-v2 .listing-featured-badge svg{width:20px;height:20px;fill:#ffe29a;stroke:currentColor;stroke-width:1.4;flex-shrink:0}
+@media(min-width:1024px){body.marketplace-v2 #firebase-market .listing-card--featured .v2-card-body h3{font-size:17.85px!important}body.marketplace-v2 .v2-card.listing-card--featured{box-shadow:0 4px 18px #ad781c33!important}}
+body.marketplace-v2 .listing-featured-badge{height:36px;box-sizing:border-box}
+body.marketplace-v2 .listing-card--featured .v2-badge{inset-block-start:53px}
+body.marketplace-v2 #firebase-market .listing-card--featured .v2-favorite{inset-block-start:52px}

@@ -510,6 +510,13 @@ function startAuctionTimers() {
   }
 
   function updateTimers() {
+    document.querySelectorAll('.listing-card--featured[data-featured-until]').forEach(card => {
+      if (Number(card.dataset.featuredUntil) <= Date.now()) {
+        card.classList.remove('listing-card--featured');
+        card.querySelector('.listing-featured-badge')?.remove();
+        delete card.dataset.featuredUntil;
+      }
+    });
     const timers = document.querySelectorAll("[data-auction-end]");
 
     timers.forEach(timer => {
@@ -5375,7 +5382,9 @@ function renderMarketCard(animal,auction=null) {
   const name=escapeHtml(animal.name||animal.type||t('حلال','Livestock'));
   const id=inlineArgument(animal.id),aid=inlineArgument(auction?.id||'');
   const status=auction?(auction.status==='sold'?t('تم اعتماد البيع','Sale approved'):auction.status==='not_approved'?t('لم يعتمد البيع','Not approved'):expired?t('مزاد منتهي','Auction ended'):t('مزاد مباشر','Live auction')):t('بيع مباشر','Direct sale');
-  return `<article class="v2-card ${auction?'v2-auction':''}" data-animal-id="${escapeHtml(animal.id)}">
+  const featured = isFeaturedListing(auction || animal) && (!animal.status || animal.status==='active') && !expired;
+  return `<article class="v2-card ${auction?'v2-auction':''} ${featured?'listing-card--featured':''}" ${featured?`data-featured-until="${timestampToMillis((auction||animal).featuredUntil)}"`:''} data-animal-id="${escapeHtml(animal.id)}">
+    ${featured?`<div class="listing-featured-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 5 4 4-7 4 7 5-4-3 13H6L3 6Zm3 16h12"/></svg><span>${t('إعلان مميز','Featured listing')}</span></div>`:''}
     ${animalPhotoHtml(animal,{thumbnails:true})}<span class="v2-badge" ${auction?`id="auction-tag-${escapeHtml(auction.id)}"`:''}>${status}</span>
     <button type="button" class="v2-favorite" aria-label="${t('المفضلة','Favorite')}" aria-pressed="${favorites.has(animal.id)}" onclick="toggleFavorite(${id},this)">${MarketV2.favoriteIcon}</button>
     <div class="v2-card-body"><h3>${name}</h3><p>⌖ ${escapeHtml(animal.location||[animal.city,animal.region].filter(Boolean).join(' - ')||t('غير محدد','Not specified'))}</p>
