@@ -1,3 +1,10 @@
 node_modules/
 dist/
 *-debug.log
+.env
+.env.*
+!.env.example
+.secret*
+*service-account*.json
+*serviceAccount*.json
+*.pem

@@ -12,7 +12,11 @@
     "test:profile-compatibility": "node tests/google-profile-compatibility.test.mjs",
     "lint": "node scripts/validate-site.mjs",
     "build": "node scripts/build-site.mjs",
-    "test:commercial": "node tests/commercial-model.test.mjs && node tests/commercial-browser.test.cjs"
+    "test:trusted-browser": "node tests/trusted-backend-browser.test.cjs",
+    "test:backend": "npm test --prefix functions",
+    "test:backend-emulator": "npm run test:emulator --prefix functions",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "test:commercial": "node tests/commercial-model.test.mjs && node tests/commercial-browser.test.cjs && node tests/commercial-image-browser.test.cjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

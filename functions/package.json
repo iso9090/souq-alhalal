@@ -1,0 +1,17 @@
+{
+  "name": "souq-trusted-backend",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "engines": { "node": "22" },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:emulator": "node --test test/firestore.integration.mjs",
+    "serve:mock": "node test/local-server.mjs"
+  },
+  "dependencies": {
+    "firebase-functions": "7.3.2",
+    "firebase-admin": "14.4.0",
+    "cloudinary": "2.11.0"
+  }
+}

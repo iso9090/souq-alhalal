@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {initializeApp,deleteApp} from 'firebase-admin/app';
+import {getFirestore} from 'firebase-admin/firestore';
+import {createFirestoreQuota} from '../src/quota.js';
+import {firestoreDependencies} from '../src/adapters.js';
+import fs from 'node:fs';
+import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing';
+import {doc,getDoc,setDoc} from 'firebase/firestore';
+if(!/^127\.0\.0\.1:\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Local Firestore emulator required');
+const app=initializeApp({projectId:'demo-backend-'+Date.now()}),db=getFirestore(app),now=2000000000;
+test.after(async()=>{await db.terminate();await deleteApp(app);});
+test('independent adapter instances atomically reject nonce replay',async()=>{const nonce=randomUUID();const a=createFirestoreQuota(db),b=createFirestoreQuota(db);const r=await Promise.allSettled([a.reserve('owner',nonce,now),b.reserve('owner',nonce,now)]);assert.equal(r.filter(x=>x.status==='fulfilled').length,1);assert.equal(r.find(x=>x.status==='rejected').reason.status,409);});
+test('shared quota rejects sixth request across adapters',async()=>{const a=createFirestoreQuota(db),b=createFirestoreQuota(db);for(let i=0;i<5;i++)await (i%2?a:b).reserve('limited',randomUUID(),now);await assert.rejects(()=>a.reserve('limited',randomUUID(),now),e=>e.status===429);});
+test('daily quota survives changing minute windows',async()=>{const a=createFirestoreQuota(db);for(let i=0;i<50;i++)await a.reserve('daily',randomUUID(),now+i*61);await assert.rejects(()=>a.reserve('daily',randomUUID(),now+50*61),e=>e.status===429);});
+test('shared global cap applies across different owners',async()=>{const a=createFirestoreQuota(db),time=now+86400;for(let i=0;i<200;i++)await a.reserve('global-'+i,randomUUID(),time);await assert.rejects(()=>a.reserve('global-last',randomUUID(),time),e=>e.status===429);});
+async function seed(){await db.doc('adminSecurity/config').set({enabled:true,superAdminUids:['owner','phone-owner']});await db.doc('adminAccess/owner').set({role:'super_admin'});await db.doc('users/owner').set({status:'active'});}
+test('assistant canonical schema and administrative audit saved atomically',async()=>{await seed();const d=firestoreDependencies(db,{},()=>{});await d.stageAssistant('new-assistant',{displayName:'Test',email:'test@example.test'},'owner');const a=(await db.doc('adminAccess/new-assistant').get()).data();assert.equal(a.role,'admin_assistant');assert.equal(a.adminStatus,'suspended');assert.deepEqual(a.permissions,[]);assert.equal((await db.doc('adminAuditLogs/'+a.moderationLogId).get()).data().action,'assistant_created');const u=(await db.doc('users/new-assistant').get()).data();assert.equal(u.accountType,'buyer');assert.equal(u.password,undefined);});
+test('existing or protected target never overwritten',async()=>{const d=firestoreDependencies(db,{},()=>{});for(const uid of ['owner','phone-owner','new-assistant'])await assert.rejects(()=>d.stageAssistant(uid,{displayName:'Bad',email:'bad@example.test'},'owner'),e=>e.status===403);assert.equal((await db.doc('adminAccess/owner').get()).data().role,'super_admin');});
+test('owner disabled in profile denies staging transaction',async()=>{await db.doc('users/owner').update({status:'blocked'});const d=firestoreDependencies(db,{},()=>{});await assert.rejects(()=>d.stageAssistant('denied',{displayName:'Bad',email:'bad@example.test'},'owner'),e=>e.status===403);assert.equal((await db.doc('users/denied').get()).exists,false);});
+test('current unchanged Rules deny client access to backend stores',async()=>{await seed();const env=await initializeTestEnvironment({projectId:app.options.projectId,firestore:{rules:fs.readFileSync(new URL('../../firestore.rules',import.meta.url),'utf8')}});try{for(const uid of ['normal','owner'])for(const collection of ['backendQuota','backendReplay','backendAuditLogs']){const client=env.authenticatedContext(uid,{admin:uid==='owner'}).firestore();await assertFails(getDoc(doc(client,collection,'x')));await assertFails(setDoc(doc(client,collection,'x'),{count:1}));}}finally{await env.cleanup();}});

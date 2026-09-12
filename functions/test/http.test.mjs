@@ -1,0 +1,6 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {startMockServer} from './local-server.mjs';
+test('actual local HTTP endpoint rejects unauthorized and signs valid mock request',async()=>{const server=await startMockServer(0);try{const endpoint='http://127.0.0.1:'+server.address().port+'/api/cloudinary/sign',headers={Origin:'http://localhost:8770','Content-Type':'application/json'},body=JSON.stringify({purpose:'commercial_ad',bytes:1024,contentType:'image/jpeg',width:1600,height:800,placement:'hero',requestTimestamp:2000000000,nonce:randomUUID()});assert.equal((await fetch(endpoint,{method:'POST',headers,body})).status,403);const r=await fetch(endpoint,{method:'POST',headers:{...headers,Authorization:'Bearer mock-owner'},body});assert.equal(r.status,200);assert.equal((await r.json()).resourceType,'image');}finally{await new Promise(resolve=>server.close(resolve));}});
+test('actual local HTTP endpoint rejects oversized body before JSON processing',async()=>{const server=await startMockServer(0);try{const r=await fetch('http://127.0.0.1:'+server.address().port+'/api/cloudinary/sign',{method:'POST',body:'x'.repeat(4097)});assert.equal(r.status,413);}finally{await new Promise(resolve=>server.close(resolve));}});
