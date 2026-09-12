@@ -21,7 +21,7 @@ function render(){
 async function acceptFiles(files,replaceIndex){
   if(busy){sync();return;}
   const replacing=Number.isInteger(replaceIndex);
-  if((replacing?selected.length:selected.length+files.length)>MAX_IMAGES){alert('الحد الأقصى 3 صور. احذف صورة أو استبدلها.');sync();return;}
+  if((replacing?selected.length:selected.length+files.length)>MAX_IMAGES){alert('يمكنك إضافة 3 صور كحد أقصى.');sync();return;}
   busy=true;input.disabled=true;
   const revision=selectionRevision;
   preview.querySelectorAll('button').forEach(button=>button.disabled=true);

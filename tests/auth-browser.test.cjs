@@ -96,7 +96,6 @@ function pass(name) { count++; console.log('PASS | ' + name); }
      return route.fulfill({contentType:'text/javascript',body:code});
    }
    if(url.hostname!=='auth.test'){external.push(url.origin);return route.abort()}
-   if(url.pathname==='/image-provider.js')return route.fulfill({contentType:'text/javascript',body:fs.readFileSync(path.join(root,'image-provider.js'),'utf8').replace(/export async function uploadImages\b[\s\S]*?\n\}/,`export async function uploadImages(files){validateImageCount(files);return ['data:image/jpeg;base64,YWJj'];}`)});
    const file=path.join(root,decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname));
    if(!file.startsWith(root)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
    return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
@@ -223,7 +222,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    const region=document.getElementById('animalRegion');region.selectedIndex=1;window.updateListingCityOptions();
    const city=document.getElementById('animalCity');city.selectedIndex=1;window.updateFullLocation();
    const form=document.getElementById('animalType').closest('form');
-   const imageFiles=new DataTransfer();imageFiles.items.add(new File(['fixture'],'test.jpg',{type:'image/jpeg'}));document.getElementById('animalImages').files=imageFiles.files;
+   const imageFiles=new DataTransfer();imageFiles.items.add(new File([await new Promise(resolve=>{const canvas=document.createElement('canvas');canvas.width=32;canvas.height=32;canvas.getContext('2d').fillRect(0,0,32,32);canvas.toBlob(resolve,'image/jpeg')})],'test.jpg',{type:'image/jpeg'}));document.getElementById('animalImages').files=imageFiles.files;
    await window.saveListing({preventDefault(){},target:form});
  });
  const listingId=await page.evaluate(()=>[...window.__mock.docs.keys()].find(k=>k.startsWith('animals/'))?.split('/')[1]);
@@ -241,7 +240,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    document.getElementById('animalRegion').selectedIndex=1;window.updateListingCityOptions();document.getElementById('animalCity').selectedIndex=1;window.updateFullLocation();
    document.getElementById('method').value='مزاد إلكتروني';window.toggleAuctionFields();
    document.getElementById('auctionIncrement').value='10';document.getElementById('auctionEndTime').value='2099-01-01T12:00';
-   const imageFiles=new DataTransfer();imageFiles.items.add(new File(['fixture'],'test.jpg',{type:'image/jpeg'}));document.getElementById('animalImages').files=imageFiles.files;
+   const imageFiles=new DataTransfer();imageFiles.items.add(new File([await new Promise(resolve=>{const canvas=document.createElement('canvas');canvas.width=32;canvas.height=32;canvas.getContext('2d').fillRect(0,0,32,32);canvas.toBlob(resolve,'image/jpeg')})],'test.jpg',{type:'image/jpeg'}));document.getElementById('animalImages').files=imageFiles.files;
    await window.saveListing({preventDefault(){},target:document.getElementById('animalType').closest('form')});
  });
  const auctionId=await page.evaluate(()=>[...window.__mock.docs.keys()].find(k=>k.startsWith('auctions/'))?.split('/')[1]);assert.ok(auctionId);

@@ -1,6 +1,7 @@
 import {installCommercialPublic} from './commercial-public.js';
 import * as SiteLanguage from './site-language.js';
 import * as Images from './image-provider.js';
+import {listingImageData} from './livestock-images.js';
 import * as MarketV2 from './marketplace-v2.js';
 let activeMarketTab = 'direct';
 let marketSearchTimer;
@@ -696,10 +697,10 @@ window.resetMarketFilters = function () {
 
 async function compressImageFile(file) { return Images.compressImage(file); }
 async function getListingImages() {
-  return Images.uploadImages(Array.from(document.getElementById('animalImages')?.files || []),auth.currentUser);
+  return listingImageData(Array.from(document.getElementById('animalImages')?.files || []),auth.currentUser);
 }
 function safeImageData(value) { return Images.safeImage(value); }
-function animalPhotoHtml(animal = {}) { return MarketV2.gallery(animal.images,animal.name || animal.type); }
+function animalPhotoHtml(animal = {}, options = {}) { return MarketV2.gallery(animal.images,animal.name || animal.type,options); }
 
 function ownerManagementButton(animal) {
   const user = auth.currentUser;
@@ -3506,7 +3507,9 @@ window.removeAnimalImage = async function (animalId, imageIndex) {
     if (animal.sellerId !== user.uid) return;
 
     const images = Array.isArray(animal.images) ? [...animal.images] : [];
+    if (images.length <= 1) { alert("يجب إبقاء صورة واحدة على الأقل. يمكنك استبدال الصورة."); return; }
     images.splice(imageIndex, 1);
+    if (images.length > 3) { alert("الإعلان القديم يتطلب اختيار 3 صور أو أقل عبر استبدال الصور قبل الحفظ."); return; }
 
     await setDoc(animalRef, {
       images,
@@ -3522,31 +3525,8 @@ window.removeAnimalImage = async function (animalId, imageIndex) {
   }
 };
 
-window.removeAllAnimalImages = async function (animalId) {
-  const ok = confirm("هل تريد حذف جميع صور الإعلان؟");
-  if (!ok) return;
-
-  try {
-    const animalRef = doc(db, "animals", animalId);
-    const snap = await getDoc(animalRef);
-
-    if (!snap.exists() || snap.data().sellerId !== auth.currentUser?.uid) {
-      alert("غير مصرح.");
-      return;
-    }
-
-    await setDoc(animalRef, {
-      images: [],
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    alert("✅ تم حذف جميع الصور.");
-    await loadMarket();
-    await window.manageListing(animalId);
-  } catch (error) {
-    console.error(error);
-    alert("❌ تعذر حذف الصور.");
-  }
+window.removeAllAnimalImages = async function () {
+  alert("يجب إبقاء صورة واحدة على الأقل. استخدم استبدال الصور.");
 };
 
 window.replaceAnimalImages = async function (animalId) {
@@ -3558,7 +3538,7 @@ window.replaceAnimalImages = async function (animalId) {
   }
 
   if (input.files.length > 3) {
-    alert("يمكن اختيار 3 صور كحد أقصى.");
+    alert("يمكنك إضافة 3 صور كحد أقصى.");
     return;
   }
 
@@ -3571,7 +3551,7 @@ window.replaceAnimalImages = async function (animalId) {
       return;
     }
 
-    const images = await Images.uploadImages(Array.from(input.files),auth.currentUser);
+    const images = await listingImageData(Array.from(input.files),auth.currentUser);
 
     await setDoc(animalRef, {
       images,
@@ -3981,7 +3961,7 @@ window.saveListing = async function (event) {
     try {
       images = await getListingImages();
     } catch (error) {
-      const imageErrors={IMAGE_REQUIRED:"اختر صورة واحدة على الأقل.",IMAGE_PROVIDER_NOT_CONFIGURED:"رفع الصور غير متاح حاليًا. يرجى المحاولة بعد تجهيز الخدمة.",IMAGE_TOO_LARGE:"الصورة كبيرة جدًا. اختر صورة أصغر.",TOO_MANY_IMAGES:"اختر 3 صور كحد أقصى.",IMAGES_TOO_LARGE:"حجم الصور بعد الضغط كبير. احذف صورة أو اختر صورًا أصغر.",INVALID_IMAGE:"اختر ملفات صور فقط.",IMAGE_LOAD_ERROR:"إحدى الصور لا يمكن فتحها. احذفها واختر صورة أخرى.",IMAGE_READ_ERROR:"تعذر قراءة الصورة. أعد اختيارها."};
+      const imageErrors={IMAGE_REQUIRED:"اختر صورة واحدة على الأقل.",IMAGE_TOO_LARGE:"الصورة كبيرة جدًا. اختر صورة أصغر.",TOO_MANY_IMAGES:"يمكنك إضافة 3 صور كحد أقصى.",IMAGES_TOO_LARGE:"حجم الصور بعد الضغط كبير. احذف صورة أو اختر صورًا أصغر.",INVALID_IMAGE:"اختر ملفات صور فقط.",IMAGE_LOAD_ERROR:"إحدى الصور لا يمكن فتحها. احذفها واختر صورة أخرى.",IMAGE_READ_ERROR:"تعذر قراءة الصورة. أعد اختيارها."};
       alert(imageErrors[error.message] || "تعذر تجهيز الصور. أعد اختيارها وحاول مجددًا.");
       return;
     }
@@ -5394,7 +5374,7 @@ function renderMarketCard(animal,auction=null) {
   const id=inlineArgument(animal.id),aid=inlineArgument(auction?.id||'');
   const status=auction?(auction.status==='sold'?t('تم اعتماد البيع','Sale approved'):auction.status==='not_approved'?t('لم يعتمد البيع','Not approved'):expired?t('مزاد منتهي','Auction ended'):t('مزاد مباشر','Live auction')):t('بيع مباشر','Direct sale');
   return `<article class="v2-card ${auction?'v2-auction':''}" data-animal-id="${escapeHtml(animal.id)}">
-    ${animalPhotoHtml(animal)}<span class="v2-badge" ${auction?`id="auction-tag-${escapeHtml(auction.id)}"`:''}>${status}</span>
+    ${animalPhotoHtml(animal,{thumbnails:true})}<span class="v2-badge" ${auction?`id="auction-tag-${escapeHtml(auction.id)}"`:''}>${status}</span>
     <button type="button" class="v2-favorite" aria-label="${t('المفضلة','Favorite')}" aria-pressed="${favorites.has(animal.id)}" onclick="toggleFavorite(${id},this)">${MarketV2.favoriteIcon}</button>
     <div class="v2-card-body"><h3>${name}</h3><p>⌖ ${escapeHtml(animal.location||[animal.city,animal.region].filter(Boolean).join(' - ')||t('غير محدد','Not specified'))}</p>
     ${auction?`<p>${t('أعلى مزايدة','Highest bid')}</p>`:''}<div class="v2-price"><bdi>${money(auction?auction.currentPrice||auction.startPrice:animal.price,effectiveCountry(auction||animal))}</bdi></div>

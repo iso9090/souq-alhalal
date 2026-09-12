@@ -12,7 +12,9 @@
     "test:profile-compatibility": "node tests/google-profile-compatibility.test.mjs",
     "lint": "node scripts/validate-site.mjs",
     "build": "node scripts/build-site.mjs",
-    "test:commercial": "node tests/commercial-model.test.mjs && node tests/commercial-browser.test.cjs"
+    "test:commercial": "node tests/commercial-model.test.mjs && node tests/commercial-browser.test.cjs",
+    "test:free-images": "node tests/free-livestock-browser.test.cjs",
+    "test:free-images-rules": "node tests/free-livestock-rules.test.mjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",
