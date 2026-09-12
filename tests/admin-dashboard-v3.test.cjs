@@ -34,7 +34,7 @@ let count=0;const pass=s=>console.log(`PASS ${++count} | ${s}`);
    if(url.hostname!=='admin-v3.test')return route.abort();
    const file=path.resolve(root,url.pathname==='/'?'index.html':decodeURIComponent(url.pathname.slice(1)));
    if(!file.startsWith(root+path.sep)||!fs.existsSync(file))return route.fulfill({status:404,body:''});
-   return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
+   return route.fulfill({contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.ttf':'font/ttf'})[path.extname(file)]||'text/plain',body:fs.readFileSync(file)});
   });
   await page.goto('https://admin-v3.test/');await page.waitForFunction(()=>!!window.openAdminPanel);await page.evaluate(seedMock);
   await page.evaluate(async()=>{
@@ -70,17 +70,27 @@ let count=0;const pass=s=>console.log(`PASS ${++count} | ${s}`);
   }
   await home();
   await page.locator('.admin-breakdown summary').click();await page.getByRole('button',{name:'عرض المستخدمون · نشط',exact:true}).click();await page.locator('#adminRows').waitFor();assert.equal(await page.getByRole('combobox',{name:'الحالة',exact:true}).inputValue(),'active');pass('breakdown card applies the real server filter');
-  for(const width of [1672,1440,1024,768,430,390,360]){
-   await page.setViewportSize({width,height:width>800?1000:900});await home();
+  for(const [width,height] of [[1440,900],[1366,768],[1280,800],[1024,768],[768,1024],[430,932],[390,844],[360,800]]){
+   await page.setViewportSize({width,height});await home();await page.evaluate(()=>document.fonts.ready);
+   assert.equal(await page.evaluate(()=>document.fonts.check('500 16px "Noto Sans Arabic"')),true);
+   const heights=await page.locator('.admin-metric').evaluateAll(nodes=>nodes.map(n=>Math.round(n.getBoundingClientRect().height)));assert.equal(new Set(heights).size,1);
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),true);
    assert.equal(await page.locator('.admin-metric').evaluateAll(nodes=>nodes.every(n=>n.scrollWidth<=n.clientWidth+1)),true);
    if(width>1250){const sidebar=await page.locator('.admin-sidebar').boundingBox(),workspace=await page.locator('.admin-workspace').boundingBox();assert.ok(sidebar.x>workspace.x);}
    await page.screenshot({path:path.join(output,'admin-v3-'+width+'.png'),fullPage:true});pass('responsive layout, cards and screenshot '+width);
-   if(width===1672){
+   if(width===1440){
     await page.locator('.admin-metric[data-kind=users]').hover();await page.screenshot({path:path.join(output,'admin-v3-desktop-hover.png'),fullPage:true});
     await page.locator('.admin-breakdown summary').click();await page.screenshot({path:path.join(output,'admin-v3-desktop-expanded.png'),fullPage:true});
    }
-   if(width===390)await page.locator('.admin-sidebar').screenshot({path:path.join(output,'admin-v3-mobile-sidebar.png')});
+   if(width<=800){
+    assert.equal(await page.locator('.admin-sidebar').isVisible(),false);
+    await page.locator('.admin-menu-toggle').click();assert.equal(await page.locator('.admin-sidebar').getAttribute('aria-modal'),'true');
+    await page.locator('.admin-sidebar').evaluate(n=>Promise.all(n.getAnimations().map(a=>a.finished)));await page.locator('#adminLogout button').focus();await page.keyboard.press('Tab');assert.equal(await page.locator('.admin-drawer-close').evaluate(n=>n===document.activeElement),true,await page.evaluate(()=>document.activeElement.outerHTML));
+    await page.keyboard.press('Shift+Tab');assert.equal(await page.locator('#adminLogout button').evaluate(n=>n===document.activeElement),true);
+    if(width===390){await page.locator('.admin-drawer-close').focus();await page.locator('.admin-sidebar').evaluate(n=>n.scrollTop=0);await page.screenshot({path:path.join(output,'admin-v3-mobile-sidebar.png')});}
+    await page.keyboard.press('Escape');await page.locator('.admin-sidebar').waitFor({state:'hidden'});assert.equal(await page.locator('.admin-menu-toggle').evaluate(n=>n===document.activeElement),true);assert.equal(await page.locator('.admin-sidebar').isVisible(),false);
+    await page.locator('.admin-menu-toggle').click();await page.locator('#adminV2Nav button[aria-label="المستخدمون"]').click();await page.locator('#adminRows').waitFor();assert.equal(await page.locator('.admin-sidebar').isVisible(),false);pass('mobile drawer focus trap, Escape restoration and authorized navigation '+width);
+   }
   }
   await page.evaluate(()=>{window.__mock.failCount='users';window.__mock.failRead='adminAuditLogs';});await home();
   assert.equal(await page.locator('.admin-metric[data-kind=users] strong').innerText(),'غير متاح');assert.match(await page.locator('#adminRegistrations').innerText(),/تعذر/);assert.match(await page.locator('#adminRecent').innerText(),/تعذر/);pass('failed queries show unavailable, never invented zeros/activities');

@@ -105,13 +105,36 @@ export function installAdminDashboard(api) {
     };
     await render();return node;
   }
+  let disposeNavigation=()=>{};
   function shell(tab){
+    disposeNavigation();
     const today=new Intl.DateTimeFormat('ar-AE',{weekday:'long',day:'numeric',month:'long',year:'numeric',timeZone:'Asia/Dubai'}).format(new Date());
     showModal(`<section class="admin-v2 admin-v3" dir="rtl"><aside class="admin-sidebar"><div class="admin-brand"><span aria-hidden="true">🐪</span><strong>سوق الحلال<br> الإلكتروني</strong><small>بيع وشراء الحلال بكل ثقة</small></div><div class="admin-identity"><span class="admin-avatar">♙</span><b>${esc(auth.currentUser?.displayName||'مسؤول المنصة')}</b><small>${api.getAccess().role==='super_admin'?'Super Admin':'مساعد مدير'}</small></div><nav id="adminV2Nav" aria-label="تبويبات الإدارة"></nav><div id="adminLogout"></div></aside><div class="admin-workspace"><header class="admin-topbar"><div><small>${tab==='home'?'مرحبًا بك مجددًا،':'لوحة الإدارة'}</small><h2>${esc(tab==='home'?(auth.currentUser?.displayName||'مسؤول المنصة'):tabs[tab])}</h2><p>${tab==='home'?'نظرة على نشاط السوق من البيانات المسجلة.':'إدارة '+esc(tabs[tab])}</p></div><div class="admin-header-tools"><time>${esc(today)}</time><button type="button" id="adminHeaderLogout" aria-label="تسجيل الخروج من لوحة الإدارة">⇥ تسجيل الخروج</button></div></header><div id="adminV2Body" aria-live="polite">جاري التحميل…</div><footer class="admin-footer"><span>من الإمارات.. للحلال قيمة أكبر</span><span>سوق الحلال الإلكتروني © ${new Date().getFullYear()}</span></footer></div></section>`);
     document.getElementById('adminHeaderLogout').onclick=()=>api.logout();
     for(const [key,label]of Object.entries(tabs)){if(!canRead(key))continue;const b=button(label,()=>key==='services'?api.openServices():open(key));b.dataset.icon=icons[key]||'♙';b.setAttribute('aria-label',label);b.setAttribute('aria-current',String(key===tab));document.getElementById('adminV2Nav').append(b);}
     if(api.getAccess().role==='super_admin')document.getElementById('adminV2Nav').append(button('إدارة واجهة الصفحة الرئيسية',()=>window.openHomePageAdmin()));
     document.getElementById('adminLogout').append(button('تسجيل الخروج',()=>api.logout()));
+    // Presentation-only mobile drawer; existing destinations and access gates stay unchanged.
+    const surface=document.querySelector('.admin-v3'),sidebar=surface.querySelector('.admin-sidebar'),workspace=surface.querySelector('.admin-workspace');
+    sidebar.id='adminSidebar';
+    const toggle=button('☰ القائمة',()=>setDrawer(true)),dismiss=button('× إغلاق القائمة',()=>setDrawer(false)),backdrop=button('',()=>setDrawer(false));
+    toggle.className='admin-menu-toggle';toggle.setAttribute('aria-controls','adminSidebar');toggle.setAttribute('aria-expanded','false');
+    dismiss.className='admin-drawer-close';backdrop.className='admin-drawer-backdrop';backdrop.setAttribute('aria-label','إغلاق القائمة');backdrop.tabIndex=-1;
+    surface.querySelector('.admin-topbar').prepend(toggle);sidebar.prepend(dismiss);surface.append(backdrop);
+    const mobile=matchMedia('(max-width:800px)'),controller=new AbortController();
+    function setDrawer(open,restore=true){
+      const shown=open&&mobile.matches;surface.classList.toggle('admin-drawer-open',shown);toggle.setAttribute('aria-expanded',String(shown));
+      sidebar.inert=mobile.matches&&!shown;workspace.inert=shown;
+      if(shown){sidebar.setAttribute('role','dialog');sidebar.setAttribute('aria-modal','true');sidebar.setAttribute('aria-label','قائمة الإدارة');dismiss.focus();}
+      else {sidebar.removeAttribute('role');sidebar.removeAttribute('aria-modal');sidebar.removeAttribute('aria-label');if(restore&&mobile.matches)toggle.focus();}
+    }
+    mobile.addEventListener('change',()=>setDrawer(false,false),{signal:controller.signal});
+    sidebar.addEventListener('keydown',event=>{
+      if(!surface.classList.contains('admin-drawer-open'))return;
+      if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();setDrawer(false);}
+      if(event.key==='Tab'){const nodes=[...sidebar.querySelectorAll('button:not(:disabled),a[href]')].filter(n=>n.getClientRects().length);const first=nodes[0],last=nodes.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
+    },{signal:controller.signal,capture:true});
+    disposeNavigation=()=>controller.abort();setDrawer(false,false);
     const identity=document.querySelector('.admin-identity b');
     if(!auth.currentUser?.displayName&&auth.currentUser?.uid)nameOf('users',auth.currentUser.uid).then(name=>{if(identity.isConnected&&name!=='اسم غير متاح')identity.textContent=name;});
 

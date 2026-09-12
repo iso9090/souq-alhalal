@@ -359,3 +359,104 @@ body:has(#modal[style*="display: flex"] .admin-v2){overflow:visible!important;ba
 .admin-chart-details{font-size:12px;color:#668199;margin-top:10px}.admin-chart-details summary{cursor:pointer;min-height:32px;padding:6px 0}
 #modalContent .admin-v3 [hidden]{display:none!important}
 @media(max-width:800px){.admin-v3 #adminV2Nav{flex-wrap:nowrap}#modalContent .admin-v3 header.admin-topbar{padding:6px 0 18px!important}}
+/* Visual polish: local licensed font, restrained hierarchy, and an accessible mobile drawer. */
+@font-face{font-family:"Noto Sans Arabic";src:url("fonts/NotoSansArabic.ttf") format("truetype");font-style:normal;font-weight:100 900;font-display:swap}
+#modalContent .admin-v3{--ink:#102f45;--muted:#536d83;font-family:"Noto Sans Arabic","Segoe UI",Tahoma,Arial,sans-serif;font-size:14px;line-height:1.7;grid-template-columns:244px minmax(0,1fr)}
+#modalContent .admin-v3 :is(button,input,select,textarea,svg){font-family:inherit}
+#modalContent .admin-v3 :is(strong,b,.admin-chart-values,time){font-variant-numeric:tabular-nums}
+#modalContent .admin-v3 .admin-workspace{width:100%;max-width:1560px;margin-inline:auto;padding:28px clamp(20px,2vw,36px) 16px}
+#modalContent .admin-v3 header.admin-topbar{align-items:center;min-height:118px;gap:24px;padding:0 0 26px 38px!important}
+#modalContent .admin-v3 .admin-topbar h2{font-size:26px;font-weight:700;line-height:1.55;margin:3px 0 4px;letter-spacing:0}
+#modalContent .admin-v3 .admin-topbar small{font-size:13px;color:#536d83!important}
+#modalContent .admin-v3 .admin-topbar p{font-size:13px;line-height:1.85;color:#536d83!important;margin:0}
+#modalContent .admin-v3 .admin-header-tools{font-size:12px;gap:18px;padding:0;align-items:center}
+#modalContent .admin-v3 #adminHeaderLogout{font-size:13px;min-height:44px;padding:8px!important;white-space:nowrap}
+#modalContent .admin-v3 .admin-sidebar{gap:12px;padding:0 14px 18px;max-height:100dvh;overflow-y:auto;scrollbar-width:thin}
+#modalContent .admin-v3 .admin-brand{margin:0 -14px;padding:20px 16px 18px;gap:4px}
+#modalContent .admin-v3 .admin-brand>span{font-size:36px;line-height:1.3}
+#modalContent .admin-v3 .admin-brand strong{font-size:22px;font-weight:700;line-height:1.7}
+#modalContent .admin-v3 .admin-brand small{font-size:11px;line-height:1.8;opacity:1}
+#modalContent .admin-v3 .admin-identity{padding:12px 4px 15px;column-gap:10px;line-height:1.65}
+#modalContent .admin-v3 .admin-identity b{font-size:15px;font-weight:700}
+#modalContent .admin-v3 .admin-identity small{font-size:12px;color:#536d83!important}
+#modalContent .admin-v3 .admin-identity .admin-avatar{width:40px;height:40px;font-size:21px}
+#modalContent .admin-v3 #adminV2Nav{gap:4px}
+#modalContent .admin-v3 #adminV2Nav button{font-size:14px;line-height:1.75;font-weight:500;min-height:46px;padding:8px 12px;gap:10px;border-radius:10px;text-align:start}
+#modalContent .admin-v3 #adminV2Nav button:before{font-size:19px;line-height:1;inline-size:23px;flex:0 0 23px}
+#modalContent .admin-v3 #adminV2Nav button:hover{background:#eef7f4!important;filter:none}
+#modalContent .admin-v3 #adminV2Nav button[aria-current=true]{background:#008d7c!important;box-shadow:none;font-weight:700}
+#modalContent .admin-v3 #adminLogout{padding-block-start:10px;margin-block-start:auto}
+#modalContent .admin-v3 #adminLogout button{font-size:14px;min-height:46px}
+#modalContent .admin-v3 .admin-overview{gap:16px;margin:0 0 22px;align-items:stretch;grid-auto-rows:1fr}
+#modalContent .admin-v3 button.admin-metric{min-height:182px;height:100%;padding:18px;gap:9px;grid-template-columns:minmax(0,1fr) 54px;grid-template-rows:auto 1fr auto;border-radius:16px;background:linear-gradient(130deg,#fff,color-mix(in srgb,var(--tint) 72%,white))!important;box-shadow:0 2px 8px #173b5304;border-color:color-mix(in srgb,var(--accent) 12%,#fff);text-align:start}
+#modalContent .admin-v3 button.admin-metric:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--accent) 35%,white);box-shadow:0 5px 16px #173b5310}
+#modalContent .admin-v3 .admin-metric-title{font-size:15px;line-height:1.7;font-weight:600}
+#modalContent .admin-v3 .admin-metric-icon{width:54px;height:54px;border-radius:16px;margin:0}
+#modalContent .admin-v3 .admin-metric-icon svg{width:31px;height:31px;stroke-width:1.7}
+#modalContent .admin-v3 .admin-metric strong{font-size:38px;font-weight:700;line-height:1.25;align-self:center}
+#modalContent .admin-v3 .admin-metric[data-kind=visits] strong{font-size:23px!important}
+#modalContent .admin-v3 .admin-metric-foot{font-size:12px;line-height:1.8;color:#506b82!important;padding:0;padding-inline-end:30px}
+#modalContent .admin-v3 .admin-metric-arrow{left:auto;right:auto;inset-inline-end:16px;bottom:17px;width:28px;height:28px;font-size:21px;box-shadow:0 2px 8px #173b530e}
+#modalContent .admin-v3 .admin-insights{gap:16px;margin-block:20px;grid-template-columns:1fr 1fr 1.18fr}
+#modalContent .admin-v3 .admin-insight{padding:20px;border-radius:16px;box-shadow:0 2px 8px #173b5304;border-color:#dfe8ee}
+#modalContent .admin-v3 .admin-insight h3{font-size:16px;font-weight:700;line-height:1.8;min-height:54px;align-items:flex-start;margin:0 0 10px}
+#modalContent .admin-v3 .admin-insight .admin-muted{font-size:12px!important;line-height:1.9;color:#536d83!important}
+#modalContent .admin-v3 .admin-distribution{gap:12px;flex-wrap:wrap;margin-block:18px}
+#modalContent .admin-v3 .admin-distribution ul{font-size:12px;min-width:130px;gap:12px}
+#modalContent .admin-v3 .admin-distribution small{font-size:11px;color:#536d83!important}
+#modalContent .admin-v3 .admin-donut{width:148px;height:148px}
+#modalContent .admin-v3 .admin-donut>span{width:94px;height:94px}
+#modalContent .admin-v3 .admin-donut b{font-size:30px;font-weight:700}
+#modalContent .admin-v3 .admin-recent-event{padding-block:12px;line-height:1.8}
+#modalContent .admin-v3 .admin-recent-event b{font-size:13px;font-weight:600;line-height:1.8}
+#modalContent .admin-v3 .admin-recent-event small{font-size:11px;color:#536d83!important}
+#modalContent .admin-v3 .admin-activity-icon{font-size:19px;min-width:32px;text-align:center}
+#modalContent .admin-v3 .admin-line-chart text{font-size:11px;fill:#536d83}
+#modalContent .admin-v3 .admin-empty{font-size:14px;line-height:1.9;color:#536d83!important}
+#modalContent .admin-v3 .admin-chart-details summary{min-height:44px;line-height:1.8;color:#536d83}
+#modalContent .admin-v3 .admin-footer{font-size:11px;line-height:1.9;color:#536d83}
+#modalContent .admin-v3 :is(button,summary):focus-visible{outline:3px solid #966617;outline-offset:3px}
+#modalContent .admin-v3 :is(.admin-menu-toggle,.admin-drawer-close,.admin-drawer-backdrop){display:none}
+@media(min-width:1500px){#modalContent .admin-v3 .admin-distribution{flex-wrap:nowrap}}
+@media(min-width:801px) and (max-width:1250px){#modalContent .admin-v3{grid-template-columns:224px minmax(0,1fr)}#modalContent .admin-v3 .admin-insights{grid-template-columns:1fr 1fr}#modalContent .admin-v3 .admin-header-tools{align-items:flex-end;gap:4px}}
+@media(max-width:800px){
+ #modalContent .admin-v3{grid-template-columns:minmax(0,1fr)}
+ #modalContent .admin-v3 .admin-workspace{padding:20px 14px}
+ #modalContent .admin-v3 header.admin-topbar{padding:0 0 24px!important;display:grid;grid-template-columns:1fr;gap:14px;min-height:0}
+ #modalContent .admin-v3 .admin-topbar h2{font-size:23px;line-height:1.5}
+ #modalContent .admin-v3 .admin-topbar p{font-size:12px;max-width:40ch}
+ #modalContent .admin-v3 .admin-header-tools{justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:11px}
+ #modalContent .admin-v3 .admin-menu-toggle{display:block!important;justify-self:start;background:#e8f4f0!important;color:#075744!important;padding:8px 14px;min-height:44px;font-size:14px}
+ #modalContent .admin-v3 .admin-sidebar{position:fixed;inset-block:0;inset-inline-start:0;width:min(288px,86vw);height:100dvh;max-height:100dvh;z-index:102;padding:16px 14px;gap:12px;overflow-y:auto;background:#fff;visibility:hidden;transform:translateX(105%);transition:transform .18s;box-shadow:-6px 0 30px #102f4520}
+ #modalContent .admin-v3.admin-drawer-open .admin-sidebar{visibility:visible;transform:none}
+ #modalContent .admin-v3 .admin-drawer-close{display:block!important;align-self:flex-start;min-height:44px;background:#eff6f3!important;color:#075744!important;font-size:13px}
+ #modalContent .admin-v3 .admin-brand{display:grid;grid-template-columns:1fr;text-align:center;margin:0 -14px;padding:18px 16px;gap:5px}
+ #modalContent .admin-v3 .admin-brand>span{font-size:34px;grid-row:auto}
+ #modalContent .admin-v3 .admin-brand strong{font-size:22px}
+ #modalContent .admin-v3 .admin-brand small{margin:0;font-size:11px}
+ #modalContent .admin-v3 .admin-identity{display:grid}
+ #modalContent .admin-v3 #adminV2Nav{display:flex;flex-direction:column;flex-wrap:nowrap;overflow:visible;padding:0}
+ #modalContent .admin-v3 #adminV2Nav button{white-space:normal!important;font-size:14px!important;flex:none;min-height:46px!important}
+ #modalContent .admin-v3.admin-drawer-open .admin-drawer-backdrop{display:block!important;position:fixed;inset:0;z-index:101;width:100%;height:100dvh;max-width:none;border:0;border-radius:0;background:#102f4580!important;cursor:default}
+ #modalContent .admin-v3 .admin-overview{gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ #modalContent .admin-v3 button.admin-metric{padding:14px;min-height:192px;grid-template-columns:minmax(0,1fr) 36px;gap:8px;border-radius:14px}
+ #modalContent .admin-v3 .admin-metric-title{font-size:14px;line-height:1.75;min-height:49px}
+ #modalContent .admin-v3 .admin-metric-icon{width:36px;height:36px;border-radius:11px}
+ #modalContent .admin-v3 .admin-metric-icon svg{width:24px;height:24px}
+ #modalContent .admin-v3 .admin-metric strong{font-size:33px}
+ #modalContent .admin-v3 .admin-metric[data-kind=visits] strong{font-size:20px!important}
+ #modalContent .admin-v3 .admin-metric-foot{font-size:11px;line-height:1.8;min-height:40px;padding-inline-end:22px}
+ #modalContent .admin-v3 .admin-metric-arrow{inset-inline-end:10px;bottom:18px;width:24px;height:24px;font-size:18px}
+ #modalContent .admin-v3 .admin-insights{grid-template-columns:minmax(0,1fr);gap:16px}
+ #modalContent .admin-v3 .admin-insight{padding:20px 18px}
+ #modalContent .admin-v3 .admin-insight h3{font-size:16px;min-height:0;margin-block-end:16px}
+ #modalContent .admin-v3 .admin-distribution{flex-wrap:nowrap;gap:20px}
+ #modalContent .admin-v3 .admin-footer{gap:8px}
+}
+@media(prefers-reduced-motion:reduce){#modalContent .admin-v3 :is(button.admin-metric,.admin-sidebar){transition:none}}
+/* Keep the chart legend alongside its ring at laptop widths. */
+@media(min-width:801px) and (max-width:1440px){#modalContent .admin-v3 .admin-distribution{flex-wrap:nowrap;gap:8px}#modalContent .admin-v3 .admin-donut{width:128px;height:128px}#modalContent .admin-v3 .admin-donut>span{width:84px;height:84px}#modalContent .admin-v3 .admin-distribution ul{min-width:112px}}
+#modalContent .admin-v3 .admin-metric-foot{font-weight:400}
+#modalContent .admin-v3 .admin-line-chart text{font-size:13px}
+#modalContent .admin-v3 .admin-insight .admin-muted{font-size:13px!important}
+@media(max-width:800px){#modalContent .admin-v3 .admin-drawer-close{position:sticky;top:0;z-index:2}}
