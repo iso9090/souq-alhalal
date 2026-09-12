@@ -724,19 +724,18 @@ async function ensureUserProfile(user, initialDisplayName = "") {
         return;
       }
       const phone = typeof user.phoneNumber === "string" ? user.phoneNumber : "";
+      const google = user.providerData?.some(provider => provider.providerId === 'google.com');
       const values = {
         ...(phone ? { phoneNumber: phone } : {}),
         lastLoginAt: serverTimestamp()
       };
       if (!snapshot.exists()) {
-        const google = user.providerData?.some(provider => provider.providerId === 'google.com');
         transaction.set(userRef, {
           uid: user.uid, displayName: initialDisplayName || (google ? (user.displayName || '').slice(0, 50) : ''),
           accountType: initialDisplayName ? "both" : "buyer", status: "active",
-          ...(google ? { email: user.email || '', phone, authProvider: 'google' } : {}),
           createdAt: serverTimestamp(), ...values
         });
-      } else {
+      } else if (!google) {
         // Signup and the Auth observer may arrive in either order; never erase a name/phone.
         transaction.update(userRef, {
           ...values,

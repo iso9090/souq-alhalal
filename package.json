@@ -9,6 +9,7 @@
     "test:v2-browser": "node tests/marketplace-v2-browser.test.cjs",
     "test:live-browser": "node tests/live-services-browser.test.cjs",
     "test:google-browser": "node tests/google-auth-v3-browser.test.cjs",
+    "test:profile-compatibility": "node tests/google-profile-compatibility.test.mjs",
     "lint": "node scripts/validate-site.mjs",
     "build": "node scripts/build-site.mjs"
   },
