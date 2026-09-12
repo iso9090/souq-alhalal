@@ -1,3 +1,13 @@
+import * as SiteLanguage from './site-language.js';
+import * as Images from './image-provider.js';
+import * as MarketV2 from './marketplace-v2.js';
+let activeMarketTab = 'direct';
+let marketSearchTimer;
+let homeSettings = null;
+let heroRevision = 0;
+let heroRotation;
+let favorites = new Set();
+try { favorites = new Set(JSON.parse(localStorage.getItem('souqFavorites') || '[]')); } catch { /* Optional device preference. */ }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js";
 
 import {
@@ -21,6 +31,8 @@ import {
 
 import {
   getAuth,
+  GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider,
+  signInWithPopup, signInWithRedirect, getRedirectResult,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   createUserWithEmailAndPassword,
@@ -613,6 +625,8 @@ function animalMatchesMarketFilters(animal, forcedSaleType = "") {
   if (filters.region !== "all" && locationInfo.region !== filters.region) return false;
   if (filters.city !== "all" && locationInfo.city !== filters.city) return false;
   if (filters.animalType !== "all" && animal.type !== filters.animalType) return false;
+  const search = document.getElementById('marketSearch')?.value.trim().toLocaleLowerCase() || '';
+  if (search && ![animal.name,animal.type,animal.breed,animal.description,animal.location,animal.subcategory].filter(Boolean).join(' ').toLocaleLowerCase().includes(search)) return false;
 
   const actualSaleType = forcedSaleType || animal.saleType || "";
   if (filters.saleType !== "all" && actualSaleType !== filters.saleType) return false;
@@ -624,7 +638,7 @@ window.updateMarketRegionFilter = function (reload = true) {
   const regionSelect = document.getElementById("marketRegionFilter");
   if (!activeMarketCountry || !regionSelect) return;
 
-  regionSelect.innerHTML = `<option value="all">جميع المناطق والمحافظات</option>`;
+  regionSelect.innerHTML = `<option value="all">${activeMarketCountry === 'AE' ? 'الإمارة' : 'المحافظة'}</option>`;
 
   Object.keys(COUNTRIES[activeMarketCountry]?.regions || {}).forEach(regionName => {
     const option = document.createElement("option");
@@ -641,7 +655,7 @@ window.updateMarketCityFilter = function (reload = true) {
   const citySelect = document.getElementById("marketCityFilter");
   if (!activeMarketCountry || !regionSelect || !citySelect) return;
 
-  citySelect.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
+  citySelect.innerHTML = `<option value="all">المدينة</option>`;
 
   if (regionSelect.value !== "all") {
     const cities = COUNTRIES[activeMarketCountry]?.regions[regionSelect.value] || [];
@@ -657,6 +671,7 @@ window.updateMarketCityFilter = function (reload = true) {
 };
 
 window.applyMarketFilters = function () {
+  renderCategoryTiles();
   loadMarket();
 };
 
@@ -670,114 +685,19 @@ window.resetMarketFilters = function () {
   if (city) city.innerHTML = `<option value="all">جميع المدن والمناطق</option>`;
   if (animal) animal.value = "all";
   if (saleType) saleType.value = "all";
+  const search=document.getElementById('marketSearch');if(search)search.value='';
+  const sort=document.getElementById('marketSort');if(sort)sort.value='featured';
+  renderCategoryTiles();
 
   loadMarket();
 };
 
-function compressImageFile(file) {
-  return new Promise((resolve, reject) => {
-    if (!file || !file.type || !file.type.startsWith("image/")) {
-      reject(new Error("INVALID_IMAGE"));
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onerror = function () {
-      reject(new Error("IMAGE_READ_ERROR"));
-    };
-
-    reader.onload = function (event) {
-      const img = new Image();
-
-      img.onerror = function () {
-        reject(new Error("IMAGE_LOAD_ERROR"));
-      };
-
-      img.onload = function () {
-        const maxSize = 640;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height);
-          width = Math.round(width * ratio);
-          height = Math.round(height * ratio);
-        }
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-
-        if (!ctx) {
-          reject(new Error("CANVAS_ERROR"));
-          return;
-        }
-
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(img, 0, 0, width, height);
-
-        resolve(canvas.toDataURL("image/jpeg", 0.48));
-      };
-
-      img.src = event.target.result;
-    };
-
-    reader.readAsDataURL(file);
-  });
-}
-
+async function compressImageFile(file) { return Images.compressImage(file); }
 async function getListingImages() {
-  const input = document.getElementById("animalImages");
-  if (!input || !input.files || input.files.length === 0) return [];
-
-  const files = Array.from(input.files);
-  if (files.length > 5) throw new Error("TOO_MANY_IMAGES");
-
-  const images = [];
-  let totalSize = 0;
-
-  for (const file of files) {
-    const imageData = await compressImageFile(file);
-    totalSize += imageData.length;
-
-    if (totalSize > 650000) throw new Error("IMAGES_TOO_LARGE");
-    images.push(imageData);
-  }
-
-  return images;
+  return Images.uploadImages(Array.from(document.getElementById('animalImages')?.files || []),auth.currentUser);
 }
-
-function safeImageData(value) {
-  if (typeof value !== "string") return "";
-  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(value)) return "";
-  return value;
-}
-
-function animalPhotoHtml(animal = {}) {
-  const images = Array.isArray(animal.images) ? animal.images : [];
-  const firstImage = safeImageData(images[0]);
-
-  if (firstImage) {
-    return `
-      <div style="position:relative;width:100%;height:230px;overflow:hidden;border-radius:14px;background:#10271c;">
-        <img src="${firstImage}" onerror="this.parentElement.innerHTML='لا توجد صورة'" alt="صورة الحيوان" style="width:100%;height:100%;object-fit:cover;display:block;">
-        ${images.length > 1 ? `
-          <div style="position:absolute;bottom:10px;left:10px;background:rgba(0,0,0,.75);color:white;padding:6px 10px;border-radius:20px;">
-            📷 ${images.length} صور
-          </div>` : ""}
-      </div>
-    `;
-  }
-
-  return `
-    <div style="font-size:90px;text-align:center;background:#10271c;border-radius:14px;padding:20px;">
-      ${animalIcon(animal.type || "")}<span style="display:block;font-size:16px;">لا توجد صورة</span>
-    </div>
-  `;
-}
+function safeImageData(value) { return Images.safeImage(value); }
+function animalPhotoHtml(animal = {}) { return MarketV2.gallery(animal.images,animal.name || animal.type); }
 
 function ownerManagementButton(animal) {
   const user = auth.currentUser;
@@ -794,21 +714,28 @@ function ownerManagementButton(animal) {
 async function ensureUserProfile(user, initialDisplayName = "") {
   if (!user) return false;
   try {
+    let profileActive = true;
     const userRef = doc(db, "users", user.uid);
     await runTransaction(db, async transaction => {
       const snapshot = await transaction.get(userRef);
+      // Match the existing Rules policy: inactive accounts cannot update their profile.
+      if (snapshot.exists() && (snapshot.data().status || "active") !== "active") {
+        profileActive = false;
+        return;
+      }
       const phone = typeof user.phoneNumber === "string" ? user.phoneNumber : "";
+      const google = user.providerData?.some(provider => provider.providerId === 'google.com');
       const values = {
         ...(phone ? { phoneNumber: phone } : {}),
         lastLoginAt: serverTimestamp()
       };
       if (!snapshot.exists()) {
         transaction.set(userRef, {
-          uid: user.uid, displayName: initialDisplayName,
+          uid: user.uid, displayName: initialDisplayName || (google ? (user.displayName || '').slice(0, 50) : ''),
           accountType: initialDisplayName ? "both" : "buyer", status: "active",
           createdAt: serverTimestamp(), ...values
         });
-      } else {
+      } else if (!google) {
         // Signup and the Auth observer may arrive in either order; never erase a name/phone.
         transaction.update(userRef, {
           ...values,
@@ -816,7 +743,7 @@ async function ensureUserProfile(user, initialDisplayName = "") {
         });
       }
     });
-    return true;
+    return profileActive;
   } catch (error) {
     console.error("USER PROFILE ERROR:", error.code || "unknown");
     return false;
@@ -979,6 +906,7 @@ async function showAccount() {
       </div>
 
       <button class="ux-back" onclick="closeModal()">رجوع إلى السوق</button>
+      ${profile?.status && profile.status !== 'active' ? `<p role="status">${socialError('', 'app/account-inactive')}</p>` : ''}
       <label for="profileName">الاسم</label>
       <input id="profileName" type="text" maxlength="50"
         value="${escapeHtml(displayName)}"
@@ -2115,11 +2043,8 @@ window.updatePurchaseRequest = async function (requestId, newStatus) {
   }
 };
 
-function authMethodButtons(selected) {
-  return `<div class="auth-methods" role="group" aria-label="طريقة تسجيل الدخول">
-    <button type="button" aria-pressed="${selected === "phone"}" onclick="openLogin()">رقم الهاتف</button>
-    <button type="button" aria-pressed="${selected === "email"}" onclick="openEmailAuth()">البريد الإلكتروني</button>
-  </div>`;
+function authMethodButtons() {
+  return `<div class="v2-social"><button type="button" class="google-sign-in" onclick="socialLogin('Google')"><img src="google-g.png" width="20" height="20" alt=""><span>${MarketV2.text('الدخول باستخدام Google','Sign in with Google')}</span></button></div><p class="v2-or">${MarketV2.text('أو','or')}</p>`;
 }
 
 function authErrorText(code) {
@@ -2192,7 +2117,8 @@ window.openEmailAuth = function (mode = "login") {
   if (!["login", "signup", "reset"].includes(mode)) mode = "login";
   const title = mode === "signup" ? "إنشاء حساب جديد" : mode === "reset" ? "نسيت كلمة المرور؟" : "تسجيل الدخول";
   showModal(`<div class="email-auth" dir="rtl">
-    <h2>${title}</h2>${authMethodButtons("email")}
+    <img class="auth-logo" src="logo-souq-alhalal.png" width="72" height="72" alt="شعار سوق الحلال">
+    <h2>${title}</h2>${mode === 'login' ? authMethodButtons() : ''}
     <form id="emailAuthForm" onsubmit="submitEmailAuth(event, '${mode}')" novalidate>
       ${mode === "signup" ? '<label for="emailDisplayName">الاسم</label><input id="emailDisplayName" autocomplete="name" maxlength="50" required>' : ""}
       <label for="authEmail">البريد الإلكتروني</label>
@@ -2202,13 +2128,14 @@ window.openEmailAuth = function (mode = "login") {
       ${mode === "signup" ? `<ul id="passwordRequirements" class="password-requirements">${['8 أحرف على الأقل', 'حرف إنجليزي كبير (A–Z)', 'حرف إنجليزي صغير (a–z)', 'رقم واحد على الأقل (0–9)', 'رمز خاص واحد على الأقل مثل ! أو @'].map(label => `<li><span>○</span> ${label}</li>`).join('')}</ul><label for="authPasswordConfirm">تأكيد كلمة المرور</label>${passwordField('authPasswordConfirm', 'new-password')}<p id="passwordMatch" aria-live="polite"></p><p>لا تحتاج رقم هاتف أو SMS. يمكنك استخدام حسابك للبيع والشراء.</p>` : ""}
       <p id="emailAuthStatus" role="status" aria-live="polite"></p>
       <button type="submit">${mode === "reset" ? "إرسال رابط إعادة التعيين" : title}</button>
-      ${mode === "login" ? '<button type="button" onclick="openEmailAuth(\'signup\')">إنشاء حساب جديد</button><button type="button" onclick="openEmailAuth(\'reset\')">نسيت كلمة المرور؟</button>' : '<button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>'}
-    </form></div>`);
+      ${mode === "login" ? '<div class="auth-secondary-actions"><button type="button" onclick="openEmailAuth(\'reset\')">نسيت كلمة المرور؟</button><button type="button" onclick="openEmailAuth(\'signup\')">إنشاء حساب جديد</button></div>' : '<button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>'}
+    </form><div class="phone-auth-backup"><p>طريقة دخول احتياطية مؤقتة</p><button type="button" onclick="openPhoneLogin()">الدخول برقم الهاتف</button></div></div>`);
+  document.querySelector('#modal .box').scrollTop = 0;
 };
 
 window.submitEmailAuth = async function (event, mode) {
   event.preventDefault();
-  if (emailAuthBusy || !["login", "signup", "reset"].includes(mode)) return;
+  if (emailAuthBusy || socialBusy || !["login", "signup", "reset"].includes(mode)) return;
   const form = document.getElementById("emailAuthForm");
   const status = document.getElementById("emailAuthStatus");
   if (!form || !status) return;
@@ -2219,7 +2146,7 @@ window.submitEmailAuth = async function (event, mode) {
   const invalid = validateEmailForm(mode, email, password, confirmation, name);
   if (invalid) { status.textContent = invalid; return; }
   emailAuthBusy = true;
-  const buttons = [...form.querySelectorAll("button")];
+  const buttons = [...document.querySelectorAll('.email-auth button')];
   buttons.forEach(button => { button.disabled = true; });
   status.textContent = "جاري تنفيذ الطلب…";
   const resetMessage = "تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني إذا كان الحساب مسجلاً لدينا.";
@@ -2233,7 +2160,10 @@ window.submitEmailAuth = async function (event, mode) {
         : await signInWithEmailAndPassword(auth, email, password);
       const saved = await ensureUserProfile(result.user, mode === "signup" ? name : "");
       if (!saved) {
-        status.textContent = "تم تسجيل الدخول، لكن تعذر حفظ بيانات الحساب. افتح حسابي وأكمل الاسم عند عودة الاتصال.";
+        const profile = await getUserProfile();
+        status.textContent = profile?.status && profile.status !== 'active'
+          ? socialError('', 'app/account-inactive')
+          : "تم تسجيل الدخول، لكن تعذر حفظ بيانات الحساب. افتح حسابي وأكمل الاسم عند عودة الاتصال.";
       } else if (form.isConnected) {
         await showAccount();
       }
@@ -2328,16 +2258,16 @@ window.confirmAccountDeletion = async function () {
   } finally { deletionRequestBusy = false; }
 };
 
-window.openLogin = async function () {
+async function openLegacyPhoneLogin() {
   if (auth.currentUser) {
     await showAccount();
     return;
   }
 
   showModal(`
-    <div style="direction:rtl;color:white;padding:10px;">
+    <div class="phone-auth" style="direction:rtl;color:white;padding:10px;">
       <h2 style="text-align:center;color:#68e6b0;">تسجيل الدخول</h2>
-      ${authMethodButtons("phone")}
+      <button type="button" onclick="openEmailAuth()">العودة لتسجيل الدخول</button>
       <p style="text-align:center;color:#aaa;">اختر الدولة ثم أدخل رقم هاتفك</p>
       <select aria-label="دولة رقم الهاتف" id="loginCountry" onchange="updateLoginPhoneCountry()"
         style="width:100%;box-sizing:border-box;padding:14px;margin:10px 0;">
@@ -2357,6 +2287,10 @@ window.openLogin = async function () {
       <p id="loginStatus"></p>
     </div>
   `);
+};
+
+window.openPhoneLogin = () => {
+  if (!emailAuthBusy && !socialBusy) return openLegacyPhoneLogin();
 };
 
 window.updateLoginPhoneCountry = function () {
@@ -2468,7 +2402,7 @@ window.logoutUser = async function () {
 
 onAuthStateChanged(auth, async user => {
   // Clear administrative data immediately when the authentication session changes.
-  if (document.getElementById('adminV2Body') || document.getElementById('adminServiceRequestsList')) {
+  if (document.getElementById('adminV2Body') || document.getElementById('adminServiceRequestsList') || document.querySelector('.v2-home-admin')) {
     window.closeModal();
     const content = document.getElementById('modalContent');
     if (content) content.innerHTML = '';
@@ -2497,7 +2431,7 @@ onAuthStateChanged(auth, async user => {
     stopUnreadMessagesListener();
   }
 
-  await loadMarket();
+  await loadMarket({preserveModal:true});
 });
 
 function createFirebaseArea() {
@@ -2512,15 +2446,21 @@ function createFirebaseArea() {
   area.id = "firebase-market";
 
   area.innerHTML = `
-    <div style="max-width:1100px;margin:35px auto;padding:20px;direction:rtl;">
+    <div class="v2-market-inner">
       <h2 style="text-align:center;color:#68e6b0;margin-bottom:7px;">🐪 سوق الحلال</h2>
       <p style="text-align:center;color:#aaa;margin-top:0;">
         ابحث داخل سوق ${COUNTRIES[activeMarketCountry].name} حسب المنطقة والمدينة
       </p>
 
+      <div class="v2-tabs" role="tablist" aria-label="نوع البيع">
+        <button id="directTab" role="tab" aria-controls="direct-sales" aria-selected="true" onclick="selectMarketTab('direct')">🛒 البيع المباشر <span id="directCount">0</span></button>
+        <button id="auctionTab" role="tab" aria-controls="auction-list" aria-selected="false" onclick="selectMarketTab('auction')">⚒ المزادات <span id="auctionCount">0</span></button>
+      </div>
       <div id="market-filters"
         style="background:#1d2521;border:1px solid #35443d;border-radius:16px;padding:16px;margin:22px 0 25px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
 
+        <input id="marketSearch" type="search" placeholder="ابحث عن حيوان أو كلمة مفتاحية…" aria-label="البحث" oninput="scheduleMarketSearch()">
+        <select id="marketSort" aria-label="الترتيب" onchange="applyMarketFilters()"><option value="featured">المميزة أولًا</option><option value="newest">الأحدث</option><option value="priceLow">السعر: الأقل</option><option value="priceHigh">السعر: الأعلى</option></select>
         <select id="marketRegionFilter" aria-label="الإمارة أو المحافظة" onchange="updateMarketCityFilter()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
           <option value="all">جميع المناطق والمحافظات</option>
@@ -2533,7 +2473,7 @@ function createFirebaseArea() {
 
         <select id="marketAnimalFilter" aria-label="نوع الحيوان" onchange="applyMarketFilters()"
           style="width:100%;padding:13px;border-radius:10px;border:1px solid #45564e;">
-          <option value="all">🐾 جميع أنواع الحلال</option>
+          <option value="all">النوع</option>
           <option value="ناقة">🐫 ناقة</option>
           <option value="غنم">🐑 غنم</option>
           <option value="ماعز">🐐 ماعز</option>
@@ -2542,7 +2482,7 @@ function createFirebaseArea() {
           <option value="صقور">🦅 صقور</option>
           <option value="غزال">🦌 غزال</option>
           <option value="نعام">🐦 نعام</option>
-          <option value="حمام">🕊️ حمام</option>
+          <option value="حمام">🕊️ حمام</option><option value="حيوانات أليفة">حيوانات أليفة</option><option value="أخرى">أخرى</option>
         </select>
 
         <select id="marketSaleTypeFilter" aria-label="طريقة البيع" onchange="applyMarketFilters()"
@@ -2552,13 +2492,13 @@ function createFirebaseArea() {
           <option value="auction">🔨 مزاد إلكتروني</option>
         </select>
 
-        <button onclick="resetMarketFilters()"
-          style="width:100%;background:#5c635f;color:white;border:0;padding:13px;border-radius:10px;">
-          🔄 إظهار الكل
-        </button>
       </div>
 
-      <p id="firebase-status" style="text-align:center;color:#aaa;"></p>
+      <div id="categoryTiles" class="v2-categories"></div>
+      <div class="v3-market-meta">
+        <p id="firebase-status" style="text-align:center;color:#aaa;"></p>
+        <button class="v3-reset" onclick="resetMarketFilters()">🔄 إظهار الكل</button>
+      </div>
 
       <div id="direct-sales-anchor" aria-hidden="true"></div>
       <h2 style="margin-top:40px;color:#68e6b0;">🛒 البيع المباشر</h2>
@@ -2575,11 +2515,13 @@ function createFirebaseArea() {
   const sellSection = document.getElementById("sell");
 
   if (main && sellSection) {
-    main.insertBefore(area, sellSection);
+    main.insertBefore(area, document.getElementById('how-it-works') || sellSection);
   } else {
     (main || document.body).appendChild(area);
   }
   window.updateMarketRegionFilter(false);
+  renderCategoryTiles();
+  window.selectMarketTab?.(activeMarketTab,false);
   return area;
 }
 
@@ -2989,11 +2931,13 @@ function auctionActionHtml(auction, expired, isOwner) {
 }
 
 let marketRevision = 0;
-async function loadMarket() {
+async function loadMarket({preserveModal=false}={}) {
   const revision = ++marketRevision;
   if (!activeMarketCountry) {
     updateMarketCountryIndicator();
-    window.openMarketCountrySelector();
+    // Auth refreshes may finish after a popup/redirect result opens an account message.
+    // Keep that dialog; country selection remains available from the market controls.
+    if(!preserveModal||document.getElementById('modal')?.style.display!=='flex')window.openMarketCountrySelector();
     return;
   }
 
@@ -3027,7 +2971,7 @@ async function loadMarket() {
       .filter(animal =>
         animalMatchesMarketFilters(animal, "direct")
       )
-      .sort(marketplaceSort);
+      .sort(marketSortV2);
 
     if (directAnimals.length === 0) {
       directContainer.innerHTML = `
@@ -3036,45 +2980,7 @@ async function loadMarket() {
         </div>
       `;
     } else {
-      directContainer.innerHTML = directAnimals.map(animal => `
-        <div style="background:#222;color:white;padding:20px;border-radius:18px;${isFeaturedListing(animal) ? "border:1px solid #b88624;box-shadow:0 0 0 1px rgba(184,134,36,.18);" : ""}">
-          ${listingServiceBadges(animal)}
-          ${animalPhotoHtml(animal)}
-
-          <h3>${escapeHtml(animal.name || animal.type || "حلال للبيع")}</h3>
-
-          <div style="font-size:25px;color:#68e6b0;font-weight:bold;margin:15px 0;">
-            ${money(animal.price, effectiveCountry(animal))}
-          </div>
-
-          <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
-
-          ${listingAnimalDetailsHtml(animal)}
-          ${listingDescriptionHtml(animal)}
-
-          <p style="color:#aaa;font-size:13px;margin-top:14px;">
-            📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
-          </p>
-
-          <p>البائع: ${escapeHtml(animal.sellerName || "اسم البائع غير متاح")}</p>
-          <button class="ux-back" onclick="openListingDetails(${inlineArgument(animal.id)})">تفاصيل الإعلان</button>
-          <button onclick="requestPurchase(${inlineArgument(animal.id)})"
-            style="width:100%;background:#00643e;color:white;border:0;padding:14px;border-radius:10px;">
-            طلب شراء
-          </button>
-
-          ${(!auth.currentUser || animal.sellerId !== auth.currentUser.uid) ? `
-            <button onclick="openDirectConversation(${inlineArgument(animal.id)})"
-              style="width:100%;background:#b88624;color:white;border:0;padding:14px;border-radius:10px;margin-top:10px;font-weight:bold;">
-              💬 مراسلة البائع / تقديم عرض
-            </button>
-          ` : ""}
-
-          ${ownerManagementButton(animal)}
-          <button onclick="submitModerationReport('animal', ${inlineArgument(animal.id)})">إبلاغ عن الإعلان</button>
-          <button onclick="submitModerationReport('user', ${inlineArgument(animal.sellerId)})">إبلاغ عن البائع</button>
-        </div>
-      `).join("");
+      directContainer.innerHTML = directAnimals.map(animal => renderMarketCard(animal)).join('');
     }
 
     const auctionSnapshot = await getDocs(collection(db, "auctions"));
@@ -3120,106 +3026,17 @@ async function loadMarket() {
         </div>
       `;
     } else {
-      auctionContainer.innerHTML = visibleAuctions.map(auction => {
-        const animal = animals[auction.animalId] || {};
-        const currentPrice = Number(auction.currentPrice || auction.startPrice || 0);
-        const increment = Number(auction.minIncrement || 0);
-        const minimumNextBid = currentPrice + increment;
-        const endMillis = timestampToMillis(auction.endTime);
-
-        const expired =
-          auction.status !== "active" ||
-          !endMillis ||
-          endMillis <= Date.now();
-
-        const isOwner =
-          !!auth.currentUser &&
-          auction.sellerId === auth.currentUser.uid;
-
-        let tagText = "مزاد نشط";
-        let tagColor = "#00643e";
-
-        if (auction.status === "sold") {
-          tagText = "تم اعتماد البيع";
-          tagColor = "#00643e";
-        } else if (auction.status === "not_approved") {
-          tagText = "لم يعتمد البيع";
-          tagColor = "#6d2929";
-        } else if (expired) {
-          tagText = "مزاد منتهي";
-          tagColor = "#6d2929";
-        }
-
-        return `
-          <div style="background:#222;color:white;padding:20px;border-radius:18px;${isFeaturedListing(auction) ? "border:1px solid #b88624;box-shadow:0 0 0 1px rgba(184,134,36,.18);" : ""}">
-            ${listingServiceBadges(auction, animal)}
-            ${animalPhotoHtml(animal)}
-
-            <div id="auction-tag-${auction.id}"
-              style="display:inline-block;background:${tagColor};padding:6px 12px;border-radius:20px;margin-top:12px;">
-              ${tagText}
-            </div>
-
-            <h3>${escapeHtml(animal.name || animal.type || "مزاد حلال")}</h3>
-
-            <div style="font-size:27px;color:#68e6b0;font-weight:bold;margin:15px 0;">
-              السعر الحالي:
-              <br>
-              ${money(currentPrice, effectiveCountry(auction))}
-            </div>
-
-            ${auction.status === "active" ? `
-              <div
-                data-auction-end="${endMillis}"
-                data-auction-id="${auction.id}"
-                style="color:#ffd66b;font-size:20px;font-weight:bold;text-align:center;margin:18px 0;">
-                ${expired ? "⛔ انتهى المزاد" : "⏱ " + getCountdownText(auction.endTime)}
-              </div>
-            ` : `
-              <div style="text-align:center;color:#aaa;margin:18px 0;">
-                ⛔ انتهى المزاد
-              </div>
-            `}
-
-            <p>📍 ${escapeHtml(animal.location || "غير محدد")}</p>
-
-            ${listingAnimalDetailsHtml(animal)}
-
-            <p>سعر البداية: <b>${money(auction.startPrice, effectiveCountry(auction))}</b></p>
-            <p>أقل زيادة: <b>${money(increment, effectiveCountry(auction))}</b></p>
-            ${auction.status === "active" && !expired ? `
-              <p>
-                الحد الأدنى للمزايدة القادمة:
-                <b>${money(minimumNextBid, effectiveCountry(auction))}</b>
-              </p>
-            ` : ""}
-
-            <p style="color:#aaa;text-align:center;">
-              موعد الانتهاء:
-              ${formatDate(auction.endTime)}
-            </p>
-
-            ${listingDescriptionHtml(animal)}
-            <button onclick="submitModerationReport('auction', ${inlineArgument(auction.id)})">إبلاغ عن المزاد</button>
-            <button onclick="submitModerationReport('user', ${inlineArgument(auction.sellerId)})">إبلاغ عن البائع</button>
-
-            <p style="color:#aaa;font-size:13px;margin-top:14px;">
-              📅 تاريخ الإعلان: ${formatListingDate(animal.createdAt)}
-            </p>
-
-            <p>البائع: ${escapeHtml(auction.sellerName || animal.sellerName || "اسم البائع غير متاح")}</p>
-            <button class="ux-back" onclick="openListingDetails(${inlineArgument(animal.id)}, ${inlineArgument(auction.id)})">تفاصيل المزاد</button>
-            ${auctionActionHtml(auction, expired, isOwner)}
-
-            ${isOwner ? ownerManagementButton(animal) : ""}
-          </div>
-        `;
-      }).join("");
+      auctionContainer.innerHTML = visibleAuctions.map(auction => renderMarketCard(animals[auction.animalId],auction)).join('');
     }
 
+    document.getElementById('directCount').textContent = directAnimals.length;
+    document.getElementById('auctionCount').textContent = visibleAuctions.length;
+    window.selectMarketTab(activeMarketTab,false);
+    void loadHomeHero(animals);
     const totalResults = directAnimals.length + visibleAuctions.length;
     status.innerHTML = "✅ متصل بالسوق • " + totalResults + " نتيجة";
 
+    applySiteLanguage();
     startAuctionTimers();
   } catch (error) {
     console.error("LOAD MARKET ERROR:", error);
@@ -3738,8 +3555,8 @@ window.replaceAnimalImages = async function (animalId) {
     return;
   }
 
-  if (input.files.length > 5) {
-    alert("يمكن اختيار 5 صور كحد أقصى.");
+  if (input.files.length > 3) {
+    alert("يمكن اختيار 3 صور كحد أقصى.");
     return;
   }
 
@@ -3752,21 +3569,7 @@ window.replaceAnimalImages = async function (animalId) {
       return;
     }
 
-    const files = Array.from(input.files);
-    const images = [];
-    let totalSize = 0;
-
-    for (const file of files) {
-      const imageData = await compressImageFile(file);
-      totalSize += imageData.length;
-
-      if (totalSize > 650000) {
-        alert("حجم الصور كبير جداً.");
-        return;
-      }
-
-      images.push(imageData);
-    }
+    const images = await Images.uploadImages(Array.from(input.files),auth.currentUser);
 
     await setDoc(animalRef, {
       images,
@@ -4148,6 +3951,8 @@ window.saveListing = async function (event) {
     const location = document.getElementById("animalLocation")?.value.trim() ||
       (city && region ? city + " - " + region : "");
     const method = document.getElementById("method")?.value || "";
+    const subcategory = type === 'حيوانات أليفة' ? document.getElementById('petSubcategory')?.value || '' : '';
+    if (type === 'حيوانات أليفة' && method === 'مزاد إلكتروني') { alert('الحيوانات الأليفة متاحة للبيع المباشر فقط.'); return; }
     const price = Number(document.getElementById("animalPrice")?.value);
     const description = document.getElementById("animalDescription")?.value.trim() || "";
 
@@ -4174,7 +3979,7 @@ window.saveListing = async function (event) {
     try {
       images = await getListingImages();
     } catch (error) {
-      const imageErrors={TOO_MANY_IMAGES:"اختر 5 صور كحد أقصى.",IMAGES_TOO_LARGE:"حجم الصور بعد الضغط كبير. احذف صورة أو اختر صورًا أصغر.",INVALID_IMAGE:"اختر ملفات صور فقط.",IMAGE_LOAD_ERROR:"إحدى الصور لا يمكن فتحها. احذفها واختر صورة أخرى.",IMAGE_READ_ERROR:"تعذر قراءة الصورة. أعد اختيارها."};
+      const imageErrors={IMAGE_REQUIRED:"اختر صورة واحدة على الأقل.",IMAGE_PROVIDER_NOT_CONFIGURED:"رفع الصور غير متاح حاليًا. يرجى المحاولة بعد تجهيز الخدمة.",IMAGE_TOO_LARGE:"الصورة كبيرة جدًا. اختر صورة أصغر.",TOO_MANY_IMAGES:"اختر 3 صور كحد أقصى.",IMAGES_TOO_LARGE:"حجم الصور بعد الضغط كبير. احذف صورة أو اختر صورًا أصغر.",INVALID_IMAGE:"اختر ملفات صور فقط.",IMAGE_LOAD_ERROR:"إحدى الصور لا يمكن فتحها. احذفها واختر صورة أخرى.",IMAGE_READ_ERROR:"تعذر قراءة الصورة. أعد اختيارها."};
       alert(imageErrors[error.message] || "تعذر تجهيز الصور. أعد اختيارها وحاول مجددًا.");
       return;
     }
@@ -4200,6 +4005,7 @@ window.saveListing = async function (event) {
         price,
         description,
         images,
+        ...(subcategory ? {subcategory} : {}),
         sellerId: user.uid,
         sellerName: profile.displayName || "",
         status: "active",
@@ -4259,6 +4065,7 @@ window.saveListing = async function (event) {
         price,
         description,
         images,
+        ...(subcategory ? {subcategory} : {}),
         sellerId: user.uid,
         sellerName: profile.displayName || "",
         status: "active",
@@ -4301,6 +4108,7 @@ function resetListingForm(form) {
   if (form) form.reset();
   // Reset validation as well as visibility after an auction submission.
   window.toggleAuctionFields?.();
+  window.updatePetCategory?.();
   window.updateListingLocationOptions();
 
   const preview = document.getElementById("imagePreview");
@@ -5416,7 +5224,8 @@ window.openListingDetails = async function (animalId, auctionId = '', back = 'ma
     const images=(animal.images||[]).map(safeImageData).filter(Boolean);
     showModal(`<section class="ux-detail" data-animal="${escapeHtml(animalId)}" data-auction="${escapeHtml(auction?.id || '')}" data-back="${escapeHtml(back)}">${backHtml}
       <h2>${escapeHtml(animal.name || animal.type || 'تفاصيل الإعلان')}</h2>
-      <div class="ux-gallery">${images.length ? images.map((src,i)=>`<figure><img src="${src}" alt="صورة الحيوان ${i+1}" onerror="this.parentElement.textContent='لا توجد صورة'"></figure>`).join('') : '<p class="ux-empty-image">لا توجد صورة</p>'}</div>
+      ${listingServiceBadges(auction || animal,animal)}
+      <div class="ux-gallery">${MarketV2.gallery(images,animal.name || animal.type)}</div>
       <p class="ux-price">${money(auction ? auction.currentPrice || auction.startPrice : animal.price,effectiveCountry(auction || animal))}</p>
       <p>النوع: ${escapeHtml(animal.type || 'غير محدد')}</p>
       <p>الموقع: ${escapeHtml(animal.location || [animal.city,animal.region].filter(Boolean).join(' - ') || 'غير محدد')}</p>
@@ -5425,6 +5234,9 @@ window.openListingDetails = async function (animalId, auctionId = '', back = 'ma
       ${listingAnimalDetailsHtml(animal)}${listingDescriptionHtml(animal)}
       <p>تاريخ الإعلان: ${formatDate(animal.createdAt)}</p>
       ${auction ? `<p>سعر البداية: ${money(auction.startPrice,effectiveCountry(auction))}</p><p>أقل زيادة: ${money(auction.minIncrement,effectiveCountry(auction))}</p><p>موعد الانتهاء: ${formatDate(auction.endTime)}</p><p ${!expired ? `data-auction-end="${timestampToMillis(auction.endTime)}" data-auction-id="${escapeHtml(auction.id)}"` : ''}>${expired ? 'انتهى المزاد' : getCountdownText(auction.endTime)}</p>${auctionActionHtml(auction,expired,owner).replace('id="bid-button-', 'id="detail-bid-button-')}` : animal.saleType === 'auction' ? '<p>تفاصيل المزاد غير متاحة حاليًا.</p>' : !owner && (!animal.status || animal.status==='active') ? `<button class="ux-back" onclick="requestPurchase(${inlineArgument(animalId)})">طلب شراء</button>` : `<p>${animal.status==='sold' ? 'تم البيع' : 'هذا إعلانك'}</p>`}
+      ${!owner && animal.saleType==='direct' ? `<button onclick="openDirectConversation(${inlineArgument(animalId)})">مراسلة البائع / تقديم عرض</button>` : ''}
+      <button onclick="submitModerationReport('animal', ${inlineArgument(animalId)})">إبلاغ عن الإعلان</button>
+      <button onclick="submitModerationReport('user', ${inlineArgument(animal.sellerId)})">إبلاغ عن البائع</button>
       ${ownerManagementButton(animal)}
     </section>`);
   } catch {
@@ -5571,3 +5383,182 @@ window.submitModerationReport = async function(type,id) {
 };
 
 window.openAdminSection=async function(section){if(!await requireAdminClaim(true)){alert('غير مصرح');return;}await (await getAdminDashboard()).open(section);};
+
+// Marketplace presentation delegates purchases and bids to the existing guarded actions.
+function renderMarketCard(animal,auction=null) {
+  const t=MarketV2.text,owner=auth.currentUser?.uid===animal.sellerId;
+  const expired=auction && (auction.status!=='active'||timestampToMillis(auction.endTime)<=Date.now());
+  const name=escapeHtml(animal.name||animal.type||t('حلال','Livestock'));
+  const id=inlineArgument(animal.id),aid=inlineArgument(auction?.id||'');
+  const status=auction?(auction.status==='sold'?t('تم اعتماد البيع','Sale approved'):auction.status==='not_approved'?t('لم يعتمد البيع','Not approved'):expired?t('مزاد منتهي','Auction ended'):t('مزاد مباشر','Live auction')):t('بيع مباشر','Direct sale');
+  return `<article class="v2-card ${auction?'v2-auction':''}" data-animal-id="${escapeHtml(animal.id)}">
+    ${animalPhotoHtml(animal)}<span class="v2-badge" ${auction?`id="auction-tag-${escapeHtml(auction.id)}"`:''}>${status}</span>
+    <button type="button" class="v2-favorite" aria-label="${t('المفضلة','Favorite')}" aria-pressed="${favorites.has(animal.id)}" onclick="toggleFavorite(${id},this)">${MarketV2.favoriteIcon}</button>
+    <div class="v2-card-body"><h3>${name}</h3><p>⌖ ${escapeHtml(animal.location||[animal.city,animal.region].filter(Boolean).join(' - ')||t('غير محدد','Not specified'))}</p>
+    ${auction?`<p>${t('أعلى مزايدة','Highest bid')}</p>`:''}<div class="v2-price"><bdi>${money(auction?auction.currentPrice||auction.startPrice:animal.price,effectiveCountry(auction||animal))}</bdi></div>
+    <p>${[animal.breed,animal.age,animal.subcategory].filter(Boolean).slice(0,2).map(escapeHtml).join(' · ')}</p>
+    ${auction?`<div class="v2-countdown" ${!expired?`data-auction-end="${timestampToMillis(auction.endTime)}" data-auction-id="${escapeHtml(auction.id)}"`:''}>${expired?t('انتهى المزاد','Auction ended'):getCountdownText(auction.endTime)}</div>`:''}
+    <div class="v2-card-actions"><button onclick="openListingDetails(${id}${auction?', '+aid:''})">${t('عرض التفاصيل','View details')}</button>
+    <button ${auction?`id="bid-button-${escapeHtml(auction.id)}"`:''} ${owner||expired?'disabled':''} onclick="${auction?'placeBid('+aid+')':'requestPurchase('+id+')'}">${owner?t('هذا إعلانك','Your listing'):auction?t('المزايدة الآن','Bid now'):t('شراء الآن','Buy now')}</button></div></div></article>`;
+}
+function marketSortV2(a,b) {
+  const mode=document.getElementById('marketSort')?.value;
+  if(mode==='newest')return timestampToMillis(b.createdAt)-timestampToMillis(a.createdAt);
+  if(mode==='priceLow'||mode==='priceHigh')return (Number(a.currentPrice??a.price??a.startPrice??0)-Number(b.currentPrice??b.price??b.startPrice??0))*(mode==='priceLow'?1:-1);
+  return marketplaceSort(a,b);
+}
+window.toggleFavorite=(id,button)=>{
+  favorites.has(id)?favorites.delete(id):favorites.add(id);
+  button.setAttribute('aria-pressed',String(favorites.has(id)));
+  try{localStorage.setItem('souqFavorites',JSON.stringify([...favorites]));}catch{/* Device storage may be disabled. */}
+};
+window.selectMarketTab=(tab,scroll=true)=>{
+  activeMarketTab=tab==='auction'?'auction':'direct';
+  for(const kind of ['direct','auction']){
+    const area=document.getElementById(kind==='direct'?'direct-sales':'auction-list');
+    if(area){area.hidden=kind!==activeMarketTab;area.setAttribute('role','tabpanel');area.setAttribute('aria-labelledby',kind+'Tab');}
+    document.getElementById(kind+'Tab')?.setAttribute('aria-selected',String(kind===activeMarketTab));
+  }
+  if(scroll){document.getElementById('firebase-market')?.scrollIntoView({behavior:'smooth'});setHeaderActive(activeMarketTab==='auction'?'#auction-list':'#direct-sales');}
+};
+function setHeaderActive(target){document.querySelectorAll('#primaryNav a').forEach(link=>link.setAttribute('aria-current',link.getAttribute('href')===target?'page':'false'));}
+function syncHeaderRoute(){const target=location.hash||'#home';setHeaderActive(target);if(target==='#auction-list')window.selectMarketTab('auction',false);if(['#direct-sales','#direct-sales-anchor'].includes(target))window.selectMarketTab('direct',false);}
+window.addEventListener('hashchange',syncHeaderRoute);
+window.scheduleMarketSearch=()=>{clearTimeout(marketSearchTimer);marketSearchTimer=setTimeout(loadMarket,300);};
+function renderCategoryTiles(){
+  const area=document.getElementById('categoryTiles');if(!area)return;
+  const current=document.getElementById('marketAnimalFilter')?.value||'all';
+  const primary = ['all','ناقة','غنم','ماعز','بقر','أخرى'];
+  area.innerHTML=MarketV2.CATEGORIES.filter(([value])=>primary.includes(value)).map(([value,ar,en])=>`<button type="button" aria-pressed="${value===current}" onclick="chooseMarketCategory(${inlineArgument(value)})">${MarketV2.categoryIcon(value)}${MarketV2.text(ar,en)}</button>`).join('');
+}
+window.chooseMarketCategory=value=>{document.getElementById('marketAnimalFilter').value=value;renderCategoryTiles();loadMarket();};
+window.updatePetCategory=()=>{
+  const pets=document.getElementById('animalType').value==='حيوانات أليفة';
+  document.getElementById('petSubcategoryField').hidden=!pets;
+  const method=document.getElementById('method');
+  const auction=[...method.options].find(option=>option.value==='مزاد إلكتروني');if(auction)auction.disabled=pets;
+  if(pets&&method.value==='مزاد إلكتروني'){method.value='بيع مباشر';window.toggleAuctionFields();}
+};
+window.toggleMainMenu=button=>{const open=button.getAttribute('aria-expanded')!=='true';button.setAttribute('aria-expanded',String(open));document.getElementById('primaryNav').classList.toggle('is-open',open);};
+window.focusMarketSearch=()=>{document.getElementById('firebase-market')?.scrollIntoView();document.getElementById('marketSearch')?.focus();};
+document.addEventListener('click',event=>{
+  const link=event.target.closest('a[href^="#"]');if(!link)return;
+  const target=link.getAttribute('href');
+  if(['#direct','#direct-sales','#direct-sales-anchor'].includes(target))window.selectMarketTab('direct',false);
+  if(['#auction','#auction-list'].includes(target))window.selectMarketTab('auction',false);
+  document.querySelectorAll('#primaryNav a').forEach(a=>a.setAttribute('aria-current',a===link?'page':'false'));
+  document.getElementById('primaryNav')?.classList.remove('is-open');document.querySelector('.v2-hamburger')?.setAttribute('aria-expanded','false');
+});
+function applySiteLanguage(){
+  const en=document.documentElement.lang==='en';
+  document.documentElement.dir=en?'ltr':'rtl';auth.languageCode=en?'en':'ar';
+  document.querySelectorAll('[data-ar][data-en]').forEach(node=>node.textContent=en?node.dataset.en:node.dataset.ar);
+  document.getElementById('languageButton').textContent=en?'🌐 العربية':'🌐 English';
+  const login=document.querySelector('.login');if(login)login.textContent=auth.currentUser?MarketV2.text('حسابي','My account'):MarketV2.text('تسجيل الدخول','Log in');
+  renderCategoryTiles();
+  SiteLanguage.applyLanguage();
+  const translations={marketSearch:['ابحث عن حيوان أو كلمة مفتاحية…','Search livestock or keywords…'],marketRegionFilter:['الإمارة أو المحافظة','Emirate / region'],marketCityFilter:['المدينة','City'],marketAnimalFilter:['نوع الحيوان','Animal type'],marketSort:['الترتيب','Sort']};
+  for(const [id,labels]of Object.entries(translations)){const node=document.getElementById(id);if(!node)continue;node.setAttribute('aria-label',labels[en?1:0]);if(id==='marketSearch')node.placeholder=labels[en?1:0];}
+  for(const kind of ['direct','auction']){const tab=document.getElementById(kind+'Tab');if(tab){const count=tab.querySelector('span');tab.replaceChildren(document.createTextNode(kind==='direct'?MarketV2.text('🛒 البيع المباشر ','🛒 Direct sale '):MarketV2.text('⚒ المزادات ','⚒ Auctions ')),count);}}
+}
+window.toggleSiteLanguage=()=>{document.documentElement.lang=document.documentElement.lang==='en'?'ar':'en';try{localStorage.setItem('souqLanguage',document.documentElement.lang);}catch{}applySiteLanguage();loadMarket();};
+
+window.openLogin=async()=>auth.currentUser?showAccount():window.openEmailAuth();
+let socialBusy=false;
+function socialError(provider,code){
+  if(code==='auth/account-exists-with-different-credential')return MarketV2.text('هذا البريد مرتبط بطريقة دخول أخرى. سجّل الدخول بالطريقة الأصلية للحفاظ على حسابك.','This email uses another sign-in method. Use that method to preserve your account.');
+  if(code==='auth/popup-closed-by-user'||code==='auth/cancelled-popup-request')return MarketV2.text('تم إلغاء تسجيل الدخول.','Sign-in cancelled.');
+  if(code==='auth/network-request-failed')return MarketV2.text('تعذر الاتصال بالشبكة. تحقق من الإنترنت وحاول مرة أخرى.','Network connection failed. Check your connection and try again.');
+  if(code==='auth/user-disabled'||code==='app/account-inactive')return MarketV2.text('هذا الحساب موقوف. يرجى التواصل مع الدعم.','This account is restricted. Please contact support.');
+  if(code==='app/profile-unavailable')return MarketV2.text('تم التحقق من تسجيل الدخول، لكن تعذر تحميل بيانات حسابك. حاول مجددًا عند عودة الاتصال.','Sign-in was authenticated, but your account details could not be loaded. Try again when connected.');
+  if(code==='app/session-changed')return MarketV2.text('تغيرت جلسة الدخول. افتح حسابك مجددًا.','Your sign-in session changed. Open your account again.');
+  if(code==='auth/unauthorized-domain')return MarketV2.text('تسجيل الدخول غير متاح من هذا العنوان. استخدم الموقع المعتمد أو تواصل مع الدعم.','Sign-in is unavailable from this address. Use the approved website or contact support.');
+  if(code==='auth/popup-blocked')return MarketV2.text('حظر المتصفح نافذة Google. اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة، أو استخدم البريد أو الهاتف.','Your browser blocked the Google window. Allow popups for this site and try again, or use email or phone.');
+  return MarketV2.text('تسجيل الدخول عبر '+provider+' غير متاح حاليًا',provider+' sign-in is currently unavailable');
+}
+async function completeSocialSignIn(user){
+  if(!user||auth.currentUser?.uid!==user.uid)throw {code:'app/session-changed'};
+  const saved=await ensureUserProfile(user);
+  if(auth.currentUser?.uid!==user.uid)throw {code:'app/session-changed'};
+  if(!saved){
+    let snapshot;try{snapshot=await getDoc(doc(db,'users',user.uid));}catch{}
+    if(snapshot?.exists()&&(snapshot.data().status||'active')!=='active')throw {code:'app/account-inactive'};
+    throw {code:'app/profile-unavailable'};
+  }
+  await showAccount();
+}
+async function showSocialFailure(provider,code){
+  if(auth.currentUser)await showAccount();else window.openEmailAuth();
+  let node=document.getElementById('emailAuthStatus');
+  if(!node){node=document.createElement('p');node.id='emailAuthStatus';node.setAttribute('role','status');document.getElementById('modalContent')?.prepend(node);}
+  node.textContent=socialError(provider,code);
+}
+window.socialLogin=async(provider)=>{
+  if(socialBusy||emailAuthBusy||auth.currentUser)return;
+  if(!['Google','Facebook','X'].includes(provider))return;
+  socialBusy=true;
+  const status=document.getElementById('emailAuthStatus');
+  const card=document.querySelector('.email-auth');
+  const buttons=[...document.querySelectorAll('.email-auth button')];buttons.forEach(b=>b.disabled=true);
+  card?.setAttribute('aria-busy','true');
+  if(status)status.textContent=MarketV2.text('جارٍ تسجيل الدخول باستخدام '+provider+'…','Signing in with '+provider+'…');
+  try{
+    const identity=provider==='Google'?new GoogleAuthProvider():provider==='Facebook'?new FacebookAuthProvider():new TwitterAuthProvider();
+    // Google prohibits embedded WebView OAuth; the existing Android wrapper is unchanged.
+    if(/; wv\)|\bwv\b/i.test(navigator.userAgent)){if(status)status.textContent=MarketV2.text('افتح الموقع في متصفح الهاتف للدخول بهذا الخيار، أو استخدم البريد وكلمة المرور.','Open the site in your phone browser for social sign-in, or use email and password.');return;}
+    const redirect=async()=>{sessionStorage.setItem('souqSocialRedirect',provider);await signInWithRedirect(auth,identity);};
+    // Popup also avoids cross-site redirect storage restrictions on GitHub Pages.
+    // Redirect is safe only where Firebase's helper is same-origin. GitHub Pages
+    // needs an explicitly configured proxy/custom auth domain before using it.
+    try{
+      const result=await signInWithPopup(auth,identity);
+      // Existing UID is the document key; profile data and permissions are never replaced.
+      await completeSocialSignIn(result.user);
+    }catch(error){if(error.code==='auth/popup-blocked'&&location.hostname===firebaseConfig.authDomain)await redirect();else throw error;}
+  }catch(error){if(status?.isConnected)status.textContent=socialError(provider,error.code);else await showSocialFailure(provider,error.code);try{sessionStorage.removeItem('souqSocialRedirect');}catch{}}
+  finally{socialBusy=false;buttons.forEach(b=>b.disabled=false);card?.removeAttribute('aria-busy');}
+};
+async function finishSocialRedirect(){
+  let provider;try{provider=sessionStorage.getItem('souqSocialRedirect');}catch{return;}
+  if(!['Google','Facebook','X'].includes(provider))return;
+  try{const result=await getRedirectResult(auth);if(result?.user){await completeSocialSignIn(result.user);}else{window.openEmailAuth();const node=document.getElementById('emailAuthStatus');if(node)node.textContent=MarketV2.text('لم يكتمل تسجيل الدخول. أعد المحاولة أو استخدم البريد وكلمة المرور.','Sign-in did not complete. Try again or use email and password.');}}
+  catch(error){await showSocialFailure(provider,error.code);}
+  finally{try{sessionStorage.removeItem('souqSocialRedirect');}catch{}}
+}
+
+async function loadHomeHero(animals){
+  const revision=++heroRevision;
+  try{const snapshot=await getDoc(doc(db,'homePage','config'));if(revision!==heroRevision)return;homeSettings=snapshot.exists()?snapshot.data():null;}
+  catch{if(revision!==heroRevision)return;homeSettings=null;}
+  renderHomeHero(animals);
+}
+function renderHomeHero(animals){
+  clearInterval(heroRotation);
+  const root=document.getElementById('featuredHero'),photo=document.querySelector('.hero-livestock-photo');if(!root||!photo)return;
+  photo.src=safeImageData(homeSettings?.imageUrl)||'hero-livestock.png';photo.onerror=()=>{photo.onerror=null;photo.src='hero-livestock.png';};
+  let featured=MarketV2.activeFeatured(homeSettings,animals,activeMarketCountry);
+  if(!featured.length){root.hidden=true;root.replaceChildren();heroRotation=setInterval(()=>renderHomeHero(animals),30000);return;}
+  root.hidden=false;root.innerHTML=MarketV2.gallery(featured.map(({animal})=>animal.images[0]),MarketV2.text('إعلانات مميزة','Featured listings'))+'<button class="v2-featured-link"></button>';
+  const gallery=root.querySelector('.v2-gallery'),link=root.querySelector('.v2-featured-link');
+  const update=()=>{const current=featured[Number(gallery.dataset.index)||0]?.animal;if(!current)return;link.textContent=MarketV2.text('إعلان مميز · ','Featured · ')+(current.name||current.type);link.onclick=()=>window.openListingDetails(current.id,current.auctionId||'');};
+  const observer=new MutationObserver(update);observer.observe(gallery,{attributes:true,attributeFilter:['data-index']});update();
+  heroRotation=setInterval(()=>{
+    const fresh=MarketV2.activeFeatured(homeSettings,animals,activeMarketCountry);
+    if(fresh.map(x=>x.animal.id).join()!==featured.map(x=>x.animal.id).join()){renderHomeHero(animals);return;}
+    if(document.hidden||root.matches(':hover')||root.contains(document.activeElement)||matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+    MarketV2.showSlide(gallery,Number(gallery.dataset.index)+1);update();
+  },6000);
+}
+window.openHomePageAdmin=async()=>{
+  if(!await requireAdminClaim(true)||currentAdminAccess.role!=='super_admin'){alert('غير مصرح لك بإدارة الصفحة الرئيسية.');return;}
+  const module=await import('./home-page-admin.js');
+  await module.openHomePageAdmin({db,auth,doc,getDoc,getDocs,collection,setDoc,serverTimestamp,Timestamp,showModal,escapeHtml,
+    isAllowed:async()=>await requireAdminClaim(true)&&currentAdminAccess.role==='super_admin',refresh:loadMarket});
+};
+MarketV2.installInteractions();
+SiteLanguage.installLanguage();
+try{if(localStorage.getItem('souqLanguage')==='en')document.documentElement.lang='en';}catch{}
+applySiteLanguage();
+window.selectMarketTab(activeMarketTab,false);
+syncHeaderRoute();
+void finishSocialRedirect();

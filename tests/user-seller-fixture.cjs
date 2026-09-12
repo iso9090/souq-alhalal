@@ -17,7 +17,8 @@ exports.installMock = () => {
      return { docs: items, forEach: fn => items.forEach(fn), empty: !items.length, size: items.length };
    };
    const write = (ref, data, merge) => {
-     if (JSON.stringify(data).match(/"(?:password|passwordHash|email)"\s*:/)) throw Error('Sensitive Firestore field');
+     if (JSON.stringify(data).match(/"(?:password|passwordHash)"\s*:/)) throw Error('Sensitive Firestore field');
+     if (Object.hasOwn(data,'email') && !(ref.path === 'users/'+auth.currentUser?.uid && !merge && data.authProvider === 'google' && data.email === auth.currentUser.email)) throw Error('Email outside new own Google profile');
      if (Object.values(data).some(v => v === undefined)) throw Error('Undefined write');
      calls.push({kind:'write',path:ref.path,data:clone(data)});
      docs.set(ref.path, merge ? {...docs.get(ref.path),...clone(data)} : clone(data));

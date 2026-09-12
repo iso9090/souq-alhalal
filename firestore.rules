@@ -242,13 +242,26 @@ service cloud.firestore {
           'accountType',
           'status',
           'createdAt',
-          'lastLoginAt'
+          'lastLoginAt',
+          'email', 'phone', 'authProvider'
         ])
         && request.resource.data.uid == uid
         && request.resource.data.status == 'active'
         && request.resource.data.accountType in ['buyer', 'seller', 'both']
         && request.resource.data.createdAt == request.time
-        && request.resource.data.lastLoginAt == request.time;
+        && request.resource.data.lastLoginAt == request.time
+        // Optional Google metadata is accepted only from the authenticated identity.
+        // Legacy phone/email creation is unchanged. These fields grant no permissions.
+        && (!request.resource.data.keys().hasAny(['email', 'phone', 'authProvider']) || (
+          request.resource.data.keys().hasAll(['email', 'phone', 'authProvider'])
+          && request.auth.token.firebase.sign_in_provider == 'google.com'
+          && request.resource.data.authProvider == 'google'
+          && request.resource.data.accountType == 'buyer'
+          && request.resource.data.email is string
+          && request.resource.data.email == request.auth.token.get('email', '')
+          && request.resource.data.phone is string
+          && request.resource.data.phone == request.auth.token.get('phone_number', '')
+        ));
 
       allow update: if activeAccount()
         && request.auth.uid == uid
@@ -271,10 +284,44 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    function validListingImages(data) {
+      return data.images is list && data.images.size() >= 1 && data.images.size() <= 3
+        && data.images.toSet().size() == data.images.size()
+        && data.images[0] is string && data.images[0].size() > 0
+        && (data.images.size() < 2 || (data.images[1] is string && data.images[1].size() > 0))
+        && (data.images.size() < 3 || (data.images[2] is string && data.images[2].size() > 0));
+    }
+    function validPetCategory(data) {
+      return data.get('type', '') != 'حيوانات أليفة' || (data.saleType == 'direct'
+        && data.get('subcategory', '') in ['', 'قطط', 'كلاب', 'طيور زينة', 'أرانب', 'أسماك', 'أخرى']);
+    }
+    // Only the registered owner can configure this public advertising surface.
+    function validHeroSlot(slot) {
+      return slot is map && slot.keys().hasOnly(['animalId','active','priority','startAt','endAt'])
+        && slot.animalId is string && slot.animalId.size() > 0 && slot.animalId.size() <= 128
+        && slot.active is bool && slot.priority is int && slot.priority >= 0 && slot.priority <= 99
+        && slot.startAt is timestamp && slot.endAt is timestamp && slot.endAt > slot.startAt;
+    }
+    match /homePage/{id} {
+      allow read: if id == 'config';
+      allow create, update: if id == 'config' && isAdmin()
+        && request.resource.data.keys().hasOnly(['mode','imageUrl','featured','updatedAt','updatedBy'])
+        && request.resource.data.mode in ['static','featured']
+        && request.resource.data.imageUrl is string && request.resource.data.imageUrl.size() < 2000
+        && (request.resource.data.imageUrl == '' || request.resource.data.imageUrl.matches('https://res[.]cloudinary[.]com/[a-zA-Z0-9_-]+/image/upload/[a-zA-Z0-9_./,-]+'))
+        && request.resource.data.featured is list && request.resource.data.featured.size() <= 3
+        && (request.resource.data.featured.size() < 1 || validHeroSlot(request.resource.data.featured[0]))
+        && (request.resource.data.featured.size() < 2 || (validHeroSlot(request.resource.data.featured[1]) && request.resource.data.featured[0].animalId != request.resource.data.featured[1].animalId))
+        && (request.resource.data.featured.size() < 3 || (validHeroSlot(request.resource.data.featured[2]) && request.resource.data.featured[0].animalId != request.resource.data.featured[2].animalId && request.resource.data.featured[1].animalId != request.resource.data.featured[2].animalId))
+        && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
     match /animals/{animalId} {
       allow read: if true;
 
       allow create: if activeAccount()
+        && validListingImages(request.resource.data)
+        && validPetCategory(request.resource.data)
         && request.resource.data.sellerId == request.auth.uid
         && request.resource.data.saleType in ['direct', 'auction']
         && request.resource.data.country in ['AE', 'EG']
@@ -295,6 +342,14 @@ service cloud.firestore {
 
       allow update: if (
         isOwner('sellerId')
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['images'])
+          || validListingImages(request.resource.data)
+          || (resource.data.get('images', []).size() > 3
+            && request.resource.data.images is list
+            && request.resource.data.images.size() > 0
+            && request.resource.data.images.size() < resource.data.images.size()
+            && resource.data.images.hasAll(request.resource.data.images)))
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['type','subcategory']) || validPetCategory(request.resource.data))
         && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['imagesLocked','moderationLocked','moderationLogId'])
         && (!resource.data.get('imagesLocked', false) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['images']))
         && (!resource.data.get('moderationLocked', false)

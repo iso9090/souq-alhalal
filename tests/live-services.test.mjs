@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {planVerifiedOwnerEmailLink} from '../admin-tools/owner-email-dry-run.mjs';
+let count=0;const test=(name,fn)=>{fn();count++;console.log('PASS | '+name);};
+const valid={uid:'owner',expectedUid:'owner',claims:{admin:true},profile:{status:'active'},providers:['phone'],authDisabled:false,registry:{superAdminUids:['owner'],enabled:true}};
+test('verified owner preflight has zero writes and cannot authorize production',()=>{const p=planVerifiedOwnerEmailLink(valid);assert.equal(p.preflight,'PASS');assert.equal(p.writes,0);assert.equal(p.readyForProductionLink,false);assert.equal(p.emailAvailability,'not-checked');});
+test('all A through O migration checkpoints are present',()=>assert.deepEqual(planVerifiedOwnerEmailLink(valid).steps.map(s=>s[0]),Array.from('ABCDEFGHIJKLMNO')));
+test('disabled Auth owner rejected',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,authDisabled:true}),/AUTH_ACCOUNT/));
+test('unknown Auth status rejected',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,authDisabled:undefined}),/AUTH_ACCOUNT/));
+test('missing profile evidence rejected',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,profile:null}),/PROFILE_NOT_VERIFIED/));
+test('unknown registry evidence rejected',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,registry:undefined}),/REGISTRY_NOT_VERIFIED/));
+test('claim holder outside owner registry rejected',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,registry:{superAdminUids:['other']}}),/OWNER_NOT_REGISTERED/));
+test('empty protected registry rejected',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,registry:{superAdminUids:[]}}),/OWNER_NOT_REGISTERED/));
+test('blocked and suspended owner profiles rejected',()=>{for(const status of ['blocked','suspended'])assert.throws(()=>planVerifiedOwnerEmailLink({...valid,profile:{status}}),/OWNER_REQUIRED/);});
+test('occupied email rejected and no account creation proposed',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,emailInUse:true}),/EMAIL_ALREADY_IN_USE/));
+test('same UID mandatory despite valid claims and registry',()=>assert.throws(()=>planVerifiedOwnerEmailLink({...valid,expectedUid:'different'}),/UID_MISMATCH/));
+test('already linked password reported without relinking or removing phone',()=>{const p=planVerifiedOwnerEmailLink({...valid,providers:['phone','password']});assert.equal(p.alreadyLinked,true);assert.equal(p.unlinksPhone,false);assert.equal(p.changesUid,false);});
+test('snapshot input is not mutated',()=>{const copy=structuredClone(valid);planVerifiedOwnerEmailLink(copy);assert.deepEqual(copy,valid);});
+console.log(`SUMMARY | ${count}/${count} passed`);

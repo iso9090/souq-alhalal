@@ -367,24 +367,28 @@
     }
   </style>
 <link rel="stylesheet" href="admin-dashboard.css">
+<link rel="stylesheet" href="marketplace-v2.css">
+<link rel="stylesheet" href="marketplace-final.css">
 </head>
 
-<body>
+<body class="marketplace-v2">
 
 <header>
   <div class="brand">
     <img src="logo-souq-alhalal.png" alt="شعار سوق الحلال الإلكتروني" class="site-logo">
     <div class="brand-text">
-      <b>سوق الحلال الإلكتروني</b>
+      <b data-ar="سوق الحلال" data-en="Souq Al Halal">سوق الحلال</b><small data-ar="حلال أصيل .. فرص أكبر" data-en="Authentic livestock. More opportunities.">حلال أصيل .. فرص أكبر</small>
     </div>
   </div>
 
-  <nav>
-    <a href="#home">الرئيسية</a>
-    <a href="#auction-list">المزاد الإلكتروني</a>
-    <a href="#direct-sales-anchor" onclick="goToDirectSales(event)">البيع المباشر</a>
-    <a href="#sell">إضافة حلال</a>
-    <a href="#contact">تواصل معنا</a>
+  <button class="v2-hamburger" aria-label="القائمة" aria-expanded="false" aria-controls="primaryNav" onclick="toggleMainMenu(this)">☰</button>
+  <nav id="primaryNav" aria-label="التنقل الرئيسي">
+  <a href="#home" data-ar="الرئيسية" data-en="Home">الرئيسية</a>
+  <a href="#direct-sales" data-ar="السوق" data-en="Market">السوق</a>
+  <a href="#sell" data-ar="إضافة إعلان" data-en="Add listing">إضافة إعلان</a>
+  <a href="#auction-list" data-ar="المزادات" data-en="Auctions">المزادات</a>
+  <a href="about.html" data-ar="من نحن" data-en="About us">من نحن</a>
+  <a href="#contact" data-ar="تواصل معنا" data-en="Contact">تواصل معنا</a>
   </nav>
 
   <div class="header-actions">
@@ -398,47 +402,44 @@
       🇦🇪 الإمارات
     </button>
     <a class="mobile-sell-button" href="#sell">＋ بيع حلالك</a>
+    <button class="v2-search-button" aria-label="البحث" onclick="focusMarketSearch()"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 6 6"/></svg></button><button id="languageButton" onclick="toggleSiteLanguage()">🌐 English</button>
     <button class="login" onclick="openLogin()">تسجيل الدخول</button>
   </div>
 </header>
 
 <main>
 
-<section id="home" class="hero">
+<section id="home" class="hero"><div id="featuredHero" hidden></div>
   <div class="animals hero-photo-wrap">
     <img src="hero-livestock.png" alt="جمل وأغنام وماعز في عزبة" class="hero-livestock-photo">
   </div>
 
   <div>
     <span>منصة إلكترونية لأصحاب الحلال</span>
-    <h1>سوق الحلال الإلكتروني</h1>
-    <h2>حلالك في عِزبتك... بيعه بطريقتك</h2>
-
-    <p>
-      منصة عربية تجمع أصحاب الحلال،
-      وتوفر المزاد الإلكتروني العلني والبيع المباشر
-      بطريقة سهلة وواضحة.
-    </p>
+    <h1 data-ar="بيع وشراء الحلال بسهولة وأمان" data-en="Buy and sell livestock with confidence">بيع وشراء الحلال بسهولة وأمان</h1>
+    <p data-ar="من المربين مباشرة .. إلى جميع أنحاء الإمارات" data-en="Directly from breeders, across the Emirates">من المربين مباشرة .. إلى جميع أنحاء الإمارات</p>
 
     <div class="actions hero-actions-approved">
-      <a href="#auction-list" class="hero-action auction-action">
-        <span class="action-main">🔨 <strong>دخول المزاد</strong></span>
-        <span class="action-arrow">‹</span>
-      </a>
-
       <a class="gold hero-action direct-action" href="#direct-sales-anchor" onclick="goToDirectSales(event)">
-        <span class="action-main">🛒 <strong>البيع المباشر</strong></span>
-        <span class="action-arrow">‹</span>
+        <strong data-ar="ابدأ الآن" data-en="Start now">ابدأ الآن</strong><span aria-hidden="true">←</span>
       </a>
     </div>
   </div>
+  <svg class="hero-emirates" viewBox="0 0 240 160" aria-hidden="true" focusable="false">
+    <path fill="#dbc7a4" d="M240 0C218 83 198 113 67 160H240Z"/>
+    <path fill="#11765d" d="M240 58C180 116 91 137 0 160H240Z"/>
+    <path fill="#00523f" d="M240 102C146 137 112 147 76 160H240Z"/>
+    <path fill="#00634e" d="M213 35h4l4 56h-12Zm2 0q-25-16-26 5 13-10 25-2-20-1-20 18 8-12 22-16 5 12 17 17-2-17-16-19 14-8 22 1-3-20-22-5 10-23-4-25 4 14 2 24-10-18-23-10 15 0 21 12"/>
+    <path stroke="#a78140" stroke-width="2" d="M160 82v39"/>
+    <path fill="#fff" d="M161 80h35v24h-35Z"/><path fill="#009a62" d="M161 80h35v8h-35Z"/><path d="M161 96h35v8h-35Z"/><path fill="#ce2337" d="M161 80h8v24h-8Z"/>
+  </svg>
 </section>
 
-<section class="home-benefits">
+<section class="home-benefits" id="how-it-works">
   <div class="benefit-card">
     <div class="benefit-icon benefit-shield">✓</div>
     <b>أمان وموثوقية</b>
-    <small>تأكيد بيانات<br>البائع والمشتري</small>
+    <small>تحقق من الإعلان<br>وتواصل مع البائع</small>
   </div>
 
   <div class="benefit-card">
@@ -485,9 +486,9 @@
     <div class="upload">
       <div style="font-size:45px;">📷</div>
       <b>صور الحيوان</b>
-      <small>اختر حتى 5 صور من الهاتف</small>
+      <small>اختر حتى 3 صور من الهاتف</small>
 
-      <div class="ux-field"><label for="animalImages">صور الحيوان — حتى 5 صور</label><input id="animalImages" type="file" accept="image/*" multiple
+      <div class="ux-field"><label for="animalImages">صور الحيوان — حتى 3 صور</label><input id="animalImages" type="file" accept="image/*" multiple
         style="display:block;width:100%;margin-top:15px;"></div>
 
       <div id="imagePreview"
@@ -495,7 +496,7 @@
     </div>
 
     <div class="fields">
-      <div class="ux-field"><label for="animalType">نوع الحيوان *</label><select id="animalType" required>
+      <div class="ux-field"><label for="animalType">نوع الحيوان *</label><select id="animalType" required onchange="updatePetCategory()">
         <option value="" selected disabled>اختر نوع الحيوان</option>
         <option value="ناقة">🐫 ناقة</option>
         <option value="غنم">🐑 غنم</option>
@@ -505,10 +506,10 @@
         <option value="صقور">🦅 صقور</option>
         <option value="غزال">🦌 غزال</option>
         <option value="نعام">🐦 نعام</option>
-        <option value="حمام">🕊️ حمام</option>
+        <option value="حمام">🕊️ حمام</option><option value="حيوانات أليفة">🐾 حيوانات أليفة</option><option value="أخرى">⋯ أخرى</option>
       </select></div>
 
-      <div class="ux-field"><label for="animalBreed">السلالة / وصف مختصر</label><input id="animalBreed" placeholder="السلالة"></div>
+      <div id="petSubcategoryField" class="ux-field" hidden><label for="petSubcategory">نوع الحيوان الأليف (اختياري)</label><select id="petSubcategory"><option value="">غير محدد</option><option>قطط</option><option>كلاب</option><option>طيور زينة</option><option>أرانب</option><option>أسماك</option><option>أخرى</option></select></div><div class="ux-field"><label for="animalBreed">السلالة / وصف مختصر</label><input id="animalBreed" placeholder="السلالة"></div>
       <div class="ux-field"><label for="animalAge">العمر</label><input id="animalAge" placeholder="العمر"></div>
 
       <div class="ux-field"><label for="animalGender">الجنس *</label><select id="animalGender" required>
@@ -634,34 +635,12 @@ function toggleAuctionFields() {
 document.addEventListener("DOMContentLoaded", toggleAuctionFields);
 </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  const input=document.getElementById('animalImages'),preview=document.getElementById('imagePreview');
-  let selected=[], urls=[];
-  const sync=()=>{const transfer=new DataTransfer();selected.forEach(file=>transfer.items.add(file));input.files=transfer.files;};
-  function render(){
-    urls.forEach(url=>URL.revokeObjectURL(url));urls=[];preview.replaceChildren();
-    selected.forEach((file,index)=>{
-      const card=document.createElement('div'),img=document.createElement('img'),remove=document.createElement('button');
-      card.className='ux-image-preview';img.alt='الصورة '+(index+1);img.src=URL.createObjectURL(file);urls.push(img.src);
-      img.onerror=()=>{const label=document.createElement('span');label.textContent='تعذر فتح الصورة؛ احذفها واختر أخرى.';img.replaceWith(label);};
-      remove.type='button';remove.textContent='حذف الصورة '+(index+1);remove.onclick=()=>{selected.splice(index,1);sync();render();};
-      card.append(img,remove);preview.append(card);
-    });
-  }
-  input.addEventListener('change',()=>{
-    const next=Array.from(input.files||[]);
-    if(next.length>5 || next.some(file=>!file.type.startsWith('image/'))){alert(next.length>5?'يمكن اختيار 5 صور كحد أقصى.':'اختر ملفات صور فقط.');sync();return;}
-    selected=next;render();
-  });
-  window.resetImagePreview=()=>{selected=[];urls.forEach(url=>URL.revokeObjectURL(url));urls=[];preview.replaceChildren();};
-});
-</script>
+
 
 <script type="module" src="app.js?v=64"></script>
 
 <!-- تصميم بطاقات السوق الاحترافي -->
-<script src="market-ui.js?v=40"></script>
+<script type="module" src="listing-images-ui.js"></script>
 
 <nav class="mobile-bottom-nav" aria-label="التنقل الرئيسي">
   <a href="#home" class="active">
