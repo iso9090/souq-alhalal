@@ -1,0 +1,23 @@
+{
+  "fieldOverrides": [],
+  "indexes": [
+    {
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "endAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startAt",
+          "order": "ASCENDING"
+        }
+      ],
+      "collectionGroup": "commercialAds"
+    }
+  ]
+}
