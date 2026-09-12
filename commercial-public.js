@@ -1,9 +1,9 @@
-import {visibleAd,selectAds,safeUrl,createRecorder,dayKey} from './commercial-model.js';
+import {visibleAd,selectAds,safeUrl,createRecorder,pageSection} from './commercial-model.js';
 export async function installCommercialPublic(api){
  const {db,collection,doc,getDoc,getDocs,query,where,orderBy,startAfter,limit,setDoc,serverTimestamp}=api;let recorder=null,ads=[],observer,timer,index=0,paused=false;
  try{const config=await getDoc(doc(db,'platformTelemetry','config'));if(config.data()?.enabled===true&&!navigator.globalPrivacyControl&&navigator.doNotTrack!=='1'){
  recorder=createRecorder({storage:sessionStorage,random:()=>crypto.randomUUID().replaceAll('-',''),write:async s=>{const ref=doc(db,'analyticsSessions',s.id);await setDoc(ref,{startedAt:new Date(s.start||s.last),updatedAt:serverTimestamp(),pageViews:s.pageViews,pages:s.pages,views:s.views,clicks:s.clicks});},now:Date.now});
- recorder.record('page',document.querySelector('#home')?'home':'other');window.addEventListener('souq-pageview',event=>recorder.record('page',event.detail));window.addEventListener('hashchange',()=>recorder.record('page',location.hash.includes('market')||['#direct','#auction'].includes(location.hash)?'market':location.hash.includes('service')?'services':'other'));document.addEventListener('visibilitychange',()=>{if(document.hidden)recorder.flush();});
+ recorder.record('page',document.querySelector('#home')?pageSection(location.hash):'other');window.addEventListener('souq-pageview',event=>recorder.record('page',event.detail));window.addEventListener('hashchange',()=>recorder.record('page',document.querySelector('#home')?pageSection(location.hash):'other'));document.addEventListener('visibilitychange',()=>{if(document.hidden)recorder.flush();});
  }}catch{/* Collection disabled/unavailable: no invented counts and no retry loop. */}
  if(!document.querySelector('#home'))return {recorder};
  const root=document.createElement('section');root.className='commercial-home';root.setAttribute('aria-label','إعلانات تجارية');document.querySelector('#home')?.before(root);

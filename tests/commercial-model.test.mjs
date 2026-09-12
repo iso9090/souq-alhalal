@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {selectAds,visibleAd,adStatus,safeUrl,validateAd,summarize,createRecorder} from '../commercial-model.js';
+import {selectAds,visibleAd,adStatus,safeUrl,validateAd,summarize,createRecorder,pageSection,placementState} from '../commercial-model.js';
 let n=0;const test=(name,fn)=>{fn();n++;console.log('PASS | '+name);};const now=Date.UTC(2026,8,12,12),ad={id:'ad1',title:'تجربة',advertiserName:'معلن',description:'',cta:'المزيد',imageUrl:'https://res.cloudinary.com/demo/image/upload/sample.jpg',targetUrl:'https://example.com/',placement:'hero',status:'active',priority:1,startAt:new Date(now-1000),endAt:new Date(now+1000)};
 test('valid commercial schema',()=>assert.ok(validateAd(ad)));
 test('hero cap ten with priority',()=>{const rows=selectAds(Array.from({length:14},(_,i)=>({...ad,id:'ad'+i,priority:i})),'hero',now);assert.equal(rows.length,10);assert.equal(rows[0].priority,13);});
@@ -24,4 +24,6 @@ test('reload preserves dedupe',()=>{const again=createRecorder({storage,random:(
 test('no user or device fields',()=>assert.deepEqual(Object.keys(r.state).sort(),['clicks','created','id','last','pageViews','pages','start','views'].sort()));
 test('privacy opt-out',()=>assert.equal(createRecorder({storage,random:()=>'',write:async()=>{},blocked:true}).record('page','home'),false));
 let clock=now;const changing=createRecorder({storage:{getItem:()=>null,setItem:()=>{}},random:()=>String(clock),write:async()=>{},now:()=>clock,schedule:()=>1});changing.record('page','home');const first=changing.state.id;clock+=1800001;test('idle expires session',()=>{changing.record('page','home');assert.notEqual(changing.state.id,first);assert.equal(changing.state.pageViews,1);});
+for(const [hash,expected] of [['','home'],['#home','home'],['#market','market'],['#direct','market'],['#auction','market'],['#services','services'],['#contact','other'],['#unknown','other']])test('section attribution '+hash,()=>assert.equal(pageSection(hash),expected));
+for(const [entry,expected] of [[null,'empty'],[ad,'soon'],[{...ad,endAt:new Date(now+5*86400000)},'active'],[{...ad,endAt:new Date(now-1)},'expired'],[{...ad,status:'paused'},'paused'],[{...ad,startAt:new Date(now+1)},'scheduled']])test('map state '+expected,()=>assert.equal(placementState(entry,now),expected));
 console.log(`SUMMARY | ${n}/${n} passed`);

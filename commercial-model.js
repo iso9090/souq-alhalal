@@ -4,10 +4,12 @@ export const LABELS={hero:'الإعلان الرئيسي',hero_side_1:'جانب�
 export const millis=v=>v?.toMillis?v.toMillis():v?.seconds?v.seconds*1000:new Date(v).getTime();
 export const adStatus=(ad,now=Date.now())=>millis(ad.endAt)<=now?'expired':ad.status;
 export const visibleAd=(ad,now=Date.now())=>ad.status==='active'&&millis(ad.startAt)<=now&&millis(ad.endAt)>now;
+export const placementState=(ad,now=Date.now())=>!ad?'empty':visibleAd(ad,now)?millis(ad.endAt)-now<3*86400000?'soon':'active':adStatus(ad,now)==='expired'?'expired':ad.status==='active'?'scheduled':ad.status;
 export function selectAds(ads,placement,now=Date.now()){return ads.filter(a=>a.placement===placement&&visibleAd(a,now)).sort((a,b)=>b.priority-a.priority||String(a.id).localeCompare(String(b.id))).slice(0,placement==='hero'?10:1);}
 export function safeUrl(value,image=false){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&(!image||u.hostname==='res.cloudinary.com')?u.href:'';}catch{return '';}}
 export function validateAd(ad){return typeof ad.title==='string'&&ad.title.trim().length>0&&ad.title.length<=120&&typeof ad.advertiserName==='string'&&ad.advertiserName.length<=120&&safeUrl(ad.imageUrl,true)&&safeUrl(ad.targetUrl)&&PLACEMENTS.includes(ad.placement)&&STATUSES.includes(ad.status)&&Number.isInteger(ad.priority)&&ad.priority>=0&&ad.priority<=999&&millis(ad.endAt)>millis(ad.startAt)&&ad.description.length<=300&&ad.cta.length<=40;}
 export const dayKey=(now=Date.now())=>new Date(now+4*3600000).toISOString().slice(0,10);
+export const pageSection=hash=>!hash||hash==='#home'?'home':['#market','#direct','#auction'].includes(hash)?'market':hash.includes('service')?'services':'other';
 export function summarize(sessions,now=Date.now()){
  const days={},pages={home:0,market:0,services:0,admin:0,other:0},ads={},today=dayKey(now);let pageViews=0;
  for(const s of sessions){const d=dayKey(millis(s.startedAt));days[d]??={sessions:0,pageViews:0};days[d].sessions++;days[d].pageViews+=s.pageViews;pageViews+=s.pageViews;for(const p of Object.keys(pages))pages[p]+=s.pages?.[p]||0;for(const kind of ['views','clicks'])for(const id of s[kind]||[]){ads[id]??={views:0,clicks:0};ads[id][kind]++;}}
