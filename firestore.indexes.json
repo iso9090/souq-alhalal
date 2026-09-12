@@ -1,7 +1,7 @@
 {
+  "fieldOverrides": [],
   "indexes": [
     {
-      "collectionGroup": "commercialAds",
       "queryScope": "COLLECTION",
       "fields": [
         {
@@ -9,11 +9,15 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "priority",
-          "order": "DESCENDING"
+          "fieldPath": "endAt",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "startAt",
+          "order": "ASCENDING"
         }
-      ]
+      ],
+      "collectionGroup": "commercialAds"
     }
-  ],
-  "fieldOverrides": []
+  ]
 }

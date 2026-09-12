@@ -21,7 +21,7 @@ service cloud.firestore {
         && (d.status in ['approved','active'] ? d.approvedBy==request.auth.uid && d.approvedAt==request.time : d.approvedBy=='' && d.approvedAt==null);
     }
     match /commercialAds/{id} {
-      allow read: if commercialOwner() || resource.data.status=='active';
+      allow read: if commercialOwner() || (resource.data.status=='active' && resource.data.startAt<=request.time && resource.data.endAt>=request.time);
       allow create: if commercialOwner() && validCommercialAd() && request.resource.data.createdAt==request.time && request.resource.data.createdBy==request.auth.uid;
       allow update: if commercialOwner() && validCommercialAd() && request.resource.data.createdAt==resource.data.createdAt && request.resource.data.createdBy==resource.data.createdBy;
       allow delete: if false;
@@ -39,7 +39,7 @@ service cloud.firestore {
         && request.resource.data.enabled is bool && request.resource.data.updatedAt==request.time && request.resource.data.updatedBy==request.auth.uid;
       allow delete: if false;
     }
-    function telemetryOn(){return exists(/databases/$(database)/documents/platformTelemetry/config) && get(/databases/$(database)/documents/platformTelemetry/config).data.enabled==true;}
+    function telemetryOn(){return false && exists(/databases/$(database)/documents/platformTelemetry/config) && get(/databases/$(database)/documents/platformTelemetry/config).data.enabled==true;}
     function boundedEvents(v){return v is list && v.size()<=20 && v.toSet().size()==v.size()
       && (v.size()==0 || (v.join(',').matches('[a-zA-Z0-9_-]{1,128}(,[a-zA-Z0-9_-]{1,128}){0,19}') && v.join(',').split(',')==v));}
     function validSession(){

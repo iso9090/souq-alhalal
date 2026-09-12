@@ -1,0 +1,40 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
+import {doc,getDoc,getDocs,setDoc,updateDoc,deleteDoc,collection,query,where,orderBy,startAfter,limit,Timestamp,serverTimestamp} from 'firebase/firestore';
+import {publicAdQuery,publicAdWindow,selectAds,ANALYTICS_RELEASE_ENABLED,PLACEMENTS} from '../commercial-model.js';
+if(!/^127\.0\.0\.1:\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Local emulator required');
+const env=await initializeTestEnvironment({projectId:'demo-commercial-release',firestore:{rules:fs.readFileSync(process.env.COMMERCIAL_RULES_FILE||new URL('../firestore.rules',import.meta.url),'utf8')}});
+let n=0;const test=async(name,fn)=>{await fn();n++;console.log('PASS | '+name);};
+const guest=env.unauthenticatedContext().firestore(),normal=env.authenticatedContext('normal').firestore(),helper=env.authenticatedContext('helper').firestore(),owner=env.authenticatedContext('owner',{admin:true}).firestore();
+const api={db:guest,collection,query,where,orderBy,startAfter,limit};
+const now=Date.now(),stamp=Timestamp.now();
+const ad={title:'Local test',advertiserName:'Fixture',description:'',cta:'Details',imageUrl:'https://res.cloudinary.com/demo/image/upload/sample.jpg',targetUrl:'https://example.test/',placement:'hero',priority:1,status:'active',startAt:Timestamp.fromMillis(now-60000),endAt:Timestamp.fromMillis(now+3600000),createdAt:stamp,updatedAt:stamp,createdBy:'owner',updatedBy:'owner',approvedBy:'owner',approvedAt:stamp};
+const invalid={future:{...ad,startAt:Timestamp.fromMillis(now+600000)},ended:{...ad,endAt:Timestamp.fromMillis(now-60000)},missingStart:{...ad},missingEnd:{...ad},nullStart:{...ad,startAt:null},nullEnd:{...ad,endAt:null}};delete invalid.missingStart.startAt;delete invalid.missingEnd.endAt;
+for(const status of ['draft','pending','paused','rejected','expired','approved'])invalid[status]={...ad,status};
+try{
+await env.clearFirestore();await env.withSecurityRulesDisabled(async c=>{const db=c.firestore();await setDoc(doc(db,'adminSecurity','config'),{enabled:true,superAdminUids:['owner']});await setDoc(doc(db,'users','owner'),{status:'active'});await setDoc(doc(db,'users','helper'),{status:'active'});await setDoc(doc(db,'adminAccess','helper'),{role:'admin_assistant',adminStatus:'active',permissions:['listings_manage','reports_view']});await setDoc(doc(db,'commercialAds','current'),ad);for(const [id,data] of Object.entries(invalid))await setDoc(doc(db,'commercialAds',id),data);});
+await test('public current active read',()=>assertSucceeds(getDoc(doc(guest,'commercialAds','current'))));
+for(const id of Object.keys(invalid))await test(id+' public read denied',()=>assertFails(getDoc(doc(guest,'commercialAds',id))));
+await test('owner reads every status including malformed dates',async()=>{const s=await assertSucceeds(getDocs(collection(owner,'commercialAds')));assert.equal(s.size,Object.keys(invalid).length+1);});
+await test('owner manages draft',()=>assertSucceeds(setDoc(doc(owner,'commercialAds','ownerDraft'),{...ad,status:'draft',createdAt:serverTimestamp(),updatedAt:serverTimestamp(),approvedAt:null,approvedBy:''})));
+await test('owner edits draft',()=>assertSucceeds(updateDoc(doc(owner,'commercialAds','ownerDraft'),{title:'Edited',updatedAt:serverTimestamp()})));
+for(const [name,db] of [['normal',normal],['assistant',helper]])for(const [action,fn] of [['create',()=>setDoc(doc(db,'commercialAds','unauthorized'),ad)],['update',()=>updateDoc(doc(db,'commercialAds','current'),{title:'bad'})],['delete',()=>deleteDoc(doc(db,'commercialAds','current'))]])await test(name+' '+action+' denied',()=>assertFails(fn()));
+await test('status-only query denied',()=>assertFails(getDocs(query(collection(guest,'commercialAds'),where('status','==','active')))));
+await test('actual serving query excludes invalid documents',async()=>{const s=await assertSucceeds(getDocs(publicAdQuery(api,publicAdWindow())));assert.deepEqual(s.docs.map(d=>d.id),['current']);});
+await test('future client clock fails closed',()=>assertFails(getDocs(publicAdQuery(api,publicAdWindow(Date.now()+600000)))));
+await test('past client clock fails closed',()=>assertFails(getDocs(publicAdQuery(api,publicAdWindow(Date.now()-600000)))));
+await env.withSecurityRulesDisabled(async c=>{for(let i=0;i<105;i++)await setDoc(doc(c.firestore(),'commercialAds','hero'+String(i).padStart(3,'0')),{...ad,priority:i});for(const placement of PLACEMENTS.slice(1))await setDoc(doc(c.firestore(),'commercialAds',placement),{...ad,placement});});
+const rows=[];let cursor;const window=publicAdWindow();do{const s=await getDocs(publicAdQuery(api,window,cursor));rows.push(...s.docs.map(d=>({...d.data(),id:d.id})));if(s.size<100)break;cursor=s.docs.at(-1);}while(true);
+await test('actual cursor pagination complete without duplicates',()=>{assert.equal(rows.length,115);assert.equal(new Set(rows.map(d=>d.id)).size,115);});
+await test('time query preserves client priority and hero cap',()=>{const hero=selectAds(rows,'hero');assert.equal(hero.length,10);assert.equal(hero[0].priority,104);});
+for(const placement of PLACEMENTS.slice(1))await test('query preserves '+placement,()=>assert.equal(selectAds(rows,placement).length,1));
+await test('index exactly matches actual equality and order fields',()=>{const actual=JSON.parse(fs.readFileSync(new URL('../firestore.indexes.json',import.meta.url),'utf8'));assert.deepEqual(actual,{indexes:[{collectionGroup:'commercialAds',queryScope:'COLLECTION',fields:[{fieldPath:'status',order:'ASCENDING'},{fieldPath:'endAt',order:'ASCENDING'},{fieldPath:'startAt',order:'ASCENDING'}]}],fieldOverrides:[]});});
+await test('release code gate is disabled',()=>assert.equal(ANALYTICS_RELEASE_ENABLED,false));
+await test('index fields derived from serving query operators',()=>{const constraints=publicAdQuery({db:{},collection:()=>null,query:(_, ...cs)=>cs,where:(field,op)=>({field,op}),orderBy:(field,direction)=>({field,direction}),limit:()=>null},publicAdWindow()).filter(Boolean);const fields=[...constraints.filter(c=>c.op==='==').map(c=>({fieldPath:c.field,order:'ASCENDING'})),...constraints.filter(c=>c.direction).map(c=>({fieldPath:c.field,order:c.direction==='asc'?'ASCENDING':'DESCENDING'}))];assert.deepEqual(JSON.parse(fs.readFileSync(new URL('../firestore.indexes.json',import.meta.url),'utf8')).indexes[0].fields,fields);});
+const session={startedAt:Timestamp.now(),updatedAt:serverTimestamp(),pageViews:1,pages:{home:1,market:0,services:0,admin:0,other:0},views:[],clicks:[]};
+for(const state of ['missing',false,true]){if(state!=='missing')await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'platformTelemetry','config'),{enabled:state}));await test('release blocks analytics with config '+state,()=>assertFails(setDoc(doc(guest,'analyticsSessions','a'.repeat(32)),session)));}
+await test('owner analytics read remains available to ads page',()=>assertSucceeds(getDocs(collection(owner,'analyticsSessions'))));
+await test('unrestricted aggregates denied',()=>assertFails(setDoc(doc(normal,'analyticsDaily','today'),{pageViews:999999})));
+console.log(`SUMMARY | ${n}/${n} passed`);
+}finally{await env.cleanup();}

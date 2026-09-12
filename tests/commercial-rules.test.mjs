@@ -1,8 +1,9 @@
+// Isolated future-enabled collector schema tests; actual hard-off release gate is tested in commercial-release-audit.test.mjs.
 import fs from 'node:fs';
 import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';
 import {doc,getDoc,getDocs,collection,query,where,setDoc,updateDoc,deleteDoc,serverTimestamp,Timestamp} from 'firebase/firestore';
 if(!/^127\.0\.0\.1:\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('local emulator required');
-const env=await initializeTestEnvironment({projectId:'demo-souq-commercial',firestore:{rules:fs.readFileSync(new URL('../firestore.rules',import.meta.url),'utf8')}});let n=0;const test=async(name,fn)=>{await fn();n++;console.log('PASS | '+name);};
+const env=await initializeTestEnvironment({projectId:'demo-souq-commercial',firestore:{rules:fs.readFileSync(new URL('../firestore.rules',import.meta.url),'utf8').replace('return false && exists','return true && exists')}});let n=0;const test=async(name,fn)=>{await fn();n++;console.log('PASS | '+name);};
 const owner=env.authenticatedContext('owner',{admin:true}).firestore(),helper=env.authenticatedContext('helper').firestore(),normal=env.authenticatedContext('normal').firestore(),guest=env.unauthenticatedContext().firestore();
 const seed=async(p,d)=>env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),p),d));
 const stamp=Timestamp.now(),ad={title:'إعلان',advertiserName:'المعلن',description:'',cta:'المزيد',imageUrl:'https://res.cloudinary.com/demo/image/upload/sample.jpg',targetUrl:'https://example.com/',placement:'hero',priority:1,status:'active',startAt:Timestamp.fromMillis(Date.now()-60000),endAt:Timestamp.fromMillis(Date.now()+86400000),createdAt:serverTimestamp(),updatedAt:serverTimestamp(),createdBy:'owner',updatedBy:'owner',approvedBy:'owner',approvedAt:serverTimestamp()};
@@ -10,7 +11,7 @@ const session={startedAt:stamp,updatedAt:serverTimestamp(),pageViews:1,pages:{ho
 try{await env.clearFirestore();await seed('adminSecurity/config',{enabled:true,superAdminUids:['owner']});await seed('users/owner',{status:'active'});await seed('users/helper',{status:'active'});await seed('adminAccess/helper',{role:'admin_assistant',adminStatus:'active',permissions:['reports_view','reports_manage','listings_manage','users_manage','assistants_create']});
 await test('owner creates ad',()=>assertSucceeds(setDoc(doc(owner,'commercialAds','ad1'),ad)));
 for(const [name,db] of [['helper',helper],['normal',normal],['guest',guest]]){await test(name+' create denied',()=>assertFails(setDoc(doc(db,'commercialAds','bad'),ad)));await test(name+' edit denied',()=>assertFails(updateDoc(doc(db,'commercialAds','ad1'),{title:'x'})));}
-await test('active query public',()=>assertSucceeds(getDocs(query(collection(guest,'commercialAds'),where('status','==','active')))));
+await test('active query public',()=>assertSucceeds(getDocs(query(collection(guest,'commercialAds'),where('status','==','active'),where('startAt','<=',Timestamp.fromMillis(Date.now()-30000)),where('endAt','>=',Timestamp.fromMillis(Date.now()+30000))))));
 await test('unrestricted list denied',()=>assertFails(getDocs(collection(guest,'commercialAds'))));
 await test('owner pause',()=>assertSucceeds(updateDoc(doc(owner,'commercialAds','ad1'),{status:'paused',updatedAt:serverTimestamp(),approvedAt:null,approvedBy:''})));
 await test('paused private',()=>assertFails(getDoc(doc(guest,'commercialAds','ad1'))));

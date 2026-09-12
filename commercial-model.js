@@ -1,9 +1,15 @@
 export const PLACEMENTS=['hero','hero_side_1','hero_side_2','hero_side_3','middle','footer_1','footer_2','footer_3','footer_4','footer_5'];
 export const STATUSES=['draft','pending','approved','active','paused','rejected','expired'];
 export const LABELS={hero:'الإعلان الرئيسي',hero_side_1:'جانبي 1',hero_side_2:'جانبي 2',hero_side_3:'جانبي 3',middle:'وسط الصفحة',footer_1:'أسفل 1',footer_2:'أسفل 2',footer_3:'أسفل 3',footer_4:'أسفل 4',footer_5:'أسفل 5',draft:'مسودة',pending:'معلق',approved:'معتمد',active:'نشط',paused:'موقوف',rejected:'مرفوض',expired:'منتهي'};
+// Explicit code-release gate: remote configuration alone cannot enable collection.
+export const ANALYTICS_RELEASE_ENABLED=false;
+// Bounds enclose request.time; skew/slow requests fail closed. A new query can omit
+// the first/last 30 seconds of a campaign. Reuse these bounds across cursor pages.
+export const publicAdWindow=(now=Date.now())=>({startBefore:new Date(now-30000),endAfter:new Date(now+30000)});
+export function publicAdQuery(api,window,cursor){const {db,collection,query,where,orderBy,startAfter,limit}=api;return query(collection(db,'commercialAds'),where('status','==','active'),where('endAt','>=',window.endAfter),where('startAt','<=',window.startBefore),orderBy('endAt','asc'),orderBy('startAt','asc'),...(cursor?[startAfter(cursor)]:[]),limit(100));}
 export const millis=v=>v?.toMillis?v.toMillis():v?.seconds?v.seconds*1000:new Date(v).getTime();
-export const adStatus=(ad,now=Date.now())=>millis(ad.endAt)<=now?'expired':ad.status;
-export const visibleAd=(ad,now=Date.now())=>ad.status==='active'&&millis(ad.startAt)<=now&&millis(ad.endAt)>now;
+export const adStatus=(ad,now=Date.now())=>millis(ad.endAt)<now?'expired':ad.status;
+export const visibleAd=(ad,now=Date.now())=>ad.status==='active'&&ad.startAt!=null&&ad.endAt!=null&&millis(ad.startAt)<=now&&millis(ad.endAt)>=now;
 export const placementState=(ad,now=Date.now())=>!ad?'empty':visibleAd(ad,now)?millis(ad.endAt)-now<3*86400000?'soon':'active':adStatus(ad,now)==='expired'?'expired':ad.status==='active'?'scheduled':ad.status;
 export function selectAds(ads,placement,now=Date.now()){return ads.filter(a=>a.placement===placement&&visibleAd(a,now)).sort((a,b)=>b.priority-a.priority||String(a.id).localeCompare(String(b.id))).slice(0,placement==='hero'?10:1);}
 export function safeUrl(value,image=false){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&(!image||u.hostname==='res.cloudinary.com')?u.href:'';}catch{return '';}}

@@ -4,8 +4,9 @@ let n=0;const test=(name,fn)=>{fn();n++;console.log('PASS | '+name);};const now=
 test('valid commercial schema',()=>assert.ok(validateAd(ad)));
 test('hero cap ten with priority',()=>{const rows=selectAds(Array.from({length:14},(_,i)=>({...ad,id:'ad'+i,priority:i})),'hero',now);assert.equal(rows.length,10);assert.equal(rows[0].priority,13);});
 for(const status of ['pending','paused','rejected','draft','approved','expired'])test(status+' hidden',()=>assert.equal(visibleAd({...ad,status},now),false));
-test('expiry boundary hidden',()=>assert.equal(visibleAd({...ad,endAt:new Date(now)},now),false));
+test('inclusive expiry boundary',()=>assert.equal(visibleAd({...ad,endAt:new Date(now)},now),true));
 test('future start hidden',()=>assert.equal(visibleAd({...ad,startAt:new Date(now+1)},now),false));
+test('inclusive start boundary',()=>assert.equal(visibleAd({...ad,startAt:new Date(now)},now),true));
 test('effective expired state',()=>assert.equal(adStatus({...ad,endAt:new Date(now-1)},now),'expired'));
 for(const placement of ['hero_side_1','hero_side_2','hero_side_3','middle','footer_1','footer_2','footer_3','footer_4','footer_5'])test(placement+' single slot',()=>assert.equal(selectAds([{...ad,placement},{...ad,id:'b',placement}],placement,now).length,1));
 for(const url of ['javascript:alert(1)','data:text/html,x','http://example.com','https://user:pass@example.com'])test('unsafe URL rejected '+url.split(':')[0],()=>assert.equal(safeUrl(url),''));
@@ -26,4 +27,5 @@ test('privacy opt-out',()=>assert.equal(createRecorder({storage,random:()=>'',wr
 let clock=now;const changing=createRecorder({storage:{getItem:()=>null,setItem:()=>{}},random:()=>String(clock),write:async()=>{},now:()=>clock,schedule:()=>1});changing.record('page','home');const first=changing.state.id;clock+=1800001;test('idle expires session',()=>{changing.record('page','home');assert.notEqual(changing.state.id,first);assert.equal(changing.state.pageViews,1);});
 for(const [hash,expected] of [['','home'],['#home','home'],['#market','market'],['#direct','market'],['#auction','market'],['#services','services'],['#contact','other'],['#unknown','other']])test('section attribution '+hash,()=>assert.equal(pageSection(hash),expected));
 for(const [entry,expected] of [[null,'empty'],[ad,'soon'],[{...ad,endAt:new Date(now+5*86400000)},'active'],[{...ad,endAt:new Date(now-1)},'expired'],[{...ad,status:'paused'},'paused'],[{...ad,startAt:new Date(now+1)},'scheduled']])test('map state '+expected,()=>assert.equal(placementState(entry,now),expected));
+for(const patch of [{startAt:undefined},{endAt:undefined},{startAt:null},{endAt:null}])test('missing date denied '+Object.keys(patch)[0],()=>assert.equal(visibleAd({...ad,...patch},now),false));
 console.log(`SUMMARY | ${n}/${n} passed`);
