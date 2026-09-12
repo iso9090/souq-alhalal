@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {selectAds,visibleAd,adStatus,safeUrl,validateAd,summarize,createRecorder,pageSection,placementState} from '../commercial-model.js';
+import {heroSlots,selectAds,visibleAd,adStatus,safeUrl,validateAd,summarize,createRecorder,pageSection,placementState} from '../commercial-model.js';
 let n=0;const test=(name,fn)=>{fn();n++;console.log('PASS | '+name);};const now=Date.UTC(2026,8,12,12),ad={id:'ad1',title:'تجربة',advertiserName:'معلن',description:'',cta:'المزيد',imageUrl:'https://res.cloudinary.com/demo/image/upload/sample.jpg',targetUrl:'https://example.com/',placement:'hero',status:'active',priority:1,startAt:new Date(now-1000),endAt:new Date(now+1000)};
 test('valid commercial schema',()=>assert.ok(validateAd(ad)));
 test('hero cap ten with priority',()=>{const rows=selectAds(Array.from({length:14},(_,i)=>({...ad,id:'ad'+i,priority:i})),'hero',now);assert.equal(rows.length,10);assert.equal(rows[0].priority,13);});
@@ -29,3 +29,7 @@ for(const [hash,expected] of [['','home'],['#home','home'],['#market','market'],
 for(const [entry,expected] of [[null,'empty'],[ad,'soon'],[{...ad,endAt:new Date(now+5*86400000)},'active'],[{...ad,endAt:new Date(now-1)},'expired'],[{...ad,status:'paused'},'paused'],[{...ad,startAt:new Date(now+1)},'scheduled']])test('map state '+expected,()=>assert.equal(placementState(entry,now),expected));
 for(const patch of [{startAt:undefined},{endAt:undefined},{startAt:null},{endAt:null}])test('missing date denied '+Object.keys(patch)[0],()=>assert.equal(visibleAd({...ad,...patch},now),false));
 console.log(`SUMMARY | ${n}/${n} passed`);
+
+test('hero requested slots and safe duplicate allocation',()=>{const rows=[{...ad,id:'a',priority:10},{...ad,id:'b',priority:10},{...ad,id:'c',priority:7}];const plan=heroSlots(rows);assert.equal(plan[0].ad.id,'a');assert.equal(plan[1].ad.id,'b');assert.equal(plan[3].ad.id,'c');assert.equal(plan[1].relocated,true);assert.equal(new Set(plan.filter(Boolean).map(x=>x.slot)).size,3);assert.deepEqual(heroSlots([...rows].reverse()),plan);});
+test('hero overflow selection excludes lower priorities',()=>{const plan=heroSlots(Array.from({length:11},(_,i)=>({...ad,id:String(i),priority:11-i}))).filter(Boolean);assert.equal(plan.length,10);assert.equal(plan.some(x=>x.ad.id==='10'),false);});
+console.log(`FINAL SUMMARY | ${n}/${n} passed`);
