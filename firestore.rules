@@ -28,11 +28,17 @@ service cloud.firestore {
         && permission in assistantAccess().permissions);
     }
     function protectedAccount(uid) {
-      return (delegationReady() && uid in get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids)
+      return (exists(/databases/$(database)/documents/adminSecurity/config) && uid in get(/databases/$(database)/documents/adminSecurity/config).data.get('superAdminUids', []))
         || (exists(/databases/$(database)/documents/adminAccess/$(uid))
           && get(/databases/$(database)/documents/adminAccess/$(uid)).data.role == 'super_admin');
     }
-    function mayManageUser(uid) { return isAdmin() || (delegationReady() && uid != request.auth.uid && !protectedAccount(uid)); }
+    function assistantAccount(uid) {
+      return exists(/databases/$(database)/documents/adminAccess/$(uid))
+        && get(/databases/$(database)/documents/adminAccess/$(uid)).data.role == 'admin_assistant';
+    }
+    function mayManageUser(uid) {
+      return !protectedAccount(uid) && (isAdmin() || (delegationReady() && uid != request.auth.uid && !assistantAccount(uid)));
+    }
     function userActionPermission() {
       return hasPermission(request.resource.data.status == 'suspended' ? 'users_suspend'
         : request.resource.data.status == 'blocked' ? 'users_block' : 'users_manage');
@@ -42,9 +48,7 @@ service cloud.firestore {
         && values.hasOnly(['dashboard_view', 'users_view', 'users_suspend', 'users_block', 'users_manage', 'listings_view', 'listings_manage', 'auctions_view', 'auctions_manage', 'purchase_requests_view', 'purchase_requests_manage', 'reports_view', 'reports_manage', 'services_view', 'services_manage', 'admin_log_view', 'assistants_view', 'assistants_create', 'assistants_edit_permissions', 'assistants_suspend', 'assistants_remove_role']);
     }
     function canDelegate(uid, permission, oldPermissions, newPermissions) {
-      return delegationReady() && hasPermission(permission) && uid != request.auth.uid && !protectedAccount(uid)
-        && (isAdmin() ? request.auth.uid in get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids
-          : assistantAccess().permissions.hasAll(oldPermissions) && assistantAccess().permissions.hasAll(newPermissions));
+      return delegationReady() && isAdmin() && uid != request.auth.uid && !protectedAccount(uid);
     }
     function assistantAudit(uid, action, oldPermissions) {
       let log = getAfter(/databases/$(database)/documents/adminAuditLogs/$(request.resource.data.moderationLogId)).data;
@@ -73,7 +77,7 @@ service cloud.firestore {
         || (data.targetType == 'reports' && hasPermission('reports_manage'))
         || (data.targetType == 'serviceRequests' && hasPermission('services_manage'))
         || (data.targetType == 'accountDeletionRequests' && hasPermission('users_manage') && mayManageUser(data.targetId))
-        || (data.targetType == 'adminAccess' && hasPermission(assistantLogPermission(data.action)));
+        || (data.targetType == 'adminAccess' && delegationReady() && isAdmin());
     }
     match /adminSecurity/{id} { allow read: if signedIn(); allow write: if false; }
     match /adminAccess/{uid} {

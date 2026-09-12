@@ -30,7 +30,7 @@ export function installAdminDashboard(api) {
       try{
         const snap=await getDoc(doc(db,'adminAccess',id)),record=snap.exists()?snap.data():null;
         if(record?.role==='super_admin')return {role:'unknown',protected:true}; // Inconsistent registry: protect, do not promote by display.
-        if(record?.role==='admin_assistant')return {role:'admin_assistant',protected:false};
+        if(record?.role==='admin_assistant')return {role:'admin_assistant',protected:api.getAccess().role!=='super_admin'};
         return {role:'normal',protected:false};
       }catch{return {role:'unknown',protected:true};}
     };
@@ -180,7 +180,7 @@ export function installAdminDashboard(api) {
     if(kind==='users'&&api.getAccess().role!=='super_admin'&&(id===auth.currentUser.uid||api.getAccess().protectedUids.includes(id)))return;
     const reason=reasonFor('هل أنت متأكد من تنفيذ هذا الإجراء: '+action+'؟');if(!reason)return;
     busy=true;
-    try {await runTransaction(db,async tx=>{if(kind==='users'){const registry=await tx.get(doc(db,'adminSecurity','config')),access=await tx.get(doc(db,'adminAccess',id));if(registry.data()?.superAdminUids?.includes(id)||access.data()?.role==='super_admin')return;}const ref=doc(db,kind,id),snap=await tx.get(ref);if(!snap.exists())throw Error('missing');const patch=await makePatch(snap.data(),reason);const logId=audit(tx,action,kind,id,reason,patch.metadata||{});delete patch.metadata;tx.update(ref,{...patch,moderationLogId:logId});});await detail(kind,id,false);}
+    try {await runTransaction(db,async tx=>{if(kind==='users'){const registry=await tx.get(doc(db,'adminSecurity','config')),access=await tx.get(doc(db,'adminAccess',id));if(registry.data()?.superAdminUids?.includes(id)||access.data()?.role==='super_admin'||access.data()?.role==='admin_assistant'&&api.getAccess().role!=='super_admin')return;}const ref=doc(db,kind,id),snap=await tx.get(ref);if(!snap.exists())throw Error('missing');const patch=await makePatch(snap.data(),reason);const logId=audit(tx,action,kind,id,reason,patch.metadata||{});delete patch.metadata;tx.update(ref,{...patch,moderationLogId:logId});});await detail(kind,id,false);}
     finally{busy=false;document.querySelector('.admin-v2')?.querySelectorAll('button').forEach(b=>{b.disabled=false;});}
   }
   async function open(tab,initialFilters={}) {

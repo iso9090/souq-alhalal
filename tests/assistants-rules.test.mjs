@@ -23,7 +23,7 @@ try{
  await seed('adminSecurity/config',{enabled:true,superAdminUids:['owner','legacyOwner']});
  await seed('adminAccess/owner',access(PERMISSIONS,{role:'super_admin'}));
  await seed('adminAccess/viewer',access(['dashboard_view','users_view','reports_view','assistants_view']));
- await seed('adminAccess/manager',access(['users_view','users_suspend','reports_view','reports_manage','listings_manage','services_view','services_manage','auctions_manage','purchase_requests_manage']));
+ await seed('adminAccess/manager',access(['users_view','users_suspend','users_manage','reports_view','reports_manage','listings_manage','services_view','services_manage','auctions_manage','purchase_requests_manage']));
  await seed('adminAccess/delegate',access(['assistants_view','assistants_create','assistants_edit_permissions','assistants_suspend','assistants_remove_role','users_view']));
  await seed('adminAccess/other',access(['users_view']));await seed('adminAccess/higher',access(PERMISSIONS));
  await seed('reports/report',{reporterId:'normal',reportedUserId:'other',targetType:'user',targetId:'other',status:'open'});
@@ -67,10 +67,33 @@ try{
  await test('owner removes administrative role',()=>assertSucceeds(change('owner','new','assistant_role_removed',[])));
  await test('removed role immediately denied',()=>assertFails(getDoc(doc(newDb,'reports','report'))));
  await test('ordinary user account retained',async()=>assert.equal((await getDoc(doc(newDb,'users','new'))).data().status,'active'));
- await test('delegator can grant subset',()=>assertSucceeds(change('delegate','new2','assistant_created',['users_view'])));
- await test('delegator can edit subset',()=>assertSucceeds(change('delegate','new2','assistant_permissions_updated',[])));
- await test('delegator can suspend lower assistant',()=>assertSucceeds(change('delegate','new2','assistant_suspended',[])));
- await test('delegator can reactivate lower assistant',()=>assertSucceeds(change('delegate','new2','assistant_reactivated',[])));
+ await test('delegator cannot grant subset',()=>assertFails(change('delegate','new2','assistant_created',['users_view'])));
+ await seed('adminAccess/new2',access(['users_view']));
+ await test('delegator cannot edit subset',()=>assertFails(change('delegate','new2','assistant_permissions_updated',[])));
+ await test('delegator cannot suspend lower assistant',()=>assertFails(change('delegate','new2','assistant_suspended',[])));
+ await seed('adminAccess/new2',access([],{adminStatus:'suspended'}));
+ await test('delegator cannot reactivate lower assistant',()=>assertFails(change('delegate','new2','assistant_reactivated',[])));
+ for(const actor of ['manager','higher','normal']){
+  for(const [action,permissions] of [['assistant_created',[]],['assistant_permissions_updated',[]],['assistant_suspended',[]],['assistant_reactivated',[]],['assistant_role_removed',[]]]){
+   await seed('adminAccess/new2',access([],{adminStatus:action==='assistant_reactivated'?'suspended':'active',role:action==='assistant_created'?'removed':'admin_assistant'}));
+   await test(actor+' denied '+action,()=>assertFails(change(actor,'new2',action,permissions)));
+  }
+  await test(actor+' cannot delete assistant access',()=>assertFails(deleteDoc(doc(dbs[actor],'adminAccess','new2'))));
+  for(const status of ['suspended','blocked','active','deletion_requested'])await test(actor+' cannot moderate assistant profile '+status,()=>assertFails(moderate(actor,'users','other',{status})));
+ }
+ for(const target of ['other','owner','normal']){
+  await seed('accountDeletionRequests/'+target,{userId:target,status:'pending',createdAt:stamp,updatedAt:stamp});
+  await test('assistant deletion workflow '+target,()=> (target==='normal'?assertSucceeds:assertFails)(updateDoc(doc(dbs.higher,'accountDeletionRequests',target),{status:'completed',updatedAt:serverTimestamp(),processedAt:serverTimestamp(),processedBy:'higher'})));
+ }
+ await test('full assistant can reactivate ordinary user',()=>assertSucceeds(moderate('higher','users','normal',{status:'active'})));
+ await test('full assistant can block ordinary user',()=>assertSucceeds(moderate('higher','users','normal',{status:'blocked'})));
+ await test('full assistant can request ordinary user deletion',()=>assertSucceeds(moderate('higher','users','normal',{status:'deletion_requested'})));
+ await test('Super Admin can suspend assistant profile',()=>assertSucceeds(moderate('owner','users','other',{status:'suspended'})));
+ await test('Super Admin can reactivate assistant profile',()=>assertSucceeds(moderate('owner','users','other',{status:'active'})));
+ await test('Super Admin cannot suspend another registered owner',()=>assertFails(moderate('owner','users','legacyOwner',{status:'suspended'})));
+ await test('Super Admin cannot delete owner profile',()=>assertFails(deleteDoc(doc(dbs.owner,'users','legacyOwner'))));
+ await test('Super Admin cannot directly delete access bypassing audited role removal',()=>assertFails(deleteDoc(doc(dbs.owner,'adminAccess','new2'))));
+ await test('assistant cannot forge standalone management audit',()=>assertFails(setDoc(doc(dbs.higher,'adminAuditLogs','forged'),{adminUid:'higher',action:'assistant_created',targetType:'adminAccess',targetId:'new2',reason:'test',timestamp:serverTimestamp(),metadata:{oldPermissions:[],newPermissions:[]}})));
  await seed('adminAccess/new2',access(['assistants_view']));
  const directoryDb=env.authenticatedContext('new2').firestore();
  await test('assistant directory permission can read assistant identity',()=>assertSucceeds(getDoc(doc(directoryDb,'users','other'))));
@@ -89,6 +112,7 @@ try{
  await test('auction manage allowed after expiry',()=>assertSucceeds(moderate('manager','auctions','a',{status:'not_approved',updatedAt:serverTimestamp()})));
  await test('auction manage cannot edit price',()=>assertFails(updateDoc(doc(dbs.manager,'auctions','a'),{currentPrice:1})));
  await seed('adminSecurity/config',{enabled:false,superAdminUids:['owner','legacyOwner']});
+ await test('disabled delegation still protects owner without role document',()=>assertFails(moderate('owner','users','legacyOwner',{status:'suspended'})));
  await test('disabled delegation fails closed',()=>assertFails(getDocs(collection(dbs.viewer,'users'))));
  await test('legacy owner still works while delegation disabled',()=>assertSucceeds(getDocs(collection(dbs.owner,'users'))));
  const outsider=env.authenticatedContext('unregistered',{admin:true}).firestore();
