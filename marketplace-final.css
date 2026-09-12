@@ -119,3 +119,19 @@ body.marketplace-v2 .v2-card .v2-gallery--thumbs>.v2-next{right:70px}
  body.marketplace-v2 .v2-card .v2-gallery--thumbs>button{top:calc((100% - 54px)/2)}
  body.marketplace-v2 .v2-card .v2-gallery--thumbs>.v2-photo-count{bottom:61px}
 }
+/* Listing detail actions: presentation only; existing handlers remain unchanged. */
+#modalContent .listing-actions{display:grid;gap:12px;margin:24px 0 16px;font-family:"Noto Sans Arabic","Segoe UI",sans-serif;min-width:0}
+#modalContent .listing-actions .listing-action{display:flex!important;align-items:center;justify-content:center;gap:9px;width:100%;min-height:48px;margin:0!important;padding:12px 18px!important;border:1px solid transparent!important;border-radius:12px!important;font:inherit;font-weight:700;line-height:1.5;white-space:normal;box-sizing:border-box;box-shadow:none!important;cursor:pointer;transition:background-color .15s,border-color .15s}
+#modalContent .listing-actions .listing-action svg{width:21px;height:21px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#modalContent .listing-actions .listing-action--purchase{min-height:54px;background:#006550!important;color:#fff!important}
+#modalContent .listing-actions .listing-action--purchase:hover{background:#004b3c!important}
+#modalContent .listing-actions-secondary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;min-width:0}
+#modalContent .listing-actions .listing-action--message{background:#f2faf6!important;color:#075943!important;border-color:#76a994!important}
+#modalContent .listing-actions .listing-action--message:hover{background:#e1f1e9!important}
+#modalContent .listing-actions .listing-action--report{background:#fff!important;color:#a5343d!important;border-color:#e2b9be!important;font-weight:600;min-height:44px}
+#modalContent .listing-actions .listing-action--report:hover{background:#fff3f4!important}
+#modalContent .listing-actions .listing-action--report-seller{width:auto;justify-self:center;min-height:44px;padding:7px 12px!important;background:transparent!important;color:#8b4148!important;font-size:13px;font-weight:500;text-decoration:underline;text-underline-offset:4px}
+#modalContent .listing-actions .listing-action--report-seller:hover{background:#fff3f4!important}
+#modalContent .listing-actions .listing-action:focus-visible{outline:3px solid #bc862e!important;outline-offset:3px}
+#modalContent .listing-offer-note{margin:0;text-align:center;color:#5c6963;font-size:13px;line-height:1.6}
+@media(max-width:380px){#modalContent .listing-actions-secondary{grid-template-columns:minmax(0,1fr)}}
