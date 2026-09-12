@@ -48,6 +48,13 @@ let count=0;const pass=s=>console.log(`PASS ${++count} | ${s}`);
    await window.openAdminPanel();
   });
   const home=()=>page.evaluate(()=>window.openAdminPanel());
+  await page.getByRole('button',{name:/الإشعارات الإدارية/}).click();
+  await page.locator('.admin-notification-item').first().waitFor();
+  await page.locator('.admin-notification-panel').screenshot({path:path.join(output,'notifications-panel.png')});
+  await page.locator('.admin-notification-item').filter({hasText:'طلب شراء جديد'}).first().click();
+  await page.waitForFunction(()=>document.querySelector('.admin-topbar h2')?.textContent.includes('طلبات الشراء'));assert.match(await page.locator('.admin-topbar h2').innerText(),/طلبات الشراء/);pass('notification opens guarded purchase requests page');
+  await home();
+
   assert.equal(await page.locator('.admin-metric').count(),8);
   assert.equal(await page.locator('.admin-metric[data-kind=users] strong').innerText(),'12');
   assert.equal(await page.locator('.admin-metric[data-kind=adminAccess] strong').innerText(),'1');

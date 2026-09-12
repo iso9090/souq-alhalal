@@ -499,3 +499,15 @@ body:has(#modal[style*="display: flex"] .admin-v2){overflow:visible!important;ba
 #modalContent .admin-v3 .assistant-card .admin-assistant-actions button[data-tone=red]{background:#ffe6e8!important;color:#ae2437!important}
 #modalContent .admin-v3 .assistant-pagination select{flex:0 1 170px;width:auto!important}
 #modalContent .admin-v3 .assistant-email,#modalContent .admin-v3 .assistant-dialog p{color:#385c63!important}
+/* In-dashboard inbox; no push service or production writes. */
+.admin-v3 .admin-notifications{position:relative}
+.admin-v3 .admin-notification-bell{position:relative;min-width:44px;min-height:44px;background:#eff8f5!important;color:#005b49!important;border:1px solid #bdd7ce!important;border-radius:12px}
+.admin-notification-bell svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8}
+.admin-notification-bell [data-count]{position:absolute;top:-5px;right:-5px;background:#bd2434;color:white;border-radius:12px;padding:2px 5px;font-size:12px}
+.admin-v3 .admin-notification-panel{position:fixed;inset-inline-end:24px;top:100px;width:min(360px,calc(100vw - 48px));max-height:65vh;overflow:auto;z-index:30;background:white;color:#123c42;box-shadow:0 8px 28px #123c4233;border:1px solid #d5e4df;border-radius:14px;padding:14px;box-sizing:border-box;text-align:start}
+.admin-notification-panel[hidden],.admin-notification-bell [hidden]{display:none!important}
+.admin-notification-tools{display:flex;gap:8px;flex-wrap:wrap}
+.admin-v3 .admin-notification-item{display:flex;width:100%;flex-direction:column;align-items:flex-start;gap:5px;padding:12px!important;margin:8px 0!important;text-align:start;background:#f4faf7!important;color:#164e41!important;border:1px solid #d8e6df!important;border-radius:10px;overflow-wrap:anywhere}
+.admin-notification-item span:first-child{font-weight:700}.admin-notification-item span:not(:first-child){font-size:12px}
+.admin-notifications button:focus-visible{outline:3px solid #b77e16!important;outline-offset:2px}
+@media(max-width:600px){.admin-v3 .admin-notification-panel{position:fixed;top:100px;inset-inline:24px;width:auto;max-height:65vh}}
