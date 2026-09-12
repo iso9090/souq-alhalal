@@ -3,7 +3,7 @@
   "type": "module",
   "scripts": {
     "test": "node tests/ui.test.mjs && node tests/admin-permissions.test.mjs && node tests/migration.test.mjs && node tests/marketplace-v2.test.mjs && node tests/live-services.test.mjs",
-    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs && node tests/assistants-rules.test.mjs && node tests/participation-rules.test.mjs && node tests/marketplace-v2-rules.test.mjs && node tests/google-auth-v3-rules.test.mjs && node tests/commercial-rules.test.mjs && node tests/commercial-release-audit.test.mjs",
+    "test:rules": "node tests/rules.test.mjs && node tests/admin-rules.test.mjs && node tests/assistants-rules.test.mjs && node tests/participation-rules.test.mjs && node tests/marketplace-v2-rules.test.mjs && node tests/google-auth-v3-rules.test.mjs && node tests/commercial-rules.test.mjs && node tests/commercial-release-audit.test.mjs && node tests/commercial-images-rules.test.mjs",
     "test:browser": "node tests/browser.test.cjs && node tests/auth-browser.test.cjs && node tests/assistants-browser.test.cjs && node tests/user-seller-browser.test.cjs && node tests/my-bids-browser.test.cjs",
     "preview:mock": "node tests/user-seller-preview.cjs",
     "test:v2-browser": "node tests/marketplace-v2-browser.test.cjs",
@@ -12,7 +12,7 @@
     "test:profile-compatibility": "node tests/google-profile-compatibility.test.mjs",
     "lint": "node scripts/validate-site.mjs",
     "build": "node scripts/build-site.mjs",
-    "test:commercial": "node tests/commercial-model.test.mjs && node tests/commercial-browser.test.cjs",
+    "test:commercial": "node tests/commercial-model.test.mjs && node tests/commercial-browser.test.cjs && node tests/commercial-images-browser.test.cjs",
     "test:free-images": "node tests/free-livestock-browser.test.cjs",
     "test:free-images-rules": "node tests/free-livestock-rules.test.mjs"
   },

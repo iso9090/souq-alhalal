@@ -7,11 +7,12 @@ service cloud.firestore {
     function commercialOwner() { return isAdmin() && delegationReady(); }
     function validCommercialAd() {
       let d=request.resource.data;
-      return d.keys().hasOnly(['title','advertiserName','description','cta','imageUrl','targetUrl','placement','priority','status','startAt','endAt','createdAt','updatedAt','createdBy','updatedBy','approvedAt','approvedBy'])
+      return d.keys().hasOnly(['title','advertiserName','description','cta','imageUrl','targetUrl','placement','priority','status','startAt','endAt','createdAt','updatedAt','createdBy','updatedBy','approvedAt','approvedBy','imageStorage','imageVersion'])
         && d.title is string && d.title.size()>0 && d.title.size()<=120
         && d.advertiserName is string && d.advertiserName.size()<=120
         && d.description is string && d.description.size()<=300 && d.cta is string && d.cta.size()<=40
-        && d.imageUrl is string && d.imageUrl.size()<=2000 && d.imageUrl.matches('https://res[.]cloudinary[.]com/[a-zA-Z0-9_./,%:-]+')
+        && ((d.get('imageStorage','')=='' && d.imageUrl is string && d.imageUrl.size()<=2000 && d.imageUrl.matches('https://res[.]cloudinary[.]com/[a-zA-Z0-9_./,%:-]+'))
+          || (d.get('imageStorage','')=='firestore' && d.imageUrl=='' && d.imageVersion is string && d.imageVersion.matches('[a-zA-Z0-9-]{1,64}')))
         && d.targetUrl is string && d.targetUrl.size()<=2000 && d.targetUrl.matches('https://[^ @/]+(/[^ ]*)?')
         && d.placement in ['hero','hero_side_1','hero_side_2','hero_side_3','middle','footer_1','footer_2','footer_3','footer_4','footer_5']
         && d.status in ['draft','pending','approved','active','paused','rejected','expired']
@@ -20,10 +21,38 @@ service cloud.firestore {
         && d.createdAt is timestamp && d.updatedAt==request.time && d.createdBy is string && d.updatedBy==request.auth.uid
         && (d.status in ['approved','active'] ? d.approvedBy==request.auth.uid && d.approvedAt==request.time : d.approvedBy=='' && d.approvedAt==null);
     }
+    function imageLinkedAfter(id) {
+      let ad=getAfter(/databases/$(database)/documents/commercialAds/$(id)).data;
+      return ad.get('imageStorage','')!='firestore' || getAfter(/databases/$(database)/documents/commercialAdImages/$(id)).data.version==ad.imageVersion;
+    }
+    function validCommercialImage(id) {
+      let d=request.resource.data;
+      return d.keys().hasAll(['adId','imageData','mimeType','bytes','width','height','updatedAt','version'])
+        && d.keys().hasOnly(['adId','imageData','mimeType','bytes','width','height','updatedAt','version'])
+        && d.adId==id && d.mimeType=='image/jpeg'
+        && d.bytes is int && d.bytes>0 && d.bytes<=61440
+        && d.width is int && d.width>0 && d.width<=1200 && d.height is int && d.height>0 && d.height<=1200
+        && d.imageData is string && d.imageData.size()<=81943
+        && d.imageData.matches('data:image/jpeg;base64,/9j/[A-Za-z0-9+/]*={0,2}')
+        && d.imageData.size()>=23+d.bytes * 4 / 3 && d.imageData.size()<27+d.bytes * 4 / 3
+        && d.updatedAt==request.time && d.version is string && d.version.matches('[a-zA-Z0-9-]{1,64}')
+        && getAfter(/databases/$(database)/documents/commercialAds/$(id)).data.imageStorage=='firestore'
+        && getAfter(/databases/$(database)/documents/commercialAds/$(id)).data.imageVersion==d.version;
+    }
+    match /commercialAdImages/{id} {
+      allow get: if commercialOwner() || (get(/databases/$(database)/documents/commercialAds/$(id)).data.status=='active'
+        && get(/databases/$(database)/documents/commercialAds/$(id)).data.startAt<=request.time
+        && get(/databases/$(database)/documents/commercialAds/$(id)).data.endAt>=request.time);
+      allow list: if false;
+      allow create,update: if commercialOwner() && validCommercialImage(id);
+      // Paused ads retain their private image for reactivation. Delete only after detaching.
+      allow delete: if commercialOwner() && (!existsAfter(/databases/$(database)/documents/commercialAds/$(id))
+        || getAfter(/databases/$(database)/documents/commercialAds/$(id)).data.get('imageStorage','')!='firestore');
+    }
     match /commercialAds/{id} {
       allow read: if commercialOwner() || (resource.data.status=='active' && resource.data.startAt<=request.time && resource.data.endAt>=request.time);
-      allow create: if commercialOwner() && validCommercialAd() && request.resource.data.createdAt==request.time && request.resource.data.createdBy==request.auth.uid;
-      allow update: if commercialOwner() && validCommercialAd() && request.resource.data.createdAt==resource.data.createdAt && request.resource.data.createdBy==resource.data.createdBy;
+      allow create: if commercialOwner() && validCommercialAd() && imageLinkedAfter(id) && request.resource.data.createdAt==request.time && request.resource.data.createdBy==request.auth.uid;
+      allow update: if commercialOwner() && validCommercialAd() && imageLinkedAfter(id) && request.resource.data.createdAt==resource.data.createdAt && request.resource.data.createdBy==resource.data.createdBy;
       allow delete: if false;
     }
     match /commercialAdContacts/{id} {
