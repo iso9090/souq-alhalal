@@ -1,6 +1,6 @@
 export const PLACEMENTS=['hero','hero_side_1','hero_side_2','hero_side_3','middle','footer_1','footer_2','footer_3','footer_4','footer_5'];
 export const STATUSES=['draft','pending','approved','active','paused','rejected','expired'];
-export const LABELS={hero:'الإعلان الرئيسي',hero_side_1:'جانبي 1',hero_side_2:'جانبي 2',hero_side_3:'جانبي 3',middle:'وسط الصفحة',footer_1:'أسفل 1',footer_2:'أسفل 2',footer_3:'أسفل 3',footer_4:'أسفل 4',footer_5:'أسفل 5',draft:'مسودة',pending:'معلق',approved:'معتمد',active:'نشط',paused:'موقوف',rejected:'مرفوض',expired:'منتهي'};
+export const LABELS={hero:'Hero Slider',hero_side_1:'جانبي 1',hero_side_2:'جانبي 2',hero_side_3:'جانبي 3',middle:'وسط الصفحة',footer_1:'أسفل 1',footer_2:'أسفل 2',footer_3:'أسفل 3',footer_4:'أسفل 4',footer_5:'أسفل 5',draft:'مسودة',pending:'معلق',approved:'معتمد',active:'نشط',paused:'موقوف',rejected:'مرفوض',expired:'منتهي'};
 // Explicit code-release gate: remote configuration alone cannot enable collection.
 export const ANALYTICS_RELEASE_ENABLED=false;
 // Bounds enclose request.time; skew/slow requests fail closed. A new query can omit
@@ -11,7 +11,10 @@ export const millis=v=>v?.toMillis?v.toMillis():v?.seconds?v.seconds*1000:new Da
 export const adStatus=(ad,now=Date.now())=>millis(ad.endAt)<now?'expired':ad.status;
 export const visibleAd=(ad,now=Date.now())=>ad.status==='active'&&ad.startAt!=null&&ad.endAt!=null&&millis(ad.startAt)<=now&&millis(ad.endAt)>=now;
 export const placementState=(ad,now=Date.now())=>!ad?'empty':visibleAd(ad,now)?millis(ad.endAt)-now<3*86400000?'soon':'active':adStatus(ad,now)==='expired'?'expired':ad.status==='active'?'scheduled':ad.status;
-export function selectAds(ads,placement,now=Date.now()){return ads.filter(a=>a.placement===placement&&visibleAd(a,now)).sort((a,b)=>b.priority-a.priority||String(a.id).localeCompare(String(b.id))).slice(0,placement==='hero'?10:1);}
+// Existing priority stores requested Hero order: priority 10 = Hero 1, priority 1 = Hero 10.
+// Legacy priorities and concurrent duplicates receive distinct slots deterministically.
+export function heroSlots(ads){const slots=Array(10).fill(null);for(const ad of ads.filter(a=>a.placement==='hero').sort((a,b)=>b.priority-a.priority||String(a.id).localeCompare(String(b.id))).slice(0,10)){const requested=Number.isInteger(ad.priority)&&ad.priority>=1&&ad.priority<=10?10-ad.priority:-1;const index=requested>=0&&!slots[requested]?requested:slots.findIndex(s=>!s);slots[index]={ad,slot:index+1,relocated:requested!==index};}return slots;}
+export function selectAds(ads,placement,now=Date.now()){if(placement==='hero')return heroSlots(ads.filter(a=>visibleAd(a,now))).filter(Boolean).map(s=>s.ad);return ads.filter(a=>a.placement===placement&&visibleAd(a,now)).sort((a,b)=>b.priority-a.priority||String(a.id).localeCompare(String(b.id))).slice(0,placement==='hero'?10:1);}
 export function safeUrl(value,image=false){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password&&(!image||u.hostname==='res.cloudinary.com')?u.href:'';}catch{return '';}}
 export function validateAd(ad){return typeof ad.title==='string'&&ad.title.trim().length>0&&ad.title.length<=120&&typeof ad.advertiserName==='string'&&ad.advertiserName.length<=120&&safeUrl(ad.imageUrl,true)&&safeUrl(ad.targetUrl)&&PLACEMENTS.includes(ad.placement)&&STATUSES.includes(ad.status)&&Number.isInteger(ad.priority)&&ad.priority>=0&&ad.priority<=999&&millis(ad.endAt)>millis(ad.startAt)&&ad.description.length<=300&&ad.cta.length<=40;}
 export const dayKey=(now=Date.now())=>new Date(now+4*3600000).toISOString().slice(0,10);
