@@ -21,6 +21,6 @@ test('owner modification denied',()=>assert.equal(canDelegate(assistant,'owner',
 test('unknown permission denied',()=>assert.equal(canDelegate(owner,'other',null,['fake'],'assistants_create'),false));
 test('higher privilege grant denied',()=>assert.equal(canDelegate(assistant,'other',null,['users_block'],'assistants_create'),false));
 test('higher privilege target downgrade denied',()=>assert.equal(canDelegate(assistant,'other',{permissions:['users_block']},[],'assistants_create'),false));
-test('explicit subset grant allowed',()=>assert.equal(canDelegate(assistant,'other',null,['users_view'],'assistants_create'),true));
+test('assistant subset grant denied by Super Admin only policy',()=>assert.equal(canDelegate(assistant,'other',null,['users_view'],'assistants_create'),false));
 test('owner can grant all permissions to assistant',()=>assert.equal(canDelegate(owner,'other',null,PERMISSIONS,'assistants_create'),true));
 console.log(`SUMMARY | ${n}/${n} passed`);

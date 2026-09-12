@@ -12,6 +12,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
  try {
  const page = await browser.newPage();
  async function selectAdminTab(name){
+   if(await page.locator('.admin-menu-toggle').isVisible()&&(await page.locator('.admin-menu-toggle').getAttribute('aria-expanded'))==='false')await page.locator('.admin-menu-toggle').click();
    const previous=await page.locator('#adminV2Nav').elementHandle();
    await page.getByRole('button',{name,exact:true}).click();
    if(previous){await page.waitForFunction(node=>!node.isConnected,previous);await previous.dispose();}
@@ -438,10 +439,12 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await page.setViewportSize({width,height:width===360?800:width===1366?768:900});
    assert.equal(await page.evaluate(()=>document.querySelector('.admin-v2').scrollWidth<=document.querySelector('.admin-v2').clientWidth+1),true);
    assert.equal(await page.evaluate(()=>['#modal','#modal .box','#modalContent'].every(s=>getComputedStyle(document.querySelector(s)).overflowY==='visible')),true);
+   if(width===360)await page.locator('.admin-menu-toggle').click();
    await page.locator('#adminLogout button').scrollIntoViewIfNeeded();
    assert.equal(await page.locator('#adminLogout button').isVisible(),true);
    await page.evaluate(()=>{window.scrollTo(0,0);document.querySelector('.admin-sidebar').scrollTop=0;});
    pass('document scrolling and complete sidebar '+width);
+   if(width===360)await page.locator('.admin-drawer-close').click();
    assert.equal(await page.evaluate(()=>window.visualViewport.scale===1&&window.devicePixelRatio===1&&getComputedStyle(document.querySelector('.admin-v2')).zoom==='1'&&parseFloat(getComputedStyle(document.querySelector('#adminV2Nav button')).fontSize)>=14),true);
    pass('100 percent viewport and readable navigation '+width);
    await page.screenshot({path:process.env.TEMP+`/souq-dashboard-${width}.png`});
@@ -503,7 +506,7 @@ function pass(name) { count++; console.log('PASS | ' + name); }
    await selectAdminTab('طلبات الخدمات');
    await page.locator('#adminServiceRequestsList').waitFor();
    await page.getByRole('button',{name:'العودة للوحة الإدارة',exact:true}).click();
-   await page.locator('#adminV2Nav').waitFor();
+   await page.locator('#adminV2Nav').waitFor({state:'attached'});
    assert.equal(await page.locator('#adminV2Nav button').count(),10);
    pass('main close exits and inline service screen returns to dashboard '+width);
  }

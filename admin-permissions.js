@@ -21,7 +21,7 @@ export function accessModel(uid,claims={},profile={},record=null,config=null){
 }
 export const can=(access,permission)=>access?.role==='super_admin'||access?.permissions?.includes(permission)===true;
 export function canDelegate(access,targetUid,old,next,permission){
-  if(!access?.ready||!can(access,permission)||targetUid===access.uid||access.protectedUids.includes(targetUid)||old?.role==='super_admin')return false;
+  if(access?.role!=='super_admin'||!access?.ready||!can(access,permission)||targetUid===access.uid||access.protectedUids.includes(targetUid)||old?.role==='super_admin')return false;
   if(next.some(p=>!PERMISSIONS.includes(p))||new Set(next).size!==next.length)return false;
-  return access.role==='super_admin'||[...(old?.permissions||[]),...next].every(p=>access.permissions.includes(p));
+  return true;
 }
