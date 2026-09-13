@@ -511,3 +511,28 @@ body:has(#modal[style*="display: flex"] .admin-v2){overflow:visible!important;ba
 .admin-notification-item span:first-child{font-weight:700}.admin-notification-item span:not(:first-child){font-size:12px}
 .admin-notifications button:focus-visible{outline:3px solid #b77e16!important;outline-offset:2px}
 @media(max-width:600px){.admin-v3 .admin-notification-panel{position:fixed;top:100px;inset-inline:24px;width:auto;max-height:65vh}}
+/* Admin action identity. Attributes describe presentation only; handlers stay unchanged. */
+#modalContent :is(.admin-v2,.commercial-admin) button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item),
+#modalContent .admin-v2 :is(.admin-permissions-form,.admin-assistant-search) button[type=submit] {
+
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:44px!important;height:auto;padding:10px 16px!important;border-radius:10px!important;
+  border:1px solid var(--action-border,#729c8c)!important;background:var(--action-bg,#fff)!important;color:var(--action-ink,#125340)!important;
+  font-family:'Noto Sans Arabic','Segoe UI',sans-serif!important;font-size:14px!important;font-weight:700!important;line-height:1.5;
+  max-width:100%;white-space:normal!important;text-align:center;vertical-align:middle;
+  box-shadow:none!important;opacity:1!important;transition:filter .15s,box-shadow .15s;
+}
+#modalContent .admin-v2 button[data-brand=primary]{--action-bg:#125340;--action-ink:#fff;--action-border:#125340}
+#modalContent .admin-v2 button[data-brand=secondary]{--action-bg:#f1e4c5;--action-ink:#664817;--action-border:#ac8748}
+#modalContent .admin-v2 button[data-brand=danger]{--action-bg:#fff;--action-ink:#a12f38;--action-border:#bc6570}
+#modalContent .admin-v2 button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item):hover:not(:disabled){filter:brightness(.95);box-shadow:0 2px 6px #1253401a!important}
+#modalContent .admin-v2 button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item):focus-visible{outline:3px solid #966617!important;outline-offset:3px!important}
+#modalContent .admin-v2 button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item):disabled{--action-bg:#edf0ee;--action-ink:#606b65;--action-border:#ccd3ce;cursor:not-allowed;filter:none;opacity:1!important;box-shadow:none!important}
+#modalContent .admin-v2 button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item) svg{width:18px;height:18px;flex:0 0 18px}
+#modalContent .admin-v2 :is(.admin-actions,.admin-assistant-actions){gap:10px;flex-wrap:wrap}
+#modalContent .commercial-admin td:last-child button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item){margin:4px}
+@media(max-width:400px){#modalContent .admin-v2 :is(.admin-actions,.admin-assistant-actions)>button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item){flex:1 1 100%}}
+@media(prefers-reduced-motion:reduce){#modalContent .admin-v2 button[data-brand]:not(#adminV2Nav button):not(.admin-metric):not(.admin-recent-event):not(.admin-user-stats button):not(.admin-notification-item){transition:none}}
+/* Keep three service decisions readable on narrow phones. */
+#modalContent #adminServiceRequestsList div:has(>button[data-brand]){flex-wrap:wrap;gap:10px!important}
+@media(max-width:400px){#modalContent #adminServiceRequestsList div>button[data-brand]{flex:1 1 100%!important;width:100%}}

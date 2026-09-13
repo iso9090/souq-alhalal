@@ -1234,9 +1234,9 @@ window.renderAdminServiceRequests = function () {
         <details class="admin-technical"><summary>تفاصيل تقنية</summary><dl><dt>Document ID</dt><dd>${escapeHtml(request.id)}</dd><dt>userId</dt><dd>${escapeHtml(request.userId)}</dd><dt>targetId</dt><dd>${escapeHtml(request.targetId)}</dd></dl></details>
         ${request.status === "pending" && (currentAdminAccess.role==="super_admin"||currentAdminAccess.permissions.includes("services_manage")) ? `
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
-            ${effectivePaymentStatus(request) === "unpaid" ? `<button onclick="decideServiceRequest(${inlineArgument(request.id)},'approved_override')" style="flex:1;padding:10px;background:#9a6813;color:white;border:0;border-radius:8px;">اعتماد بدون دفع</button>` : ""}
-            <button onclick="decideServiceRequest(${inlineArgument(request.id)},'rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
+            <button data-brand="primary" onclick="decideServiceRequest(${inlineArgument(request.id)},'approved')" ${effectivePaymentStatus(request) !== "paid" ? "disabled" : ""} title="${effectivePaymentStatus(request) !== "paid" ? "يتطلب دفعًا مؤكدًا" : "اعتماد طلب مدفوع"}" style="flex:1;padding:10px;background:${effectivePaymentStatus(request) === "paid" ? "#00643e" : "#555"};color:white;border:0;border-radius:8px;">اعتماد مدفوع</button>
+            ${effectivePaymentStatus(request) === "unpaid" ? `<button data-brand="secondary" onclick="decideServiceRequest(${inlineArgument(request.id)},'approved_override')" style="flex:1;padding:10px;background:#9a6813;color:white;border:0;border-radius:8px;">اعتماد بدون دفع</button>` : ""}
+            <button data-brand="danger" onclick="decideServiceRequest(${inlineArgument(request.id)},'rejected')" style="flex:1;padding:10px;background:#8b2929;color:white;border:0;border-radius:8px;">رفض</button>
           </div>
         ` : ""}
       </article>
