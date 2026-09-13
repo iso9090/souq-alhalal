@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /souq-alhalal/
+Sitemap: https://iso9090.github.io/souq-alhalal/sitemap.xml

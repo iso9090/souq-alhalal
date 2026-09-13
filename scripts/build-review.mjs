@@ -16,6 +16,8 @@ if(fs.existsSync(out)&&fs.readdirSync(out).length)throw Error('Build output must
 const manifest=JSON.parse(fs.readFileSync(path.join(root,'scripts/review-publish-manifest.json'),'utf8'));
 fs.mkdirSync(out,{recursive:true});
 for(const file of manifest.files){const dest=path.join(out,file);fs.mkdirSync(path.dirname(dest),{recursive:true});fs.copyFileSync(path.join(root,file),dest);}
+// Review stays unindexed even though the approved Production entry is discoverable.
+fs.writeFileSync(path.join(out,'index.html'),fs.readFileSync(path.join(out,'index.html'),'utf8').replace('content="index,follow"','content="noindex,nofollow"'));
 fs.writeFileSync(path.join(out,'melkak/runtime-config.js'),'export default Object.freeze('+JSON.stringify(config)+');\n');
 // This public permission vocabulary is a review-only projection; original permission code is unchanged.
 const groups=GROUPS.filter(([,items])=>!items.some(([key])=>/^(auctions_|purchase_requests_)/.test(key)));

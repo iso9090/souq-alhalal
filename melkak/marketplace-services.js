@@ -53,7 +53,7 @@ export function attachLocalServices(store,countries) {
     if(!actor?.uid)reject('AUTH');
     if(!PLACEMENTS.includes(data.placement)||!['ALL',...Object.keys(countries)].includes(data.countryTarget))reject('FIELDS');
     const targetUrl=safeTarget(data.targetUrl);
-    if(!targetUrl||!data.advertiserName?.trim()||data.advertiserName.length>100||!data.title?.trim()||data.title.length>100||typeof data.description!=='string'||data.description.length>500||!data.cta?.trim()||data.cta.length>50)reject('FIELDS');
+    if((String(data.targetUrl??'').trim()&&!targetUrl)||!data.advertiserName?.trim()||data.advertiserName.length>100||!data.title?.trim()||data.title.length>100||typeof data.description!=='string'||data.description.length>500||!data.cta?.trim()||data.cta.length>50)reject('FIELDS');
     if(typeof data.image!=='string'||data.image.length>210000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(data.image))reject('IMAGES');
     const startAt=Date.parse(data.startAt),endAt=Date.parse(data.endAt),priority=Number(data.priority);
     if(!Number.isFinite(startAt)||!Number.isFinite(endAt)||endAt<=startAt||endAt-startAt>365*DAY||!Number.isInteger(priority)||priority<1||priority>10)reject('DURATION');

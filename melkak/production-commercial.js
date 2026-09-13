@@ -12,7 +12,7 @@ function clean(data={}) {
   if(typeof data[key]!=='string'||data[key].length>max||(key!=='description'&&!data[key].trim()))fail('FIELDS');
   result[key]=data[key].trim();
  }
- result.targetUrl=safeTarget(data.targetUrl);if(!result.targetUrl||result.targetUrl.length>2000)fail('FIELDS');
+ result.targetUrl=safeTarget(data.targetUrl);if((data.targetUrl!=null&&typeof data.targetUrl!=='string')||(String(data.targetUrl??'').trim()&&!result.targetUrl)||result.targetUrl.length>2000)fail('FIELDS');
  if(!PLACEMENTS.includes(data.placement)||!countries.includes(data.countryTarget))fail('FIELDS');
  Object.assign(result,{placement:data.placement,countryTarget:data.countryTarget,startAt:date(data.startAt),endAt:date(data.endAt),priority:Number(data.priority)});
  if(!Number.isFinite(result.startAt)||!Number.isFinite(result.endAt)||result.endAt<=result.startAt||result.endAt-result.startAt>365*86400000||!Number.isInteger(result.priority)||result.priority<1||result.priority>10)fail('DURATION');

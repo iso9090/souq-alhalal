@@ -45,6 +45,9 @@
     "melkak/admin-management-view.js",
     "melkak/production-settings.js",
     "melkak/commercial-image.js",
-    "melkak/production-listing-admin.js"
+    "melkak/production-listing-admin.js",
+    "robots.txt",
+    "sitemap.xml",
+    "melkak/commercial-final.css"
   ]
 }
