@@ -1,9 +1,13 @@
+import * as Visitor from './visitor-analytics.js';
 import {visibleAd,selectAds,safeUrl,createRecorder,pageSection,ANALYTICS_RELEASE_ENABLED,publicAdWindow,publicAdQuery} from './commercial-model.js';
 export async function installCommercialPublic(api){
  const {db,collection,doc,getDoc,getDocs,query,where,orderBy,startAfter,limit,setDoc,serverTimestamp}=api;let recorder=null,ads=[],observer,timer,index=0,paused=false,lastMove=Date.now();
  try{if(ANALYTICS_RELEASE_ENABLED){const config=await getDoc(doc(db,'platformTelemetry','config'));if(config.data()?.enabled===true&&!navigator.globalPrivacyControl&&navigator.doNotTrack!=='1'){
- recorder=createRecorder({storage:sessionStorage,random:()=>crypto.randomUUID().replaceAll('-',''),write:async s=>{const ref=doc(db,'analyticsSessions',s.id);await setDoc(ref,{startedAt:new Date(s.start||s.last),updatedAt:serverTimestamp(),pageViews:s.pageViews,pages:s.pages,views:s.views,clicks:s.clicks});},now:Date.now});
- recorder.record('page',document.querySelector('#home')?pageSection(location.hash):'other');window.addEventListener('souq-pageview',event=>recorder.record('page',event.detail));window.addEventListener('hashchange',()=>recorder.record('page',document.querySelector('#home')?pageSection(location.hash):'other'));document.addEventListener('visibilitychange',()=>{if(document.hidden)recorder.flush();});
+ if(!window.__souqVisitorRecorder){
+ recorder=Visitor.createVisitorRecorder({storage:sessionStorage,random:()=>crypto.randomUUID().replaceAll('-',''),write:e=>setDoc(doc(db,'analyticsEvents',e.sessionId+'_'+e.sequence),{...e,sessionStartedAt:new Date(e.sessionStartedAt),occurredAt:serverTimestamp()})});
+ window.__souqVisitorRecorder=recorder;
+ const navigate=()=>{const c=Visitor.category(location.pathname,location.hash);if(c)recorder.record('page',c);};navigate();window.addEventListener('hashchange',navigate);window.addEventListener('souq-pageview',event=>{if(event.detail==='route')return navigate();if(Visitor.CATEGORIES.includes(event.detail))recorder.record('page',event.detail);});document.addEventListener('visibilitychange',()=>{if(document.hidden)recorder.flush();});
+ }else recorder=window.__souqVisitorRecorder;
  }}}catch{/* Collection disabled/unavailable: no invented counts and no retry loop. */}
  if(!document.querySelector('#home'))return {recorder};
  const root=document.createElement('section');root.className='commercial-home';root.setAttribute('aria-label','إعلانات تجارية');document.querySelector('#home')?.before(root);
