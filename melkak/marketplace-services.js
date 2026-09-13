@@ -1,3 +1,4 @@
+import {requireReason,auditRecord} from './audit.js';
 import {can} from '../admin-permissions.js';
 import {selectAds,PLACEMENTS} from '../commercial-model.js';
 
@@ -31,7 +32,7 @@ export function safeTarget(raw) {
 export function attachLocalServices(store,countries) {
   const state=store.state;
   let seq=0;
-  const log=(actor,action,target)=>{state.audit.unshift({id:'extension-'+(++seq),actor:actor.uid,action,target,at:Date.now(),result:'success'});state.version++;};
+  const log=(actor,action,target,reason='')=>{state.audit.unshift(auditRecord('extension-'+(++seq),actor,action,target,reason));state.version++;};
   const check=(actor,permission)=>{if(!actor?.uid||!can(actor,permission))reject('PERMISSION');};
   const own=(id,actor)=>{const a=state.listings.find(a=>a.id===id);if(!a||a.ownerUid!==actor?.uid)reject('OWNER');if(a.status!=='active'||a.moderationLocked)reject('STATE');return a;};
   store.requestService=(id,type,actor,options={})=>{
@@ -42,12 +43,12 @@ export function attachLocalServices(store,countries) {
     const r={id:'request-'+(++seq),listingId:id,type,status:'pending',createdAt:Date.now(),...timing};state.services.unshift(r);a.history=true;log(actor,'service-request',id);return r;
   };
   store.approveService=(id,reason,actor)=>{
-    if(actor?.role!=='super_admin')reject('PERMISSION');if(!reason?.trim())reject('REASON');
+    if(actor?.role!=='super_admin')reject('PERMISSION');requireReason(reason);
     const r=state.services.find(r=>r.id===id),a=state.listings.find(a=>a.id===r?.listingId);if(!r||r.status!=='pending'||a?.status!=='active'||a.moderationLocked)reject('STATE');
     if(r.type==='featured'){const timing=schedule(r.featuredDurationDays??7,Math.max(Date.now(),r.featuredStartAt||0));Object.assign(r,timing);Object.assign(a,{featuredStatus:'approved',...timing});}
-    if(r.type==='bump')a.bumpedAt=Date.now();if(r.type==='verification')a.verified=true;r.status='approved';log(actor,'exception-approval',id);
+    if(r.type==='bump')a.bumpedAt=Date.now();if(r.type==='verification')a.verified=true;r.status='approved';log(actor,'exception-approval',id,reason);
   };
-  store.rejectService=(id,reason,actor)=>{if(actor?.role!=='super_admin')reject('PERMISSION');if(!reason?.trim())reject('REASON');const r=state.services.find(r=>r.id===id);if(!r||r.status!=='pending')reject('STATE');r.status='rejected';log(actor,'service-rejected',id);};
+  store.rejectService=(id,reason,actor)=>{if(actor?.role!=='super_admin')reject('PERMISSION');requireReason(reason);const r=state.services.find(r=>r.id===id);if(!r||r.status!=='pending')reject('STATE');r.status='rejected';log(actor,'service-rejected',id,reason);};
   store.requestCommercial=(data,actor)=>{
     if(!actor?.uid)reject('AUTH');
     if(!PLACEMENTS.includes(data.placement)||!['ALL',...Object.keys(countries)].includes(data.countryTarget))reject('FIELDS');
@@ -59,20 +60,20 @@ export function attachLocalServices(store,countries) {
     const a={id:'commercial-'+(++seq),ownerUid:actor.uid,title:data.title.trim(),advertiserName:data.advertiserName.trim(),description:data.description.trim(),cta:data.cta.trim(),asset:data.image,targetUrl,countryTarget:data.countryTarget,cityTarget:'',placement:data.placement,priority,startAt,endAt,status:'pending',createdAt:Date.now(),demo:true};state.ads.unshift(a);log(actor,'commercial-request',a.id);return a;
   };
   store.reviewCommercial=(id,decision,reason,actor)=>{
-    if(actor?.role!=='super_admin')reject('PERMISSION');if(!reason?.trim())reject('REASON');const a=state.ads.find(a=>a.id===id);if(!a)reject('MISSING');
+    if(actor?.role!=='super_admin')reject('PERMISSION');requireReason(reason);const a=state.ads.find(a=>a.id===id);if(!a)reject('MISSING');
     const allowed={pending:['approved','rejected'],approved:['paused','rejected'],active:['paused','rejected'],paused:['approved']};
-    if(!allowed[a.status]?.includes(decision)||decision==='approved'&&a.endAt<=Date.now())reject('STATE');a.status=decision;log(actor,'commercial-'+decision,id);
+    if(!allowed[a.status]?.includes(decision)||decision==='approved'&&a.endAt<=Date.now())reject('STATE');a.status=decision;log(actor,'commercial-'+decision,id,reason);
   };
   store.reportUser=(uid,reason,actor)=>{
-    if(!actor?.uid)reject('AUTH');if(!reason?.trim())reject('REASON');if(!state.users.some(u=>u.uid===uid))reject('MISSING');
-    const r={id:'user-report-'+(++seq),targetType:'user',targetUid:uid,reason:reason.slice(0,500),status:'open',createdAt:Date.now()};state.reports.unshift(r);log(actor,'user-report',uid);return r;
+    if(!actor?.uid)reject('AUTH');requireReason(reason);if(!state.users.some(u=>u.uid===uid))reject('MISSING');
+    const r={id:'user-report-'+(++seq),targetType:'user',targetUid:uid,reason:reason.slice(0,500),status:'open',createdAt:Date.now()};state.reports.unshift(r);log(actor,'user-report',uid,reason);return r;
   };
   store.actOnReport=(id,action,reason,actor)=>{
-    check(actor,'reports_manage');if(!reason?.trim())reject('REASON');const r=state.reports.find(r=>r.id===id);if(!r)reject('MISSING');
+    check(actor,'reports_manage');requireReason(reason);const r=state.reports.find(r=>r.id===id);if(!r)reject('MISSING');
     if(!['review','dismiss','hide','suspend','escalate'].includes(action))reject('STATE');
     if(action==='hide'){check(actor,'listings_manage');const a=state.listings.find(a=>a.id===r.listingId);if(!a)reject('MISSING');a.status='hidden';a.moderationLocked=true;a.history=true;}
     if(action==='suspend'){check(actor,'users_suspend');const a=state.listings.find(a=>a.id===r.listingId);const u=state.users.find(u=>u.uid===(r.targetUid||a?.ownerUid));if(!u)reject('MISSING');if(u.role==='super_admin'||u.uid===actor.uid)reject('PERMISSION');u.status='suspended';for(const ad of state.listings.filter(a=>a.ownerUid===u.uid)){ad.status='hidden';ad.moderationLocked=true;ad.history=true;}}
-    r.status={review:'reviewing',dismiss:'dismissed',hide:'resolved',suspend:'resolved',escalate:'escalated'}[action];log(actor,'report-'+action,id);
+    r.status={review:'reviewing',dismiss:'dismissed',hide:'resolved',suspend:'resolved',escalate:'escalated'}[action];log(actor,'report-'+action,id,reason);
   };
   return store;
 }

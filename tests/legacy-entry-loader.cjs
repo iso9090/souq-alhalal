@@ -1,2 +1,2 @@
-// Existing suites explicitly exercise the preserved legacy entry, not the new prototype.
-const fs=require('node:fs'),path=require('node:path'),{fileURLToPath}=require('node:url'),{syncBuiltinESMExports}=require('node:module');const root=path.resolve(__dirname,'..'),read=fs.readFileSync;fs.readFileSync=function(file,...args){let name=file instanceof URL?fileURLToPath(file):typeof file==='string'?file:null;if(name&&path.resolve(name)===path.join(root,'index.html'))file=path.join(root,'legacy-index.html');return read.call(this,file,...args);};syncBuiltinESMExports();
+// Compatibility shim only. It deliberately does not patch fs or redirect index.html.
+// Run old suites with scripts/test-legacy.cjs (explicit, isolated legacy target).
