@@ -38,6 +38,13 @@
     "melkak/production-datasource.js",
     "melkak/production-services.js",
     "melkak/auth-adapter.js",
-    "melkak/production-model.js"
+    "melkak/production-model.js",
+    "melkak/profile-bootstrap.js",
+    "melkak/production-admin.js",
+    "melkak/production-commercial.js",
+    "melkak/admin-management-view.js",
+    "melkak/production-settings.js",
+    "melkak/commercial-image.js",
+    "melkak/production-listing-admin.js"
   ]
 }

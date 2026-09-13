@@ -14,7 +14,7 @@ export function matches(a,f,countries,now=Date.now()){
  return Object.entries(f.attributes||{}).every(([k,v])=>!v||normalizeSearch(a.attributes[k]).includes(normalizeSearch(v)));
 }
 export function pageListings(items,f,countries,page=1,now=Date.now()){
- const rows=items.filter(a=>matches(a,f,countries,now)).sort((a,b)=>Number(featured(b,now))-Number(featured(a,now))||(f.sort==='oldest'?a.createdAt-b.createdAt:(b.bumpedAt||b.createdAt)-(a.bumpedAt||a.createdAt))||a.id.localeCompare(b.id));return {total:rows.length,items:rows.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE),hasMore:rows.length>page*PAGE_SIZE};
+ const rows=items.filter(a=>matches(a,f,countries,now)).sort((a,b)=>Number(featured(b,now))-Number(featured(a,now))||(featured(a,now)&&featured(b,now)?(Number(b.featuredPriority)||0)-(Number(a.featuredPriority)||0):0)||(f.sort==='oldest'?a.createdAt-b.createdAt:(b.bumpedAt||b.createdAt)-(a.bumpedAt||a.createdAt))||a.id.localeCompare(b.id));return {total:rows.length,items:rows.slice((page-1)*PAGE_SIZE,page*PAGE_SIZE),hasMore:rows.length>page*PAGE_SIZE};
 }
 export function phoneNumber(raw,country,countries){let n=String(raw||'').replace(/[\s()-]/g,'');if(n.startsWith('00'))n='+'+n.slice(2);if(!n.startsWith('+'))n='+'+countries[country].dial+n.replace(/^0/,'');return /^\+[1-9]\d{7,14}$/.test(n)?n:'';}
 export function contactLinks(a,countries){const c=a.contact;if(!c?.consent)return {};const n=phoneNumber(c.phone,a.country,countries);if(!n)return {};return {call:c.call?'tel:'+n:null,whatsapp:c.whatsapp?'https://wa.me/'+n.slice(1):null,text:c.showNumber?n:null};}

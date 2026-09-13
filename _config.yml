@@ -74,6 +74,9 @@
     "melkak/assets/demo-phones.webp",
     "melkak/assets/demo-furniture.webp",
     "melkak/assets/demo-tools.webp",
-    "melkak/assets/demo-appliances.webp"
+    "melkak/assets/demo-appliances.webp",
+    "melkak/firestore.indexes.json",
+    "firebase.melkak-release.json",
+    "melkak/firestore.transition.rules"
   ]
 }

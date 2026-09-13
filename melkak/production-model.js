@@ -22,6 +22,8 @@ export function normalizeProductionRecord(id,data,sourceCollection){
  const row={...(commercial?data.data:{}),...data,id,sourceId:id,sourceCollection};
  if(commercial){row.asset=validProductionImage(row.image)?row.image:'';row.publicEligible=false;}
  if(sourceCollection==='commercialAds'){row.asset=validProductionImage(row.imageUrl)?row.imageUrl:'';row.publicEligible=true;}
+ if(sourceCollection==='marketplaceCommercialAds'){row.status=data.status==='approved'?'active':data.status;row.asset='';row.imageUrl='';row.imageDocument=true;row.publicEligible=data.status==='approved';row.startAt=timestampMillis(data.startAt);row.endAt=timestampMillis(data.endAt);}
+ if(sourceCollection==='adminAuditLogs'){row.actor=row.adminUid||'';row.result='success';}
  if(sourceCollection==='marketplaceAuditLogs')row.actor=row.actorUid||'';
  for(const key of Object.keys(row))if(/(?:At|Until)$/.test(key)||key==='timestamp')row[key]=timestampMillis(row[key]);
  if(sourceCollection==='users')row.uid=id;

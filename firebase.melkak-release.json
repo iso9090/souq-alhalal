@@ -1,0 +1,6 @@
+{
+  "firestore": {
+    "rules": "melkak/firestore.transition.rules",
+    "indexes": "melkak/firestore.indexes.json"
+  }
+}

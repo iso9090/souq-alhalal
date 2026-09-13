@@ -10,7 +10,7 @@ const env=await initializeTestEnvironment({projectId:'demo-melkak-production-ser
 const countries={AE:{currency:'AED',dial:'971',regions:{Sharjah:['Dhaid']}}};
 const draft={category:'cars',country:'AE',region:'Sharjah',city:'Dhaid',title:'Emulator car',description:'Local emulator test vehicle',price:100,images:['data:image/jpeg;base64,/9j/AA=='],attributes:{},contact:{phone:'+971500000000',call:true,whatsapp:false,showNumber:false,consent:true}};
 const db=env.authenticatedContext('seller').firestore(),other=env.authenticatedContext('other').firestore(),adminDb=env.authenticatedContext('boss',{admin:true}).firestore();
-function service(db,uid,role=null,permissions=[]){return attachProductionServices({state:{listings:[],categories:[{id:'cars',enabled:true}]},refresh:async()=>{}},{sdk,db,auth:{state:{actor:{uid,status:'active',role,permissions}}},config:{writesEnabled:true},countries});}
+function service(db,uid,role=null,permissions=[]){return attachProductionServices({state:{listings:[],categories:[{id:'cars',enabled:true}]},refresh:async()=>{}},{sdk,db,auth:{state:{actor:{uid,status:'active',role,permissions,ready:true}}},config:{writesEnabled:true},countries});}
 const seller=service(db,'seller'),outsider=service(other,'other'),boss=service(adminDb,'boss','super_admin');
 let passed=0;
 async function check(name,fn){await fn();passed++;console.log('PASS',name);}
@@ -35,7 +35,7 @@ try{
  await check('request cannot be orphaned or bypass parent history',async()=>{for(const listingId of ['missing',(await seller.create(draft)).id.replace(/^marketplace-/,'')])await assertFails(sdk.setDoc(sdk.doc(other,'marketplaceRequests','orphan-'+listingId),{type:'report',ownerUid:'other',listingId,reason:'Invalid advertisement',status:'open',createdAt:sdk.serverTimestamp()}));});
  await check('legacy mutation explicitly denied',async()=>{await assert.rejects(()=>seller.update('legacy-existing',{title:'changed'}),{code:'LEGACY'});await assertFails(sdk.setDoc(sdk.doc(db,'animals','legacy'),draft));});
  await check('sold listing cannot delete',async()=>{const c=await seller.create(draft);await seller.transition(c.id,'sold');await assert.rejects(()=>seller.transition(c.id,'deleted'),{code:'HISTORY'});});
- await check('unsupported paid services remain explicit',async()=>{await assert.rejects(()=>seller.requestService(b.id,'bump'),{code:'UNSUPPORTED_PRODUCTION_ACTION'});});
+ await check('unsupported paid services remain explicit',async()=>{await assert.rejects(()=>seller.requestService(b.id,'verification'),{code:'UNSUPPORTED_PRODUCTION_ACTION'});});
  await check('suspended profile cannot create',async()=>{await assert.rejects(()=>service(env.authenticatedContext('suspended').firestore(),'suspended').create(draft));});
  await check('auth supporting reads and self escalation denied',async()=>{await assertSucceeds(sdk.getDoc(sdk.doc(db,'users','seller')));await assertSucceeds(sdk.getDoc(sdk.doc(db,'adminAccess','seller')));await assertSucceeds(sdk.getDoc(sdk.doc(db,'adminSecurity','config')));await assertFails(sdk.setDoc(sdk.doc(db,'adminAccess','seller'),{role:'super_admin'}));await assertFails(sdk.updateDoc(sdk.doc(db,'adminSecurity','config'),{superAdminUids:['seller']}));});
 
@@ -72,7 +72,7 @@ try{
     if(path.startsWith('featured-'))batch.set(sdk.doc(d,'marketplaceRequests',requestId),{type:'featured',ownerUid:'seller',listingId,status:'pending',reason:'',featuredDurationDays:7,featuredStartAt:now,featuredEndAt:now+7*86400000,createdAt:sdk.serverTimestamp()});
     if(path.startsWith('commercial-'))batch.set(sdk.doc(d,'marketplaceRequests',requestId),{type:'commercial',ownerUid:'seller',status:'pending',createdAt:sdk.serverTimestamp(),data:{title:'Campaign',advertiserName:'Store',description:'Reason test',cta:'Visit',image:draft.images[0],targetUrl:'https://example.org/store',countryTarget:'AE',placement:'hero',startAt:now,endAt:now+86400000,priority:1}});
     if(path==='report-resolve')batch.set(sdk.doc(d,'marketplaceRequests',requestId),{type:'report',ownerUid:'seller',targetType:'user',targetUid:'other',reason:'Original report reason',status:'open',createdAt:sdk.serverTimestamp()});
-    if(path==='category-update')batch.set(sdk.doc(d,'marketplaceCategories',id),{enabled:true,order:0,featured:false,icon:'car'});
+    if(path==='category-update')batch.set(sdk.doc(d,'marketplaceCategories','cars'),{enabled:true,order:0,featured:false,icon:'car'});
     await batch.commit();
    });
    const batch=sdk.writeBatch(adminDb),logs=[];
@@ -80,13 +80,14 @@ try{
    if(['approve','reject','hide'].includes(path)){const status={approve:'active',reject:'rejected',hide:'hidden'}[path];audited('marketplaceListings',listingId,{status,hiddenBy:status==='hidden'?'admin':'',moderationLocked:status!=='active',hasHistory:true},'moderate-'+status,status);}
    if(path==='featured-approve'){audited('marketplaceListings',listingId,{featured:true,featuredStatus:'approved',featuredDurationDays:7,featuredStartAt:now,featuredEndAt:now+7*86400000,featuredRequestId:requestId,hasHistory:true},'featured-approved','approved');audited('marketplaceRequests',requestId,{status:'approved'},'service-approved','approved');}
    if(path==='featured-reject')audited('marketplaceRequests',requestId,{status:'rejected'},'service-rejected','rejected');
-   if(path.startsWith('commercial-')){const status=path.endsWith('approve')?'approved':'rejected';audited('marketplaceRequests',requestId,{status},'commercial-'+status,status);}
+   if(path.startsWith('commercial-')){const status=path.endsWith('approve')?'approved':'rejected';audited('marketplaceRequests',requestId,{status},'commercial-'+status,status);if(status==='approved'){const data=(await sdk.getDoc(sdk.doc(adminDb,'marketplaceRequests',requestId))).data().data;const {image,...metadata}=data;batch.set(sdk.doc(adminDb,'marketplaceCommercialAds',requestId),{...metadata,ownerUid:'seller',requestId,status,auditId:logs[0],updatedAt:sdk.serverTimestamp()});batch.set(sdk.doc(adminDb,'marketplaceCommercialImages',requestId),{imageData:image,updatedAt:sdk.serverTimestamp()});}}
    if(path==='report-resolve')audited('marketplaceRequests',requestId,{status:'resolved'},'report-resolved','resolved');
-   if(path==='category-update')audited('marketplaceCategories',id,{enabled:false,order:1,featured:false,icon:'car'},'category-update','updated');
+   if(path==='category-update')audited('marketplaceCategories','cars',{enabled:false,order:1,featured:false,icon:'car'},'category-update','updated');
    if(allowed){await assertSucceeds(batch.commit());for(const log of logs)assert.equal((await sdk.getDoc(sdk.doc(adminDb,'marketplaceAuditLogs',log))).data().reason,reason,'Rules validate without silently rewriting supplied reason');}
    else {await assertFails(batch.commit());await env.withSecurityRulesDisabled(async c=>{for(const log of logs)assert.equal((await sdk.getDoc(sdk.doc(c.firestore(),'marketplaceAuditLogs',log))).exists(),false,'Rejected batch must not leave audit records');});}
   });
  }
  for(const [name,reason]of reasonCases)await check('user suspension stays unavailable / '+name,async()=>{const batch=sdk.writeBatch(adminDb);batch.update(sdk.doc(adminDb,'users','seller'),{status:'suspended'});batch.set(sdk.doc(adminDb,'marketplaceAuditLogs','suspend-'+name),{actorUid:'boss',action:'suspend',targetCollection:'users',targetId:'seller',reason,timestamp:sdk.serverTimestamp(),result:'suspended'});await assertFails(batch.commit());});
+ await check('bump approval preserves creation time and is audited',async()=>{const l=await seller.create(draft),before=(await sdk.getDoc(ref(l.id))).data();const r=await seller.requestService(l.id,'bump');await boss.approveService(r.id,'رفع الإعلان للأعلى');const after=(await sdk.getDoc(ref(l.id))).data();assert.equal(after.createdAt.toMillis(),before.createdAt.toMillis());assert.ok(after.bumpedAt.toMillis()>=before.createdAt.toMillis());await assertFails(sdk.updateDoc(ref(l.id),{bumpedAt:sdk.serverTimestamp(),updatedAt:sdk.serverTimestamp()}));});
  console.log(`SUMMARY ${passed} checks passed`);
 }finally{await env.cleanup();}

@@ -41,6 +41,10 @@
     "melkak/assets/demo-furniture.webp",
     "melkak/assets/demo-tools.webp",
     "melkak/assets/demo-appliances.webp",
-    "melkak/entry.js"
+    "melkak/entry.js",
+    "melkak/admin-management-view.js",
+    "melkak/production-admin.js",
+    "melkak/production-settings.js",
+    "melkak/commercial-image.js"
   ]
 }

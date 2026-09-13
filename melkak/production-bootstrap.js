@@ -10,7 +10,7 @@ export async function prepareProduction({config,createDataSource,attachServices,
  try {
   const {loadFirebaseSdk,createFirebaseAuthAdapter}=await loadAuth();
   const sdk=await loadFirebaseSdk();
-  auth=await createFirebaseAuthAdapter({sdk});
+  auth=await createFirebaseAuthAdapter({sdk,config});
   const db=sdk.getFirestore(sdk.getApp());
   const countries=await readCountries();
   createDataSource ||= (await import('./production-datasource.js')).createProductionDatasource;

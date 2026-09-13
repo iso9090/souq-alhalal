@@ -1,3 +1,4 @@
+import {ensureMarketplaceProfile} from './profile-bootstrap.js';
 import {accessModel} from '../admin-permissions.js';
 
 // Public web configuration of the existing application, not a second Firebase project.
@@ -20,7 +21,7 @@ export async function loadFirebaseSdk() {
 const guest = () => ({uid:null, role:null, permissions:[], protectedUids:[], ready:false, name:'', status:null, active:false});
 
 /** Read-only account resolution; Firebase Rules remain authoritative for every data operation. */
-export async function createFirebaseAuthAdapter({sdk} = {}) {
+export async function createFirebaseAuthAdapter({sdk,config={}} = {}) {
   sdk ||= await loadFirebaseSdk();
   const app = sdk.getApps().some(app => app.name === '[DEFAULT]') ? sdk.getApp() : sdk.initializeApp(firebaseConfig);
   if (app.options.projectId !== firebaseConfig.projectId) throw new Error('AUTH_PROJECT_MISMATCH');
@@ -33,18 +34,23 @@ export async function createFirebaseAuthAdapter({sdk} = {}) {
     publish({status:user ? 'loading' : 'signed_out', user, actor:guest(), error:null});
     if (!user) return;
     try {
-      const [token, profileSnapshot, record, config] = await Promise.all([
+      const [token, profileSnapshot, record, securityConfig] = await Promise.all([
         sdk.getIdTokenResult(user, forceRefresh),
         sdk.getDoc(sdk.doc(db, 'users', user.uid)),
         sdk.getDoc(sdk.doc(db, 'adminAccess', user.uid)).then(s => s.data()).catch(() => null),
         sdk.getDoc(sdk.doc(db, 'adminSecurity', 'config')).then(s => s.data()).catch(() => null)
       ]);
       if (disposed || request !== version || auth.currentUser?.uid !== user.uid) return;
-      const profile = profileSnapshot.data();
+      let profile = profileSnapshot.data();
+      if(!profile && config.writesEnabled===true && user.providerData?.some(p=>p.providerId==='google.com')) {
+        await ensureMarketplaceProfile({sdk,db,user,enabled:true});
+        profile=(await sdk.getDoc(sdk.doc(db,'users',user.uid))).data();
+        if(disposed||request!==version||auth.currentUser?.uid!==user.uid)return;
+      }
       const status = profile ? (profile.status ?? 'unknown_status') : 'missing_profile';
       const active = status === 'active';
       // Never use accessModel's historical null-config claim fallback after a failed read.
-      const access = accessModel(user.uid, token.claims, {status}, record, config || {enabled:false, superAdminUids:[]});
+      const access = accessModel(user.uid, token.claims, {status}, record, securityConfig || {enabled:false, superAdminUids:[]});
       publish({status:'authenticated', user, profile:profile || null, actor:{...access, name:profile?.displayName || profile?.name || user.displayName || '', status, active}, error:null});
     } catch (error) {
       if (!disposed && request === version) publish({status:'error', user, actor:guest(), error});
