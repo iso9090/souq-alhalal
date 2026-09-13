@@ -1,0 +1,20 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/asus/AppData/Local/OpenAI/Codex/runtimes/cua_node/b58ca2eaa616c2da/bin/node_modules/playwright-core');
+(async()=>{const {CATEGORIES}=await import('../melkak/config.js');const browser=await chromium.launch({channel:'chrome',headless:true});let count=0;
+try{const page=await browser.newPage({hasTouch:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.route('**/*',r=>{const u=new URL(r.request().url());if(u.origin!=='http://127.0.0.1:8817')return r.abort();const name=u.pathname.slice(1)||'index.html';if(name==='melkak/runtime-config.js')return r.fulfill({contentType:'text/javascript',body:'export default {mode:"local",datasource:"demo",reviewOrigin:""}'});const file=path.resolve(name);if(!file.startsWith(process.cwd()+path.sep)||!fs.existsSync(file))return r.fulfill({status:404,body:''});return r.fulfill({body:fs.readFileSync(file),contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf'})[path.extname(file)]||'application/octet-stream'});});
+await page.goto('http://127.0.0.1:8817');await page.waitForFunction(()=>window.__melkak);await page.locator('#preview-role').selectOption('user');
+const next=()=>page.locator('#wizard-form button[type=submit]').click();
+for(const width of [390,1440]){await page.setViewportSize({width,height:950});for(const lang of ['ar','en']){await page.evaluate(lang=>{window.__melkak.state.lang=lang;window.__melkak.render()},lang);
+for(const cat of CATEGORIES){await page.evaluate(()=>location.hash='#/home');await page.evaluate(()=>location.hash='#/add');await page.locator('#wizard-form').waitFor();await next();await next();
+const chip=page.locator('[data-action=choose-category][data-id="'+cat.id+'"]');assert.equal(await chip.count(),1,'Quick category must be a real button: '+cat.id);
+await chip.focus();await page.keyboard.press('Enter');if(width===390)await chip.tap();assert.equal(await page.locator('[data-draft-category]').inputValue(),cat.id);assert.equal(await page.locator('[data-action=choose-category][aria-pressed=true]').count(),1);assert.equal(await chip.getAttribute('aria-pressed'),'true');assert.equal(await page.evaluate(()=>window.__melkak.state.step),2,'Chip cannot submit or double advance');count++;
+await next();await page.locator('#photo-picker').setInputFiles(path.resolve('melkak/assets/world-hero.webp'));await page.waitForFunction(()=>!window.__melkak.state.busy&&window.__melkak.state.draft.images.length===1);await next();
+assert.deepEqual((await page.locator('#wizard-form [name^="attr:"]').evaluateAll(els=>els.map(e=>e.name.slice(5)))).sort(),cat.fields.map(f=>f.id).sort());assert.equal(await page.evaluate(()=>window.__melkak.state.draft.category),cat.id);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);count++;
+}}}
+// A car draft must switch through the dropdown without leaking car-only fields.
+await page.evaluate(()=>{const w=window.__melkak;w.state.draft.category='cars';w.state.draft.title='Preserved title';w.state.draft.price=100;w.state.draft.description='Preserved general description';w.state.draft.attributes={brand:'Toyota',mileage:'10',color:'white'};w.state.step=4;w.render()});
+await page.locator('[data-action=wizard-back]').click();await page.locator('[data-action=wizard-back]').click();await page.locator('[data-draft-category]').selectOption('livestock');await next();await next();
+const draft=await page.evaluate(()=>window.__melkak.state.draft);assert.equal(draft.category,'livestock');assert.equal(draft.title,'Preserved title');assert.equal(draft.price,100);assert.equal(draft.images.length,1);assert.deepEqual(draft.attributes,{color:'white'});assert.equal(await page.locator('[name="attr:mileage"],[name="attr:brand"]').count(),0);count++;
+assert.deepEqual(errors,[]);count++;console.log('SUMMARY | '+count+'/'+count+' PASS');
+}finally{await browser.close()}})().catch(e=>{console.error(e);process.exitCode=1});

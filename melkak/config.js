@@ -3,17 +3,28 @@ export const FLAGS=Object.freeze({prototype:true,productionWrites:false,payments
 const field=(id,ar,en,type='text',options=[])=>({id,label:[ar,en],type,options});
 const condition=()=>field('condition','الحالة','Condition','select',[['new','جديد','New'],['used','مستعمل','Used']]);
 export const CATEGORIES=[
-{id:'livestock',name:['الحلال','Livestock'],icon:'camel',fields:[field('type','النوع','Animal type'),field('breed','السلالة','Breed'),field('age','العمر','Age'),field('gender','الجنس','Gender','select',[['female','أنثى','Female'],['male','ذكر','Male']]),field('color','اللون','Color'),field('health','الحالة الصحية','Health'),field('identifier','معرف الحيوان (اختياري)','Animal ID (optional)')]},
+{id:'livestock',name:['الحلال','Livestock'],icon:'camel',fields:[field('type','نوع الحيوان','Animal type'),field('breed','السلالة','Breed'),field('age','العمر','Age'),field('gender','الجنس','Gender','select',[['female','أنثى','Female'],['male','ذكر','Male']]),field('color','اللون','Color'),field('health','الحالة الصحية','Health'),field('identifier','معرف الحيوان (اختياري)','Animal ID (optional)')]},
 {id:'cars',name:['السيارات','Cars'],icon:'car',fields:[field('brand','الماركة','Brand'),field('model','الموديل','Model'),field('year','السنة','Year','number'),field('mileage','الكيلومترات','Mileage','number'),field('fuel','نوع الوقود','Fuel','select',[['petrol','بنزين','Petrol'],['diesel','ديزل','Diesel'],['electric','كهرباء','Electric'],['hybrid','هجين','Hybrid']]),field('transmission','ناقل الحركة','Transmission','select',[['auto','أوتوماتيك','Automatic'],['manual','يدوي','Manual']]),condition(),field('color','اللون','Color')]},
 {id:'phones',name:['الجوالات','Phones'],icon:'phone',fields:[field('brand','الشركة','Brand'),field('model','الموديل','Model'),field('capacity','السعة','Capacity'),condition(),field('color','اللون','Color')]},
 {id:'computers',name:['الكمبيوتر والإلكترونيات','Computers & electronics'],icon:'computer',fields:[field('type','النوع','Type'),field('brand','الشركة','Brand'),field('model','الموديل','Model'),field('specs','المواصفات','Specifications'),condition()]},
-{id:'appliances',name:['الأجهزة المنزلية','Home appliances'],icon:'appliance',fields:[field('type','النوع','Type'),field('brand','الشركة','Brand'),condition(),field('age','العمر التقريبي','Approximate age')]},
-{id:'furniture',name:['الأثاث والمنزل','Furniture & home'],icon:'sofa',fields:[field('type','النوع','Type'),condition(),field('material','المادة','Material'),field('color','اللون (اختياري)','Color (optional)')]},
+{id:'appliances',name:['الأجهزة المنزلية','Home appliances'],icon:'appliance',fields:[field('type','نوع الجهاز','Appliance type'),field('brand','الشركة','Brand'),condition(),field('age','العمر التقريبي','Approximate age')]},
+{id:'furniture',name:['الأثاث والمنزل','Furniture & home'],icon:'sofa',fields:[field('type','النوع','Type'),condition(),field('material','المادة (اختياري)','Material (optional)'),field('color','اللون (اختياري)','Color (optional)')]},
 {id:'tools',name:['المعدات والأدوات','Equipment & tools'],icon:'tool',fields:[field('type','النوع','Type'),field('brand','الشركة','Brand'),condition()]},
 {id:'sports',name:['الرياضة والهوايات','Sports & hobbies'],icon:'bike',fields:[field('type','النوع','Type'),condition()]},
 {id:'children',name:['مستلزمات الأطفال','Baby & kids'],icon:'baby',fields:[field('type','النوع','Type'),field('suitableAge','العمر المناسب (اختياري)','Suitable age (optional)'),condition()]},
-{id:'other',name:['أقسام أخرى','Other categories'],icon:'grid',fields:[field('type','النوع','Type'),condition()]}
+{id:'other',name:['أقسام أخرى','Other categories'],icon:'grid',fields:[field('type','نوع السلعة','Item type'),condition()]}
 ];
+// Dropdown, quick selection and form collection share the same draft transition.
+export function selectDraftCategory(draft,id){
+ const schema=CATEGORIES.find(c=>c.id===id);
+ if(!schema)throw Object.assign(new Error('CATEGORY'),{code:'CATEGORY'});
+ if(draft.category===id)return;
+ draft.category=id;
+ draft.attributes=Object.fromEntries(Object.entries(draft.attributes||{}).filter(([key,value])=>{
+  const field=schema.fields.find(f=>f.id===key);
+  return field&&typeof value==='string'&&value.length<=300&&(!field.options.length||!value||field.options.some(o=>o[0]===value));
+ }));
+}
 export const EXTRA_COUNTRIES={
 SA:{name:'المملكة العربية السعودية',english:'Saudi Arabia',currency:'SAR',dial:'966',regions:{'الرياض':['الرياض','الخرج'],'مكة المكرمة':['جدة','مكة المكرمة','الطائف'],'الشرقية':['الدمام','الخبر','الأحساء'],'المدينة المنورة':['المدينة المنورة'],'عسير':['أبها','خميس مشيط']}},
 OM:{name:'سلطنة عُمان',english:'Oman',currency:'OMR',dial:'968',regions:{'مسقط':['مسقط','السيب','بوشر'],'شمال الباطنة':['صحار'],'ظفار':['صلالة'],'الداخلية':['نزوى']}},
