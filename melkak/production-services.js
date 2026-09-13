@@ -1,0 +1,49 @@
+import {attachProductionListingAdmin} from './production-listing-admin.js';
+import {attachProductionSettings} from './production-settings.js';
+import {attachProductionAdmin} from './production-admin.js';
+import {attachProductionCommercial} from './production-commercial.js';
+import {validate,phoneNumber} from './model.js';
+import {schedule} from './marketplace-services.js';
+import {can} from '../admin-permissions.js';
+const fail=code=>{throw Object.assign(new Error(code),{code});};
+const reasonText=value=>{if(typeof value!=='string'||value.trim().length<3||value.length>500)fail('REASON');return value.trim();};
+const mutable=['title','description','price','images','attributes','contact','country','region','city'];
+const currencies={AE:'AED',SA:'SAR',EG:'EGP',OM:'OMR',JO:'JOD',MA:'MAD'};
+
+/** Production writer. Explicit release configuration enables writes; Firestore Rules remain authoritative. Rules are authoritative. */
+export function attachProductionServices(store,{sdk,db,auth,config={},countries}={}) {
+ const actor=()=>{if(config.writesEnabled!==true)fail('WRITES_DISABLED');const a=auth?.state?.actor;if(!a?.uid)fail('AUTH');if(a.status!=='active')fail('ACCOUNT');return a;};
+ const admin=permission=>{const a=actor();if(permission==='super_admin'?a.role!=='super_admin':!can(a,permission))fail('PERMISSION');return a;};
+ const raw=id=>{if(typeof id!=='string'||id.startsWith('legacy-'))fail('LEGACY');const item=store.state.listings.find(x=>x.id===id);if(item?.legacy||item?.readOnly||item?.sourceCollection==='animals')fail('LEGACY');const value=item?.sourceId||id.replace(/^marketplace-/,'');if(!value||value.includes('/'))fail('MISSING');return value;};
+ const listingRef=id=>sdk.doc(db,'marketplaceListings',raw(id));
+ const requestRef=id=>sdk.doc(db,'marketplaceRequests',id);
+ const fresh=collection=>sdk.doc(sdk.collection(db,collection));
+ const refresh=async result=>{await store.refresh?.();return result;};
+ const read=async(tx,ref)=>{const s=await tx.get(ref);if(!s.exists())fail('MISSING');return s.data();};
+ const editable=d=>{if(d.moderationLocked||d.requiresReview||['rejected','suspended','needs_review','pending'].includes(d.moderationStatus)||d.hiddenBy==='admin')fail('MODERATED');};
+ const own=(d,a)=>{if(d.ownerUid!==a.uid)fail('OWNER');editable(d);};
+ const countryEnabled=country=>{const enabled=store.state.settings?.enabledCountries;if(!Object.hasOwn(currencies,country)||(Array.isArray(enabled)&&!enabled.includes(country)))fail('COUNTRY_DISABLED');};
+ const clean=data=>{validate(data,countries);return Object.fromEntries(['category',...mutable].map(k=>[k,k==='price'?Number(data[k]):k==='contact'?{phone:phoneNumber(data.contact.phone,data.country,countries),consent:true,call:!!data.contact.call,whatsapp:!!data.contact.whatsapp,showNumber:!!data.contact.showNumber}:k==='attributes'?data.attributes||{}:data[k]]));};
+ function audited(tx,ref,patch,a,action,reason,result){const log=fresh('marketplaceAuditLogs');tx.update(ref,{...patch,auditId:log.id,updatedAt:sdk.serverTimestamp()});tx.set(log,{actorUid:a.uid,action,targetId:ref.id,targetCollection:ref.parent.id,reason:reasonText(reason),timestamp:sdk.serverTimestamp(),result});}
+ store.create=async data=>{const a=actor(),body=clean(data),ref=fresh('marketplaceListings');countryEnabled(body.country);await sdk.setDoc(ref,{...body,schemaVersion:1,ownerUid:a.uid,currency:currencies[body.country],status:'active',hasHistory:false,createdAt:sdk.serverTimestamp(),updatedAt:sdk.serverTimestamp()});return refresh({id:'marketplace-'+ref.id,sourceId:ref.id});};
+ store.update=async(id,patch)=>{const a=actor(),ref=listingRef(id);if(Object.keys(patch).some(k=>!mutable.includes(k)))fail('FIELDS');await sdk.runTransaction(db,async tx=>{const d=await read(tx,ref);own(d,a);const next=clean({...d,...patch});if(next.country!==d.country&&d.status==='active')countryEnabled(next.country);tx.update(ref,{...Object.fromEntries(mutable.map(k=>[k,next[k]])),currency:currencies[next.country],updatedAt:sdk.serverTimestamp()});});return refresh();};
+ store.transition=async(id,next)=>{const a=actor(),ref=listingRef(id);await sdk.runTransaction(db,async tx=>{const d=await read(tx,ref);own(d,a);if(next==='deleted'){if(d.hasHistory!==false||!['active','hidden'].includes(d.status))fail('HISTORY');tx.delete(ref);return;}let patch;if(next==='hidden'&&d.status==='active')patch={status:next,hiddenBy:'owner'};else if(next==='sold'&&d.status==='active')patch={status:next};else if(next==='active'&&d.status==='hidden'&&d.hiddenBy==='owner'){countryEnabled(d.country);patch={status:next,hiddenBy:''};}else fail('STATE');tx.update(ref,{...patch,updatedAt:sdk.serverTimestamp()});});return refresh();};
+ async function linkedRequest(id,type,reason='',options={}){const a=actor(),ref=listingRef(id),r=fresh('marketplaceRequests');const timing=type==='featured'?schedule(options.days??7,options.startAt??Date.now()):{};await sdk.runTransaction(db,async tx=>{const d=await read(tx,ref);if(['featured','bump'].includes(type))own(d,a);if(d.status!=='active'||d.moderationLocked)fail('STATE');tx.set(r,{type,ownerUid:a.uid,listingId:ref.id,status:type==='report'?'open':'pending',reason,...timing,createdAt:sdk.serverTimestamp()});tx.update(ref,{hasHistory:true,historyRequestId:r.id,updatedAt:sdk.serverTimestamp()});});return refresh({id:r.id,listingId:id,type});}
+ store.requestService=async(id,type,_caller,options={})=>{actor();if(!['featured','bump'].includes(type))fail('UNSUPPORTED_PRODUCTION_ACTION');return linkedRequest(id,type,'',options);};
+ store.report=async(id,reason)=>{actor();return linkedRequest(id,'report',reasonText(reason));};
+ store.reportUser=async(uid,reason)=>{const a=actor();if(typeof uid!=='string'||!uid||uid.includes('/'))fail('MISSING');const ref=fresh('marketplaceRequests');await sdk.setDoc(ref,{type:'report',ownerUid:a.uid,targetUid:uid,targetType:'user',reason:reasonText(reason),status:'open',createdAt:sdk.serverTimestamp()});return refresh({id:ref.id});};
+ async function decideService(id,reason,approved){const a=admin('super_admin');reasonText(reason);await sdk.runTransaction(db,async tx=>{const ref=requestRef(id),r=await read(tx,ref);if(!['featured','bump'].includes(r.type)||r.status!=='pending')fail('STATE');const l=sdk.doc(db,'marketplaceListings',r.listingId),d=await read(tx,l);if(approved){editable(d);if(d.status!=='active')fail('STATE');if(r.type==='bump'){audited(tx,l,{bumpedAt:sdk.serverTimestamp(),bumpRequestId:ref.id,hasHistory:true},a,'bump-approved',reason,'approved');}else{const timing=schedule(r.featuredDurationDays,Math.max(Date.now(),r.featuredStartAt||0));audited(tx,l,{featured:true,featuredStatus:'approved',featuredRequestId:ref.id,...timing,hasHistory:true},a,'featured-approved',reason,'approved');}}audited(tx,ref,{status:approved?'approved':'rejected'},a,approved?'service-approved':'service-rejected',reason,approved?'approved':'rejected');});return refresh();}
+ store.approveService=async(id,reason)=>decideService(id,reason,true);
+ store.rejectService=async(id,reason)=>decideService(id,reason,false);
+ store.moderate=async(id,status,reason)=>{const a=admin('listings_manage'),ref=listingRef(id);reasonText(reason);if(!['active','hidden','rejected','archived'].includes(status))fail('STATE');await sdk.runTransaction(db,async tx=>{const d=await read(tx,ref);if(status==='active')countryEnabled(d.country);audited(tx,ref,{status,hiddenBy:status==='hidden'?'admin':'',moderationLocked:status!=='active',hasHistory:true},a,'moderate-'+status,reason,status);});return refresh();};
+ store.actOnReport=async(id,action,reason)=>{const a=admin('reports_manage');reasonText(reason);if(!['review','dismiss','hide','escalate','resolve'].includes(action))fail('UNSUPPORTED_PRODUCTION_ACTION');if(action==='hide')admin('listings_manage');await sdk.runTransaction(db,async tx=>{const ref=requestRef(id),r=await read(tx,ref);if(r.type!=='report'||!['open','reviewing','escalated'].includes(r.status))fail('STATE');let l;if(action==='hide'){if(!r.listingId)fail('UNSUPPORTED_PRODUCTION_ACTION');l=sdk.doc(db,'marketplaceListings',r.listingId);await read(tx,l);}if(l)audited(tx,l,{status:'hidden',hiddenBy:'admin',moderationLocked:true,hasHistory:true},a,'moderate-hidden',reason,'hidden');const status={review:'reviewing',dismiss:'dismissed',hide:'resolved',escalate:'escalated',resolve:'resolved'}[action];audited(tx,ref,{status},a,'report-'+status,reason,status);});return refresh();};
+ store.resolveReport=async(id,reason)=>store.actOnReport(id,'resolve',reason);
+ store.configureCategory=async(id,patch)=>{const a=admin('super_admin');if(!store.state.categories.some(c=>c.id===id)||Object.keys(patch).some(k=>!['enabled','order','featured','icon'].includes(k)))fail('FIELDS');const ref=sdk.doc(db,'marketplaceCategories',id);await sdk.runTransaction(db,async tx=>{const snap=await tx.get(ref);if(snap.exists())audited(tx,ref,patch,a,'category-update','Category configuration updated','updated');else{const log=fresh('marketplaceAuditLogs');tx.set(ref,{enabled:true,order:0,featured:false,icon:'grid',...patch,auditId:log.id,updatedAt:sdk.serverTimestamp()});tx.set(log,{actorUid:a.uid,action:'category-update',targetId:id,targetCollection:'marketplaceCategories',reason:'Category configuration created',timestamp:sdk.serverTimestamp(),result:'updated'});}});return refresh();};
+ // Existing legacy users, commercial ads and privileged registry lifecycle need a separate reviewed release.
+ for(const name of ['setUserStatus','updateUser','grantAssistant','updateAssistant','removeAssistant'])store[name]=async()=>{actor();fail('UNSUPPORTED_PRODUCTION_ACTION');};
+ attachProductionListingAdmin(store,{sdk,db,auth,config});
+ attachProductionSettings(store,{sdk,db,auth,config});
+ attachProductionAdmin(store,{sdk,db,auth,config});
+ attachProductionCommercial(store,{sdk,db,auth,config});
+ return store;
+}

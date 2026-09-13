@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {prepareReleaseBaseline,composeReleaseRules} from '../scripts/build-melkak-release-rules.mjs';
+const local=fs.readFileSync(new URL('../firestore.rules',import.meta.url),'utf8');
+const legacy=local.replace(/\r/g,'').replace("'lastLoginAt',\n          'email', 'phone', 'authProvider'","'lastLoginAt'").replace(/\r/g,'').replace(/\n        \/\/ Optional Google metadata[\s\S]*?        \)\);/,';').replaceAll("request.resource.data.reason.trim().size() >= 3","request.resource.data.reason.size() > 0").replaceAll(" && !request.resource.data.reason.matches('[\\\\s\\\\p{Z}]*')",'');
+const patched=prepareReleaseBaseline(legacy,local);
+assert.ok(patched.includes("request.auth.token.firebase.sign_in_provider == 'google.com'"));
+assert.equal((patched.match(/reason\.trim\(\)\.size\(\) >= 3/g)||[]).length,1);
+const auditIndex=patched.indexOf('match /adminAuditLogs/');assert.ok(patched.slice(auditIndex).includes('reason.trim().size() >= 3'));
+assert.ok(patched.includes('function validPaymentOverrideReason'));
+assert.throws(()=>prepareReleaseBaseline(legacy.replace("request.resource.data.status == 'active'","request.resource.data.status == 'blocked'"),local),/unexpected/i);
+assert.throws(()=>prepareReleaseBaseline(legacy,local.replace("request.resource.data.authProvider == 'google'","request.resource.data.authProvider == 'phone'")),/unexpected/i);
+assert.throws(()=>prepareReleaseBaseline(patched,local),/unexpected/i);
+const proposed=fs.readFileSync(new URL('../melkak/firestore.proposed.rules',import.meta.url),'utf8');assert.ok(composeReleaseRules(legacy,local,proposed).includes('function mkOwner'));
+console.log('PASS release baseline applies only reviewed profile and scoped audit deltas');

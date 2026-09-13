@@ -1,0 +1,5 @@
+import fs from 'node:fs';import {CATEGORIES,iconPaths} from './melkak/config.js';
+for(const [i,c]of CATEGORIES.entries()){
+const palettes=[['#e9e1cf','#9d6d36'],['#dce5e4','#346661'],['#e9e2ef','#6c547d'],['#e5e9ed','#435968'],['#e4ebe4','#5a7560'],['#eee5dc','#a07855'],['#e9e4cd','#887b35'],['#dce7e7','#478179'],['#f0e4df','#ad7c68'],['#e6e9dc','#707a45']];const [bg,fg]=palettes[i];
+fs.writeFileSync('melkak/assets/'+c.id+'.svg',`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 420"><defs><linearGradient id="g" x2="1" y2="1"><stop stop-color="${bg}"/><stop offset="1" stop-color="#f8f8f4"/></linearGradient></defs><rect width="640" height="420" fill="url(#g)"/><circle cx="450" cy="95" r="160" fill="white" opacity=".45"/><ellipse cx="320" cy="338" rx="168" ry="20" fill="${fg}" opacity=".13"/><g transform="translate(210 87) scale(9)" fill="${fg}" fill-opacity=".13" stroke="${fg}" stroke-width=".8" stroke-linecap="round" stroke-linejoin="round"><path d="${iconPaths[c.icon]}"/></g></svg>`);
+}

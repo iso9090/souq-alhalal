@@ -1,0 +1,33 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+import {initializeTestEnvironment,assertFails} from '@firebase/rules-unit-testing';
+import * as sdk from 'firebase/firestore';
+import {attachProductionServices} from '../melkak/production-services.js';
+if(process.env.FIRESTORE_EMULATOR_HOST!=='127.0.0.1:8080')throw Error('Local emulator required');
+sdk.setLogLevel('silent');
+const env=await initializeTestEnvironment({projectId:'demo-melkak-country-settings',firestore:{rules:fs.readFileSync(new URL('../melkak/firestore.proposed.rules',import.meta.url),'utf8')}});
+const db=env.authenticatedContext('seller').firestore();
+const countries={AE:{currency:'AED',dial:'971',regions:{Dubai:['Dubai']}}};
+const draft={category:'cars',country:'AE',region:'Dubai',city:'Dubai',title:'Country test car',description:'Country availability regression listing',price:10,images:['data:image/jpeg;base64,/9j/AA=='],attributes:{},contact:{phone:'+971500000000',consent:true,call:true,whatsapp:false,showNumber:false}};
+const store=attachProductionServices({state:{listings:[],categories:[{id:'cars'}]},refresh:async()=>{}},{sdk,db,auth:{state:{actor:{uid:'seller',status:'active'}}},config:{writesEnabled:true},countries});
+const ref=id=>sdk.doc(db,'marketplaceListings',id.replace(/^marketplace-/,''));
+try{
+ await env.clearFirestore();await env.withSecurityRulesDisabled(async c=>{await sdk.setDoc(sdk.doc(c.firestore(),'users','seller'),{status:'active'});await sdk.setDoc(sdk.doc(c.firestore(),'marketplaceCategories','cars'),{enabled:true});});
+ const hidden=await store.create(draft),sold=await store.create(draft),deleted=await store.create(draft);
+ await store.transition(hidden.id,'hidden');console.log('PASS missing settings preserves supported country creation');
+ await env.withSecurityRulesDisabled(async c=>sdk.setDoc(sdk.doc(c.firestore(),'marketplaceSettings','public'),{enabledCountries:['SA'],supportText:''}));
+ assert.deepEqual((await sdk.getDoc(sdk.doc(env.unauthenticatedContext().firestore(),'marketplaceSettings','public'))).data().enabledCountries,['SA']);
+ await assert.rejects(()=>store.create(draft));
+ await assert.rejects(()=>store.transition(hidden.id,'active'));
+ await assertFails(sdk.updateDoc(ref(hidden.id),{status:'active',hiddenBy:'',updatedAt:sdk.serverTimestamp()}));
+ console.log('PASS authoritative Rules reject disabled country despite stale client settings');
+ store.state.settings={enabledCountries:['SA'],supportText:''};
+ await assert.rejects(()=>store.create(draft),{code:'COUNTRY_DISABLED'});
+ await assert.rejects(()=>store.transition(hidden.id,'active'),{code:'COUNTRY_DISABLED'});
+ await store.transition(sold.id,'sold');await store.transition(deleted.id,'hidden');await store.transition(deleted.id,'deleted');
+ assert.equal((await sdk.getDoc(ref(sold.id))).data().status,'sold');await env.withSecurityRulesDisabled(async c=>assert.equal((await sdk.getDoc(sdk.doc(c.firestore(),'marketplaceListings',deleted.sourceId))).exists(),false));
+ console.log('PASS disabled country preserves hide sold clean delete');
+ await env.withSecurityRulesDisabled(async c=>sdk.setDoc(sdk.doc(c.firestore(),'marketplaceSettings','public'),{enabledCountries:['AE'],supportText:''}));
+ store.state.settings={enabledCountries:['AE']};await store.transition(hidden.id,'active');assert.equal((await sdk.getDoc(ref(hidden.id))).data().status,'active');
+ console.log('PASS reenabled country permits safe republish');
+}finally{await env.cleanup();}

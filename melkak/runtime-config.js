@@ -1,0 +1,1 @@
+export default Object.freeze({mode:'production',datasource:'production',authProvider:'firebase',writesEnabled:true,releaseId:'melkak-production-v1',includeLegacy:false,modernCommercial:true,reviewOrigin:''});

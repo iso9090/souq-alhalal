@@ -3,6 +3,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 const root=path.resolve(new URL('..',import.meta.url).pathname.replace(/^\/([A-Za-z]:)/,'$1'));
 const files=fs.readdirSync(root).filter(name=>name.endsWith('.js'));
+if(fs.existsSync(path.join(root,'melkak')))files.push(...fs.readdirSync(path.join(root,'melkak')).filter(name=>name.endsWith('.js')).map(name=>'melkak/'+name));
 for(const file of files){const result=spawnSync(process.execPath,['--check',path.join(root,file)],{encoding:'utf8'});if(result.status!==0)throw Error(result.stderr);}
 for(const name of fs.readdirSync(root).filter(name=>name.endsWith('.html'))){
   const html=fs.readFileSync(path.join(root,name),'utf8');
