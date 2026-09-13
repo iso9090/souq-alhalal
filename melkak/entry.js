@@ -1,28 +1,19 @@
 import {environmentAllowed} from './environment.js';
-
-function showUnavailable() {
+function showUnavailable(reason='service_unavailable') {
  const app=document.getElementById('app');
- app.replaceChildren();
- const main=document.createElement('main');
- main.id='main';main.className='wrap';main.setAttribute('aria-labelledby','maintenance-title');
- const title=document.createElement('h1');title.id='maintenance-title';title.textContent='مِلكك قيد الإعداد';
- const text=document.createElement('p');text.textContent='الخدمة غير متاحة حالياً لأن إعدادات التشغيل لم تكتمل. يرجى المحاولة لاحقاً.';
- main.append(title,text);app.append(main);
+ const main=document.createElement('main');main.id='main';main.className='wrap';
+ const title=document.createElement('h1');title.textContent='تعذر تشغيل مِلكك';
+ const text=document.createElement('p');text.textContent=reason==='configuration_incomplete'?'إعدادات التشغيل غير مكتملة. يرجى التواصل مع إدارة الموقع.':'تعذر الاتصال بالخدمة. تحقق من الاتصال ثم أعد تحميل الصفحة.';
+ main.append(title,text);app.replaceChildren(main);
 }
-
-// A direct Pages publication is production by default. Never load demo modules
-// until both the explicit runtime mode and current origin permit a preview.
 try {
  const {default:config}=await import('./runtime-config.js');
- if(environmentAllowed(config,window.location)) await import('./app.js');
- else {
-  if(config?.mode==='production') {
-   const {prepareProduction}=await import('./production-bootstrap.js');
-   // No production datastore factory is wired until its integration is reviewed.
-   await prepareProduction({config});
-  }
-  showUnavailable();
- }
-} catch {
- showUnavailable();
-}
+ if(environmentAllowed(config,window.location)) {
+  const {startMarketplace}=await import('./app.js');await startMarketplace({config});
+ } else if(config?.mode==='production') {
+  const {prepareProduction}=await import('./production-bootstrap.js');
+  const result=await prepareProduction({config});
+  if(!result.ready)showUnavailable(result.reason);
+  else {const {startMarketplace}=await import('./app.js');await startMarketplace({config,store:result.store,auth:result.auth});}
+ } else showUnavailable('configuration_incomplete');
+} catch {showUnavailable();}

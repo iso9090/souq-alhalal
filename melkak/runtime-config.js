@@ -1,3 +1,2 @@
-// Safe for direct GitHub Pages branch publication (no build step).
-// The isolated review build and loopback preview server supply their own config.
-export default Object.freeze({mode:'production',datasource:'unconfigured',authProvider:'firebase',reviewOrigin:''});
+// Public configuration for direct GitHub Pages publication. Writes require a separately reviewed rollout.
+export default Object.freeze({mode:'production',datasource:'production',authProvider:'firebase',writesEnabled:false,reviewOrigin:''});

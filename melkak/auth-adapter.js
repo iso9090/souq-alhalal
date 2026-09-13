@@ -9,7 +9,7 @@ const firebaseConfig = Object.freeze({
   messagingSenderId: '227281181881',
   appId: '1:227281181881:web:4ff800571b52a461bd8f68'
 });
-async function loadSdk() {
+export async function loadFirebaseSdk() {
   const modules = await Promise.all([
     import('https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js'),
     import('https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js'),
@@ -21,7 +21,7 @@ const guest = () => ({uid:null, role:null, permissions:[], protectedUids:[], rea
 
 /** Read-only account resolution; Firebase Rules remain authoritative for every data operation. */
 export async function createFirebaseAuthAdapter({sdk} = {}) {
-  sdk ||= await loadSdk();
+  sdk ||= await loadFirebaseSdk();
   const app = sdk.getApps().some(app => app.name === '[DEFAULT]') ? sdk.getApp() : sdk.initializeApp(firebaseConfig);
   if (app.options.projectId !== firebaseConfig.projectId) throw new Error('AUTH_PROJECT_MISMATCH');
   const auth = sdk.getAuth(app), db = sdk.getFirestore(app), listeners = new Set();
