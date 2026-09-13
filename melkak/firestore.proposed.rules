@@ -1,0 +1,28 @@
+// LOCAL PROPOSAL ONLY. Never deploy this standalone file over Production Rules.
+// Additive marketplace schema design. Legacy rules/collections are not replaced here.
+rules_version = '2';
+service cloud.firestore {
+ match /databases/{database}/documents {
+  function active(){return request.auth!=null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status=='active';}
+  function owner(){return active() && request.auth.token.get('admin',false)==true && request.auth.uid in get(/databases/$(database)/documents/adminSecurity/config).data.superAdminUids;}
+  function currency(c){return c=='AE'?'AED':c=='SA'?'SAR':c=='EG'?'EGP':c=='OM'?'OMR':c=='JO'?'JOD':c=='MA'?'MAD':'';}
+  function image(v){return v is string && v.size()<=210000 && v.matches('^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$');}
+  function images(d){return d.images is list && d.images.size()>=1 && d.images.size()<=3 && d.images.toSet().size()==d.images.size() && image(d.images[0]) && (d.images.size()<2 || image(d.images[1])) && (d.images.size()<3 || image(d.images[2]));}
+  function contact(d){let c=d.contact;return c is map && c.keys().hasOnly(['phone','consent','call','whatsapp','showNumber']) && c.consent==true && c.call is bool && c.whatsapp is bool && c.showNumber is bool && (c.call||c.whatsapp) && c.phone is string && c.phone.matches('^\\+[1-9][0-9]{7,14}$');}
+  function attr(d,k){return d.attributes.get(k,'') is string && d.attributes.get(k,'').size()<=300;}
+  function fields(d){return d.attributes is map && attr(d,'type') && attr(d,'breed') && attr(d,'age') && attr(d,'gender') && attr(d,'color') && attr(d,'health') && attr(d,'identifier') && attr(d,'brand') && attr(d,'model') && attr(d,'year') && attr(d,'mileage') && attr(d,'fuel') && attr(d,'transmission') && attr(d,'condition') && attr(d,'capacity') && attr(d,'specs') && attr(d,'material') && (d.category=='livestock'?d.attributes.keys().hasOnly(['type','breed','age','gender','color','health','identifier']):d.category=='cars'?d.attributes.keys().hasOnly(['brand','model','year','mileage','fuel','transmission','condition','color']):d.category=='phones'?d.attributes.keys().hasOnly(['brand','model','capacity','condition','color']):d.category=='computers'?d.attributes.keys().hasOnly(['type','brand','model','specs','condition']):d.category=='appliances'?d.attributes.keys().hasOnly(['type','brand','condition','age']):d.category=='furniture'?d.attributes.keys().hasOnly(['type','condition','material']):d.category=='tools'?d.attributes.keys().hasOnly(['type','brand','condition']):d.attributes.keys().hasOnly(['type','condition']));}
+  function valid(d){return d.keys().hasOnly(['schemaVersion','ownerUid','category','country','region','city','currency','title','description','price','images','attributes','contact','status','createdAt','updatedAt']) && d.schemaVersion==1 && d.ownerUid is string && d.category in ['livestock','cars','phones','computers','appliances','furniture','tools','sports','children','other'] && d.country in ['AE','SA','EG','OM','JO','MA'] && d.currency==currency(d.country) && d.region is string && d.region.size()>0 && d.region.size()<=100 && d.city is string && d.city.size()>0 && d.city.size()<=100 && d.title is string && d.title.size()>=3 && d.title.size()<=100 && d.description is string && d.description.size()>=10 && d.description.size()<=2000 && d.price is number && d.price>=0 && d.price<=10000000000 && images(d) && contact(d) && fields(d);}
+  match /marketplaceListings/{id} {
+   allow read: if resource.data.status=='active' || (active() && resource.data.ownerUid==request.auth.uid) || owner();
+   allow create: if active() && request.resource.data.ownerUid==request.auth.uid && valid(request.resource.data) && request.resource.data.status=='active' && request.resource.data.createdAt==request.time && request.resource.data.updatedAt==request.time;
+   allow update: if active() && resource.data.ownerUid==request.auth.uid && valid(request.resource.data) && request.resource.data.ownerUid==resource.data.ownerUid && request.resource.data.createdAt==resource.data.createdAt && request.resource.data.category==resource.data.category && request.resource.data.updatedAt==request.time && ((resource.data.status=='active' && request.resource.data.status in ['active','hidden','sold']) || (resource.data.status=='hidden' && request.resource.data.status in ['hidden','active']));
+   // Remote permanent deletion remains denied pending integration with reviewed owner-history safeguards.
+   allow delete: if false;
+  }
+  match /marketplaceCategories/{id} {
+   allow read: if true;
+   allow create,update: if owner() && request.resource.data.keys().hasOnly(['enabled','order','featured','icon','updatedAt']) && request.resource.data.enabled is bool && request.resource.data.featured is bool && request.resource.data.order is int && request.resource.data.order>=0 && request.resource.data.order<=99 && request.resource.data.icon in ['car','phone','computer','appliance','sofa','tool','bike','baby','grid','camel'] && request.resource.data.updatedAt==request.time;
+   allow delete: if false;
+  }
+ }
+}

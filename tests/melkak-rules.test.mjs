@@ -1,0 +1,28 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {initializeTestEnvironment,assertSucceeds,assertFails} from '@firebase/rules-unit-testing';import {doc,setDoc,getDoc,updateDoc,deleteDoc,serverTimestamp} from 'firebase/firestore';
+if(!/^127\.0\.0\.1:\d+$/.test(process.env.FIRESTORE_EMULATOR_HOST||''))throw Error('Local emulator required');const env=await initializeTestEnvironment({projectId:'demo-melkak-proposal',firestore:{rules:fs.readFileSync(new URL('../melkak/firestore.proposed.rules',import.meta.url),'utf8')}});let n=0;async function test(name,fn){await fn();n++;console.log('PASS | '+name);}const seller=env.authenticatedContext('seller').firestore(),buyer=env.authenticatedContext('buyer').firestore(),owner=env.authenticatedContext('owner',{admin:true}).firestore(),impostor=env.authenticatedContext('impostor',{admin:true}).firestore(),anon=env.unauthenticatedContext().firestore();const image='data:image/jpeg;base64,/9j/AA==';const listing=(category='livestock')=>({schemaVersion:1,ownerUid:'seller',category,country:'AE',region:'الشارقة',city:'الذيد',currency:'AED',title:'Test listing',description:'Local test listing only',price:100,images:[image],attributes:{},contact:{phone:'+971500000000',call:true,whatsapp:true,showNumber:false,consent:true},status:'active',createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+try{await env.clearFirestore();await env.withSecurityRulesDisabled(async c=>{for(const uid of ['seller','buyer','owner','impostor'])await setDoc(doc(c.firestore(),'users',uid),{status:'active',accountType:'buyer'});await setDoc(doc(c.firestore(),'adminSecurity','config'),{superAdminUids:['owner']});});
+for(const category of ['livestock','cars','phones','computers','appliances','furniture','tools','sports','children','other'])await test('proposed create '+category,()=>assertSucceeds(setDoc(doc(seller,'marketplaceListings',category),listing(category))));
+for(const [country,currency]of Object.entries({AE:'AED',SA:'SAR',EG:'EGP',OM:'OMR',JO:'JOD',MA:'MAD'}))await test('country currency '+country,()=>assertSucceeds(setDoc(doc(seller,'marketplaceListings',country),{...listing(),country,currency})));
+await test('buyer accountType does not block legitimate owner create',()=>assertSucceeds(setDoc(doc(seller,'marketplaceListings','buyer-type'),listing())));
+await test('wrong country currency denied',()=>assertFails(setDoc(doc(seller,'marketplaceListings','wrong'),{...listing(),country:'SA',currency:'AED'})));
+for(const count of [1,2,3])await test('image count '+count,()=>assertSucceeds(setDoc(doc(seller,'marketplaceListings','image-'+count),{...listing(),images:Array.from({length:count},(_,i)=>'data:image/jpeg;base64,'+Buffer.from('img'+i).toString('base64'))})));
+await test('four images denied',()=>assertFails(setDoc(doc(seller,'marketplaceListings','four'),{...listing(),images:[image,image,image,image]})));
+await test('last image removal denied',()=>assertFails(updateDoc(doc(seller,'marketplaceListings','image-1'),{images:[],updatedAt:serverTimestamp()})));
+await test('unconsented contact denied',()=>assertFails(setDoc(doc(seller,'marketplaceListings','private'),{...listing(),contact:{...listing().contact,consent:false}})));
+await test('external image URL denied',()=>assertFails(setDoc(doc(seller,'marketplaceListings','external'),{...listing(),images:['https://example.test/a.jpg']})));
+await test('anonymous create denied',()=>assertFails(setDoc(doc(anon,'marketplaceListings','anonymous'),listing())));
+await test('owner spoofing denied',()=>assertFails(setDoc(doc(buyer,'marketplaceListings','spoof'),listing())));
+await test('public active readable',()=>assertSucceeds(getDoc(doc(anon,'marketplaceListings','livestock'))));
+await test('hide owner listing',()=>assertSucceeds(updateDoc(doc(seller,'marketplaceListings','livestock'),{status:'hidden',updatedAt:serverTimestamp()})));
+await test('hidden not public but visible to owner',async()=>{await assertFails(getDoc(doc(anon,'marketplaceListings','livestock')));await assertSucceeds(getDoc(doc(seller,'marketplaceListings','livestock')));});
+await test('owner republish',()=>assertSucceeds(updateDoc(doc(seller,'marketplaceListings','livestock'),{status:'active',updatedAt:serverTimestamp()})));
+await test('different user state update denied',()=>assertFails(updateDoc(doc(buyer,'marketplaceListings','livestock'),{status:'hidden',updatedAt:serverTimestamp()})));
+await test('owner cannot self-feature or inject admin data',()=>assertFails(updateDoc(doc(seller,'marketplaceListings','livestock'),{featured:true,admin:true,updatedAt:serverTimestamp()})));
+await test('category-sensitive keys denied',()=>assertFails(setDoc(doc(seller,'marketplaceListings','attr'),{...listing('cars'),attributes:{admin:true}})));
+await test('remote delete deferred and denied',()=>assertFails(deleteDoc(doc(seller,'marketplaceListings','livestock'))));
+const config={enabled:true,order:1,featured:false,icon:'car',updatedAt:serverTimestamp()};await test('actual registered owner category config',()=>assertSucceeds(setDoc(doc(owner,'marketplaceCategories','cars'),config)));
+await test('normal category admin blocked',()=>assertFails(setDoc(doc(seller,'marketplaceCategories','cars'),config)));
+await test('admin claim alone insufficient without UID registry',()=>assertFails(setDoc(doc(impostor,'marketplaceCategories','cars'),config)));
+await test('schema mutation blocked even for owner',()=>assertFails(updateDoc(doc(owner,'marketplaceCategories','cars'),{schema:{admin:true},updatedAt:serverTimestamp()})));
+console.log(`SUMMARY | ${n}/${n} PASS`);
+}finally{await env.cleanup();}
