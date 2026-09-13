@@ -18,7 +18,9 @@
     "preview:melkak": "node scripts/melkak-preview.cjs",
     "test:melkak": "node tests/melkak-model.test.mjs",
     "test:melkak-browser": "node tests/melkak-browser.test.cjs",
-    "test:melkak-rules": "node tests/melkak-rules.test.mjs"
+    "test:melkak-rules": "node tests/melkak-rules.test.mjs",
+    "test:melkak-complete": "node tests/melkak-complete.test.mjs",
+    "test:melkak-complete-browser": "node tests/melkak-complete-browser.test.cjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

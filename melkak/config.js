@@ -8,10 +8,10 @@ export const CATEGORIES=[
 {id:'phones',name:['الجوالات','Phones'],icon:'phone',fields:[field('brand','الشركة','Brand'),field('model','الموديل','Model'),field('capacity','السعة','Capacity'),condition(),field('color','اللون','Color')]},
 {id:'computers',name:['الكمبيوتر والإلكترونيات','Computers & electronics'],icon:'computer',fields:[field('type','النوع','Type'),field('brand','الشركة','Brand'),field('model','الموديل','Model'),field('specs','المواصفات','Specifications'),condition()]},
 {id:'appliances',name:['الأجهزة المنزلية','Home appliances'],icon:'appliance',fields:[field('type','النوع','Type'),field('brand','الشركة','Brand'),condition(),field('age','العمر التقريبي','Approximate age')]},
-{id:'furniture',name:['الأثاث والمنزل','Furniture & home'],icon:'sofa',fields:[field('type','النوع','Type'),condition(),field('material','المادة / اللون (اختياري)','Material / color (optional)')]},
+{id:'furniture',name:['الأثاث والمنزل','Furniture & home'],icon:'sofa',fields:[field('type','النوع','Type'),condition(),field('material','المادة','Material'),field('color','اللون (اختياري)','Color (optional)')]},
 {id:'tools',name:['المعدات والأدوات','Equipment & tools'],icon:'tool',fields:[field('type','النوع','Type'),field('brand','الشركة','Brand'),condition()]},
 {id:'sports',name:['الرياضة والهوايات','Sports & hobbies'],icon:'bike',fields:[field('type','النوع','Type'),condition()]},
-{id:'children',name:['مستلزمات الأطفال','Baby & kids'],icon:'baby',fields:[field('type','النوع','Type'),condition()]},
+{id:'children',name:['مستلزمات الأطفال','Baby & kids'],icon:'baby',fields:[field('type','النوع','Type'),field('suitableAge','العمر المناسب (اختياري)','Suitable age (optional)'),condition()]},
 {id:'other',name:['أقسام أخرى','Other categories'],icon:'grid',fields:[field('type','النوع','Type'),condition()]}
 ];
 export const EXTRA_COUNTRIES={

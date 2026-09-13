@@ -13,5 +13,5 @@ for(const file of fs.readdirSync(root).filter(file=>/^(favicon.*|apple-touch-ico
 console.log('PASS static build in dist; no deployment performed');
 
 // Local prototype static assets. Proposed Rules never enter the web build.
-function copyMelkak(dir,out){fs.mkdirSync(out,{recursive:true});for(const e of fs.readdirSync(dir,{withFileTypes:true})){const a=path.join(dir,e.name),b=path.join(out,e.name);if(e.isDirectory())copyMelkak(a,b);else if(/\.(js|json|css|svg)$/.test(e.name))fs.copyFileSync(a,b);}}
+function copyMelkak(dir,out){fs.mkdirSync(out,{recursive:true});for(const e of fs.readdirSync(dir,{withFileTypes:true})){const a=path.join(dir,e.name),b=path.join(out,e.name);if(e.isDirectory())copyMelkak(a,b);else if(/\.(js|json|css|svg|webp)$/.test(e.name))fs.copyFileSync(a,b);}}
 copyMelkak(path.join(root,'melkak'),path.join(output,'melkak'));

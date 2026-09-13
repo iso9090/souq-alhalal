@@ -24,5 +24,8 @@ const config={enabled:true,order:1,featured:false,icon:'car',updatedAt:serverTim
 await test('normal category admin blocked',()=>assertFails(setDoc(doc(seller,'marketplaceCategories','cars'),config)));
 await test('admin claim alone insufficient without UID registry',()=>assertFails(setDoc(doc(impostor,'marketplaceCategories','cars'),config)));
 await test('schema mutation blocked even for owner',()=>assertFails(updateDoc(doc(owner,'marketplaceCategories','cars'),{schema:{admin:true},updatedAt:serverTimestamp()})));
+await test('kids optional age accepted',()=>assertSucceeds(setDoc(doc(seller,'marketplaceListings','kids-age'),{...listing('children'),attributes:{type:'stroller',suitableAge:'0–3 years',condition:'new'}})));
+await test('furniture color accepted',()=>assertSucceeds(setDoc(doc(seller,'marketplaceListings','furniture-color'),{...listing('furniture'),attributes:{type:'sofa',color:'blue',material:'fabric'}})));
+await test('kids age remains bounded',()=>assertFails(setDoc(doc(seller,'marketplaceListings','kids-long'),{...listing('children'),attributes:{suitableAge:'x'.repeat(301)}})));
 console.log(`SUMMARY | ${n}/${n} PASS`);
 }finally{await env.cleanup();}

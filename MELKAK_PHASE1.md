@@ -1,5 +1,7 @@
 # MELKAK — phase 1 local prototype
 
+Historical report for the preceding green-identity prototype. The current sky/gold iteration is documented in [MELKAK_COMPLETE_PHASE1.md](MELKAK_COMPLETE_PHASE1.md).
+
 Brand: **مِلكك | MELKAK — بيع واشتري مباشرة**
 
 Branch: `feature/melkak-marketplace-redesign`
