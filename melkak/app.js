@@ -19,7 +19,7 @@ function actor(){if(!s.signedIn)return {uid:null,role:null,permissions:[],name:t
 const price=a=>new Intl.NumberFormat(s.lang==='ar'?'ar-AE':'en',{maximumFractionDigits:['OMR','JOD'].includes(countries[a.country]?.currency)?3:2}).format(a.price)+` <small>${countries[a.country]?.currency||''}</small>`;
 const date=v=>new Intl.DateTimeFormat(s.lang==='ar'?'ar-AE':'en',{dateStyle:'medium'}).format(new Date(v||Date.now()));
 const age=v=>{const hours=Math.max(0,Math.floor((Date.now()-v)/3600000));return hours<24?t(`منذ ${hours||1} س`,`${hours||1}h ago`):t(`منذ ${Math.floor(hours/24)} ي`,`${Math.floor(hours/24)}d ago`);};
-const asset=src=>/^\.\/melkak\/assets\/[a-z-]+\.svg$/.test(src)||/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(src)?src:'./melkak/assets/other.svg';
+const asset=src=>/^\.\/melkak\/assets\/[a-z-]+\.(?:svg|webp)$/.test(src)||/^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(src)?src:'./melkak/assets/other.svg';
 const button=(text,action,extra='',cls='')=>`<button type="button" class="${cls}" data-action="${action}" ${extra}>${text}</button>`;
 const link=(text,hash,cls='')=>`<a class="${cls}" href="#/${esc(hash)}">${text}</a>`;
 function option(value,text,selected){return `<option value="${esc(value)}" ${selected===value?'selected':''}>${esc(text)}</option>`;}

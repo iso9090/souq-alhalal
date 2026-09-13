@@ -33,3 +33,50 @@
 @media(max-width:800px){.detail-stage{height:185px;max-height:185px;aspect-ratio:auto}.detail-stage>img{width:100%;height:100%;object-fit:contain}.detail-layout .thumbs{margin-block:0;gap:6px}.detail-layout .thumbs button{height:45px;max-width:78px;padding:2px}.detail-layout .thumbs img{height:100%;width:100%;object-fit:contain}.detail-info.panel{padding:12px}.detail-info h1{font-size:21px;margin:5px 0}.detail-info .price{font-size:25px;margin-block:3px}.detail-info p{margin-block:6px;font-size:12px}.detail-info .seller{padding-top:8px;margin-top:8px;gap:8px}.detail-info .seller .avatar{height:35px;width:35px}.detail-info .seller p{margin:2px 0}.detail-info .actions{margin-top:8px;gap:8px}.detail-layout{gap:8px}.manage-layout{grid-template-columns:1fr;gap:10px}.manage-layout>.panel{padding:12px}.manage-layout .form-grid{gap:8px}.manage-layout h2{font-size:18px;margin-bottom:7px}.image-manager{padding:10px}.image-manager p{font-size:11px}.photo-editor .buttons button{min-height:40px}.manage-layout .photo-editor{grid-template-columns:repeat(2,minmax(0,1fr))}.photo-editor img{height:90px}.manage-layout .notice{font-size:12px}.manage-layout textarea{height:72px;min-height:72px}}
 .image-manager{min-height:0}.manage-layout .form-grid input[type=checkbox]{min-height:18px;height:18px;width:18px;padding:0}.manage-layout label.check{min-height:40px}.manage-layout .image-manager{padding:10px}
 @media(max-width:800px){.manage-layout .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.manage-layout .form-grid label{font-size:12px}.manage-layout .form-grid input,.manage-layout .form-grid select{font-size:12px;padding-inline:7px}.manage-layout .form-grid .full{grid-column:1/-1}}
+
+/* Approved home composition: wide main column, five featured cards and photo promotions. */
+.mobile-promos{display:none}
+@media(min-width:801px){
+ .wrap{width:calc(100% - 48px);max-width:1800px}
+ .market-layout{grid-template-columns:clamp(190px,15vw,260px) minmax(0,1fr);gap:18px}
+ .market-main{grid-column:2}.market-layout>.side-ads{grid-column:1;grid-row:1}
+ [dir=ltr] .market-layout{grid-template-columns:minmax(0,1fr) clamp(190px,15vw,260px)}
+ [dir=ltr] .market-main{grid-column:1}[dir=ltr] .market-layout>.side-ads{grid-column:2}
+ .market-main .home-section.featured-section{width:100%;max-width:100%;margin-inline:0;padding:10px 8px 0}
+ .market-main .home-section.featured-section .cards{width:100%;max-width:100%;justify-content:flex-start;gap:12px;padding-inline:0}
+ .market-main .home-section.featured-section .listing{flex:0 0 calc((100% - 48px)/5);width:auto}
+ .market-main .latest-section .listing,.market-main .suggested-section .listing{flex:0 0 calc((100cqw - 66px)/5 / 1.065)}
+ .market-main .listing h3{min-height:0;font-size:13px;line-height:1.6}
+ .market-main .listing-body{padding:9px}.market-main .listing .meta{min-height:0;font-size:10px;margin-block:5px}
+ .market-main .listing .price{font-size:19px;margin-block:6px}
+ .market-main .listing .card-actions{display:none}
+ .market-main .listing-photo{aspect-ratio:1.4}.market-main .listing-photo img{object-fit:cover}
+ .market-main .category{font-size:11px}.market-main .categories{display:flex;gap:10px;overflow-x:auto;padding-bottom:8px}
+ .market-main .category{flex:1 0 78px}.market-main .cat-icon{width:54px;height:54px}
+ .side-ads .promo-block{min-height:300px;overflow:hidden;position:relative;isolation:isolate;justify-content:flex-end;gap:8px;padding:16px;border-radius:12px;background:#123e53;color:#fff}
+ .side-ads .promo-block img{position:absolute;inset:0;width:100%;height:100%;max-height:none;object-fit:cover;opacity:1;mix-blend-mode:normal;z-index:-2}
+ .side-ads .promo-block:after{content:'';position:absolute;inset:0;background:linear-gradient(#092d4230,#092d4200 30%,#092d43e8);z-index:-1}
+ .side-ads .promo-block h3{font-size:19px;margin:0;text-shadow:0 1px 3px #0008}
+ .side-ads .promo-block .tag{position:absolute;top:12px;right:12px;background:#fff5d5;color:#654509;border-color:#ecd38e}
+ .side-ads .promo-block p,.side-ads .promo-block small{display:none}
+ .side-ads .promo-block .button{background:#f6dda0;color:#49380d;border:1px solid #ebcc80;padding:8px 18px;min-height:40px}
+ .market-main .world-hero{min-height:330px}.market-main .world-copy{padding-top:15px}
+ .market-main .world-copy h1{font-size:80px;margin:8px 0}.market-main .world-copy h2{font-size:21px}
+}
+@media(min-width:801px) and (max-width:1100px){
+ .market-main .home-section.featured-section .listing{flex-basis:calc((100% - 24px)/3)}
+ .market-main .latest-section .listing{flex-basis:calc((100cqw - 42px)/3 / 1.065)}
+ .market-main .world-copy h1{font-size:64px}.market-main .world-copy h2{font-size:17px}
+}
+@media(max-width:800px){
+ .market-layout>.side-ads{display:none}.market-main .mobile-promos{display:grid;gap:12px;margin-block:18px}
+ .mobile-promos .promo-block{display:grid;grid-template-columns:110px minmax(0,1fr);gap:5px 12px;margin:0;min-height:156px;text-align:start;padding:12px}
+ .mobile-promos .promo-block img{grid-column:1;grid-row:1/5;width:110px;height:132px;object-fit:cover;opacity:1;mix-blend-mode:normal;border-radius:10px}
+ .mobile-promos .promo-block .tag,.mobile-promos .promo-block h3,.mobile-promos .promo-block .button{grid-column:2;grid-row:auto}
+ .mobile-promos .promo-block h3{font-size:16px;margin:0}.mobile-promos .promo-block p,.mobile-promos .promo-block small{display:none}
+ .mobile-promos .promo-block .button{width:max-content;max-width:100%;min-height:40px;font-size:12px}
+ .home-section.featured-section{width:100%;max-width:100%}
+ .home-section .listing-photo img{object-fit:cover}
+}
+
+@media(min-width:801px){body:has(.market-layout) .topbar .wrap{height:62px}body:has(.market-layout) .navline{height:38px;min-height:38px}.market-main .listing-photo{aspect-ratio:1.65}.market-main .featured-section .meta time{display:none}.market-main .latest-section .listing-photo{aspect-ratio:1.9}}

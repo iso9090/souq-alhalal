@@ -34,6 +34,12 @@
     "melkak/assets/sports.svg",
     "melkak/assets/tools.svg",
     "melkak/assets/world-hero.webp",
-    "melkak/audit.js"
+    "melkak/audit.js",
+    "melkak/assets/demo-livestock.webp",
+    "melkak/assets/demo-cars.webp",
+    "melkak/assets/demo-phones.webp",
+    "melkak/assets/demo-furniture.webp",
+    "melkak/assets/demo-tools.webp",
+    "melkak/assets/demo-appliances.webp"
   ]
 }
