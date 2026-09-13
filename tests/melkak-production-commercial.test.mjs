@@ -35,3 +35,4 @@ test('invalid artwork, URLs, schedules, permissions, expiry and disabled writes 
 test('editing pending request keeps it private, rejection of pending does not publish image',async()=>{
  const h=harness();const {id}=await h.store.requestCommercial(data());await h.store.editCommercial(id,{...data(),title:'Pending edit'},'Correct title');assert.equal(h.rows.has('marketplaceCommercialAds/'+id),false);await h.store.reviewCommercial(id,'rejected','Not appropriate');assert.equal(h.rows.has('marketplaceCommercialImages/'+id),false);
 });
+test('optional link stays empty through audited publication',async()=>{const h=harness();const {id}=await h.store.requestCommercial({...data(),targetUrl:''});await h.store.reviewCommercial(id,'approved','No external destination');assert.equal(h.rows.get('marketplaceCommercialAds/'+id).targetUrl,'');assert.ok(h.rows.get('marketplaceRequests/'+id).auditId);});

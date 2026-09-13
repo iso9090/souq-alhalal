@@ -84,3 +84,14 @@
 .category-choice:hover{background:#edf8fc;border-color:#087c96}
 .category-choice[aria-pressed="true"]{background:#dff3fa;border:2px solid #087c96;padding:9px 15px;color:#075a70;box-shadow:0 0 0 1px #c5e7f1}
 .category-choice:focus-visible{outline:3px solid #b98122;outline-offset:3px}
+/* Location is a visible market control on white headers, in both directions. */
+.top-location{background:#e8f6fc;border:1px solid #2588a0;border-radius:12px;padding:4px 8px;box-shadow:0 2px 8px #0b526712}
+.top-location>svg,.mobile-location>svg{color:#087c96;flex-shrink:0}
+.top-location select,.mobile-location select,.admin-main>.page-head #admin-country{background:#e8f6fc;border:1px solid #2588a0;color:#123d59;border-radius:9px;min-height:44px;font-weight:600;min-width:0;box-shadow:0 2px 5px #0b526708}
+.top-location select:hover,.mobile-location select:hover,.admin-main>.page-head #admin-country:hover{border-color:#075a70;background:#e8f6fc}
+.top-location select:focus-visible,.mobile-location select:focus-visible,.admin-main>.page-head #admin-country:focus-visible{outline:3px solid #ad7921;outline-offset:2px;border-color:#075a70}
+.top-location select:focus,.mobile-location select:focus{box-shadow:0 0 0 2px #a9dbea}
+.navline .advertise-link{color:#765317;font-weight:700}
+@media(max-width:800px){.mobile-location{background:#f3faff;border-block:1px solid #bbdeea;gap:6px;padding:7px 12px}.mobile-location select{flex:1;width:0;padding-inline:7px;font-size:12px}.mobile-location svg{width:18px}.top-location{display:none}}
+
+@media(min-width:801px){.top-location>div{display:flex;align-items:center;gap:6px}.top-location select{width:auto;max-width:180px}.top-location{padding:4px 8px}}
