@@ -4,5 +4,5 @@ export function requireReason(reason) {
 }
 export function auditRecord(id,actor,action,targetId,reason='') {
  const timestamp=Date.now();
- return {id,actor:actor.uid,action,targetId,reason,timestamp,result:'success',target:targetId,at:timestamp};
+ return {id,actorUid:actor.uid,actor:actor.uid,action,targetId,reason,timestamp,result:'success',target:targetId,at:timestamp};
 }

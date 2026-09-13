@@ -46,8 +46,8 @@ test('assistant cannot approve services or change owners',()=>assert.throws(()=>
 const service=store.create(draft(),user);store.requestService(service.id,'featured',user);
 test('existing exceptional service concept remains free and audited locally',()=>{store.approveService(store.state.services[0].id,'Local exception',owner);assert.ok(featured(service));assert.ok(store.state.audit.some(a=>a.action==='exception-approval'));});
 test('exceptional no-payment approval cannot be delegated to assistant',()=>assert.throws(()=>store.approveService('unknown','reason',{...assistant,permissions:['services_manage']})));
-test('normal user cannot resolve reports',()=>assert.throws(()=>store.resolveReport(store.state.reports[0].id,user)));
-test('Super Admin resolves local report',()=>{store.resolveReport(store.state.reports[0].id,owner);assert.equal(store.state.reports[0].status,'resolved');});
+test('normal user cannot resolve reports',()=>assert.throws(()=>store.resolveReport(store.state.reports[0].id,'reason',user)));
+test('Super Admin resolves local report',()=>{store.resolveReport(store.state.reports[0].id,'reviewed',owner);assert.equal(store.state.reports[0].status,'resolved');});
 test('dashboard stats derived, never fabricated',()=>{const rows=store.state.listings.filter(a=>a.country==='AE'&&a.saleType!=='auction');assert.equal(store.statistics('AE').total,rows.length);});
 test('all Production / legacy action flags disabled',()=>{for(const key of ['productionWrites','payments','analytics','auctions','messaging','purchaseRequests'])assert.equal(FLAGS[key],false);});
 console.log(`SUMMARY | ${n}/${n} PASS`);

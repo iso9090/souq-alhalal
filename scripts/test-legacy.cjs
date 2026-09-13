@@ -3,8 +3,8 @@ const {snapshot}=require('../tests/review-test-support.cjs');
 const root=path.resolve(__dirname,'..');process.chdir(root);
 const target=snapshot();
 // A separate legacy fixture root, never the MELKAK entry or review artifact.
-fs.copyFileSync(path.join(root,'legacy-index.html'),path.join(target,'index.html'));
-fs.writeFileSync(path.join(target,'LEGACY-TEST-TARGET.json'),JSON.stringify({target:'legacy',entrySource:'legacy-index.html',production:false}));
+fs.copyFileSync(path.join(root,'_legacy/legacy-index.html'),path.join(target,'index.html'));
+fs.writeFileSync(path.join(target,'LEGACY-TEST-TARGET.json'),JSON.stringify({target:'legacy',entrySource:'_legacy/legacy-index.html',production:false}));
 fs.symlinkSync(path.join(root,'node_modules'),path.join(target,'node_modules'),'junction');
 if(process.argv.includes('--prepare')){console.log(target);process.exit(0)}
 const tests=process.argv.slice(2);if(!tests.length)throw Error('Supply explicit legacy test paths');

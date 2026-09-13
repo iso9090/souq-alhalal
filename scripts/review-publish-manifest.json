@@ -40,6 +40,7 @@
     "melkak/assets/demo-phones.webp",
     "melkak/assets/demo-furniture.webp",
     "melkak/assets/demo-tools.webp",
-    "melkak/assets/demo-appliances.webp"
+    "melkak/assets/demo-appliances.webp",
+    "melkak/entry.js"
   ]
 }

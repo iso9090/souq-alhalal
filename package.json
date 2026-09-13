@@ -27,7 +27,8 @@
     "build:production": "node scripts/build-site.mjs --mode production",
     "test:review-guard": "node tests/melkak-review-guard.test.cjs",
     "test:review-build": "node tests/melkak-review-build.test.cjs && node tests/melkak-review-smoke.test.cjs",
-    "test:melkak-review": "node tests/melkak-review-guard.test.cjs && node tests/melkak-review-build.test.cjs && node tests/melkak-review-smoke.test.cjs && node tests/melkak-legacy-target.test.cjs && node tests/melkak-audit.test.mjs && node tests/melkak-audit-browser.test.cjs && node tests/melkak-republish-rules.test.mjs && node tests/melkak-datasource.test.mjs"
+    "test:melkak-review": "node tests/melkak-review-guard.test.cjs && node tests/melkak-review-build.test.cjs && node tests/melkak-review-smoke.test.cjs && node tests/melkak-legacy-target.test.cjs && node tests/melkak-audit.test.mjs && node tests/melkak-audit-browser.test.cjs && node tests/melkak-republish-rules.test.mjs && node tests/melkak-datasource.test.mjs",
+    "test:melkak-blockers": "node tests/melkak-security.test.mjs && node tests/melkak-auth-adapter.test.mjs && node tests/melkak-blockers-ui.test.cjs && node tests/melkak-production-entry.test.cjs && node tests/melkak-production-bootstrap.test.mjs && node tests/melkak-pages-publication.test.cjs && node tests/melkak-local-preview.test.cjs"
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "5.0.2",

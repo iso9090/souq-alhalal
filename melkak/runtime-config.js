@@ -1,2 +1,3 @@
-// Overwritten only in an isolated review build. No credentials belong here.
-export default Object.freeze({mode:'local',datasource:'demo',reviewOrigin:''});
+// Safe for direct GitHub Pages branch publication (no build step).
+// The isolated review build and loopback preview server supply their own config.
+export default Object.freeze({mode:'production',datasource:'unconfigured',authProvider:'firebase',reviewOrigin:''});
