@@ -822,6 +822,7 @@ function showModal(html) {
 }
 
 window.closeModal = function () {
+  window.dispatchEvent(new CustomEvent('souq-pageview',{detail:'route'}));
   modalRevision++;
   const modal = document.getElementById("modal");
   if (modal) modal.style.display = "none";
@@ -839,6 +840,7 @@ window.souqHandleAndroidBack = function () {
 };
 
 async function showAccount() {
+  window.dispatchEvent(new CustomEvent('souq-pageview',{detail:'account'}));
   const user = auth.currentUser;
   if (!user) return;
 
@@ -5193,6 +5195,7 @@ window.bid = function () {
 
 // Public listing details use the same public documents and action checks as the market.
 window.openListingDetails = async function (animalId, auctionId = '', back = 'market') {
+  window.dispatchEvent(new CustomEvent('souq-pageview',{detail:'listing_details'}));
   const backAction = {bids:['showMyBids()','رجوع إلى مزايداتي'],requests:['showMyPurchaseRequests()','رجوع إلى طلباتي']}[back] || ['closeModal()','رجوع إلى السوق'];
   const backHtml = `<button class="ux-back" onclick="${backAction[0]}">${backAction[1]}</button>`;
   showModal(`<section class="ux-detail">${backHtml}<p role="status">جاري تحميل التفاصيل…</p></section>`);

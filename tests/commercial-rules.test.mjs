@@ -21,6 +21,10 @@ for(const patch of [{priority:10000},{placement:'users'},{title:''},{targetUrl:'
 await test('contacts owner write',()=>assertSucceeds(setDoc(doc(owner,'commercialAdContacts','ad1'),{advertiserEmail:'private@example.test',advertiserPhone:''})));
 await test('contacts private',()=>assertFails(getDoc(doc(guest,'commercialAdContacts','ad1'))));
 await test('helper contacts denied',()=>assertFails(getDoc(doc(helper,'commercialAdContacts','ad1'))));
+if(fs.readFileSync(new URL('../firestore.rules',import.meta.url),'utf8').includes('Legacy mutable counters')){
+ await test('legacy analytics writes disabled',()=>assertFails(setDoc(doc(guest,'analyticsSessions',sid),session)));
+ await test('daily aggregate direct write denied',()=>assertFails(setDoc(doc(guest,'analyticsDaily','2026-09-13'),{sessions:999})));
+}else{
 await test('collector default off',()=>assertFails(setDoc(doc(guest,'analyticsSessions',sid),session)));
 await test('owner enables',()=>assertSucceeds(setDoc(doc(owner,'platformTelemetry','config'),{enabled:true,updatedAt:serverTimestamp(),updatedBy:'owner'})));
 await test('helper cannot enable',()=>assertFails(updateDoc(doc(helper,'platformTelemetry','config'),{enabled:true})));
@@ -37,4 +41,5 @@ await test('cannot erase events',()=>assertFails(updateDoc(doc(guest,'analyticsS
 await test('delete denied',()=>assertFails(deleteDoc(doc(guest,'analyticsSessions',sid))));
 await test('owner disables',()=>assertSucceeds(setDoc(doc(owner,'platformTelemetry','config'),{enabled:false,updatedAt:serverTimestamp(),updatedBy:'owner'})));
 await test('disabled stops writes',()=>assertFails(updateDoc(doc(guest,'analyticsSessions',sid),{updatedAt:serverTimestamp()})));
+}
 console.log(`SUMMARY | ${n}/${n} passed`);}finally{await env.cleanup();}
