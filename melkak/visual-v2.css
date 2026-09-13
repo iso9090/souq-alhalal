@@ -80,3 +80,7 @@
 }
 
 @media(min-width:801px){body:has(.market-layout) .topbar .wrap{height:62px}body:has(.market-layout) .navline{height:38px;min-height:38px}.market-main .listing-photo{aspect-ratio:1.65}.market-main .featured-section .meta time{display:none}.market-main .latest-section .listing-photo{aspect-ratio:1.9}}
+.category-choice{min-height:44px;padding:10px 16px;border:1px solid #a9cad6;border-radius:12px;background:#fff;color:#14556a;font-weight:600;cursor:pointer}
+.category-choice:hover{background:#edf8fc;border-color:#087c96}
+.category-choice[aria-pressed="true"]{background:#dff3fa;border:2px solid #087c96;padding:9px 15px;color:#075a70;box-shadow:0 0 0 1px #c5e7f1}
+.category-choice:focus-visible{outline:3px solid #b98122;outline-offset:3px}
