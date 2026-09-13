@@ -61,5 +61,32 @@ try{
  await check('actual adapter super admin queries read new collections',async()=>{const auth={state:{actor:{uid:'boss',status:'active',ready:true,role:'super_admin',permissions:[]}},subscribe(fn){fn(this.state);return()=>{};}};const store=await createProductionDatasource({sdk,db:adminDb,auth,countries});await store.loadAdmin();for(const key of ['users','marketplaceListings','marketplaceRequests','marketplaceAuditLogs','adminAccess'])assert.notEqual(store.state.capabilities[key]?.status,'denied',key);assert.ok(store.state.audit.length);assert.ok(store.state.services.some(r=>r.type==='featured'));store.dispose();});
 
  await check('actual adapter assistant loads only delegated administrative data',async()=>{const auth={state:{actor:{uid:'assistant',status:'active',ready:true,role:'admin_assistant',permissions:['listings_view','reports_view']}},subscribe(fn){fn(this.state);return()=>{};}};const store=await createProductionDatasource({sdk,db:env.authenticatedContext('assistant').firestore(),auth,countries});await store.loadAdmin();assert.equal(store.state.capabilities.marketplaceRequests.status,'available');assert.ok(store.state.reports.length);assert.equal(store.state.services.length,0);assert.equal(store.state.audit.length,0);assert.equal(store.state.capabilities.users,undefined);store.dispose();});
+
+ // Direct SDK batches bypass client reasonText(): the Rules must enforce every audit boundary.
+ const reasonCases=[['empty','',false],['spaces','   ',false],['tab','\t',false],['newline','\n',false],['mixed-whitespace',' \t\r\n ',false],['unicode-spaces','\u00a0\u2003\u3000',false],['padded-arabic','  سبب صالح  ',true],['arabic','سبب صالح',true],['english','Valid reason',true],['oversized','x'.repeat(501),false]];
+ const auditPaths=['approve','reject','hide','featured-approve','featured-reject','commercial-approve','commercial-reject','report-resolve','category-update'];
+ for(const path of auditPaths)for(const [name,reason,allowed]of reasonCases){
+  await check('direct audit reason '+path+' / '+name,async()=>{
+   const id='reason-'+path+'-'+name,listingId=id+'-listing',requestId=id+'-request',now=Date.now();
+   await env.withSecurityRulesDisabled(async c=>{const d=c.firestore(),batch=sdk.writeBatch(d);batch.set(sdk.doc(d,'marketplaceListings',listingId),{...draft,schemaVersion:1,ownerUid:'seller',currency:'AED',status:path==='approve'?'hidden':'active',hiddenBy:path==='approve'?'admin':'',moderationLocked:path==='approve',hasHistory:false,createdAt:sdk.serverTimestamp(),updatedAt:sdk.serverTimestamp()});
+    if(path.startsWith('featured-'))batch.set(sdk.doc(d,'marketplaceRequests',requestId),{type:'featured',ownerUid:'seller',listingId,status:'pending',reason:'',featuredDurationDays:7,featuredStartAt:now,featuredEndAt:now+7*86400000,createdAt:sdk.serverTimestamp()});
+    if(path.startsWith('commercial-'))batch.set(sdk.doc(d,'marketplaceRequests',requestId),{type:'commercial',ownerUid:'seller',status:'pending',createdAt:sdk.serverTimestamp(),data:{title:'Campaign',advertiserName:'Store',description:'Reason test',cta:'Visit',image:draft.images[0],targetUrl:'https://example.org/store',countryTarget:'AE',placement:'hero',startAt:now,endAt:now+86400000,priority:1}});
+    if(path==='report-resolve')batch.set(sdk.doc(d,'marketplaceRequests',requestId),{type:'report',ownerUid:'seller',targetType:'user',targetUid:'other',reason:'Original report reason',status:'open',createdAt:sdk.serverTimestamp()});
+    if(path==='category-update')batch.set(sdk.doc(d,'marketplaceCategories',id),{enabled:true,order:0,featured:false,icon:'car'});
+    await batch.commit();
+   });
+   const batch=sdk.writeBatch(adminDb),logs=[];
+   const audited=(collection,target,patch,action,result)=>{const auditId=id+'-audit-'+logs.length;logs.push(auditId);batch.update(sdk.doc(adminDb,collection,target),{...patch,auditId,updatedAt:sdk.serverTimestamp()});batch.set(sdk.doc(adminDb,'marketplaceAuditLogs',auditId),{actorUid:'boss',action,targetId:target,targetCollection:collection,reason,timestamp:sdk.serverTimestamp(),result});};
+   if(['approve','reject','hide'].includes(path)){const status={approve:'active',reject:'rejected',hide:'hidden'}[path];audited('marketplaceListings',listingId,{status,hiddenBy:status==='hidden'?'admin':'',moderationLocked:status!=='active',hasHistory:true},'moderate-'+status,status);}
+   if(path==='featured-approve'){audited('marketplaceListings',listingId,{featured:true,featuredStatus:'approved',featuredDurationDays:7,featuredStartAt:now,featuredEndAt:now+7*86400000,featuredRequestId:requestId,hasHistory:true},'featured-approved','approved');audited('marketplaceRequests',requestId,{status:'approved'},'service-approved','approved');}
+   if(path==='featured-reject')audited('marketplaceRequests',requestId,{status:'rejected'},'service-rejected','rejected');
+   if(path.startsWith('commercial-')){const status=path.endsWith('approve')?'approved':'rejected';audited('marketplaceRequests',requestId,{status},'commercial-'+status,status);}
+   if(path==='report-resolve')audited('marketplaceRequests',requestId,{status:'resolved'},'report-resolved','resolved');
+   if(path==='category-update')audited('marketplaceCategories',id,{enabled:false,order:1,featured:false,icon:'car'},'category-update','updated');
+   if(allowed){await assertSucceeds(batch.commit());for(const log of logs)assert.equal((await sdk.getDoc(sdk.doc(adminDb,'marketplaceAuditLogs',log))).data().reason,reason,'Rules validate without silently rewriting supplied reason');}
+   else {await assertFails(batch.commit());await env.withSecurityRulesDisabled(async c=>{for(const log of logs)assert.equal((await sdk.getDoc(sdk.doc(c.firestore(),'marketplaceAuditLogs',log))).exists(),false,'Rejected batch must not leave audit records');});}
+  });
+ }
+ for(const [name,reason]of reasonCases)await check('user suspension stays unavailable / '+name,async()=>{const batch=sdk.writeBatch(adminDb);batch.update(sdk.doc(adminDb,'users','seller'),{status:'suspended'});batch.set(sdk.doc(adminDb,'marketplaceAuditLogs','suspend-'+name),{actorUid:'boss',action:'suspend',targetCollection:'users',targetId:'seller',reason,timestamp:sdk.serverTimestamp(),result:'suspended'});await assertFails(batch.commit());});
  console.log(`SUMMARY ${passed} checks passed`);
 }finally{await env.cleanup();}
