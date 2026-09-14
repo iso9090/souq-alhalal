@@ -57,6 +57,10 @@
     "melkak/vendor/moderation/model/weights.bin",
     "melkak/vendor/moderation/LICENSE-NSFWJS.txt",
     "melkak/vendor/moderation/LICENSE-TENSORFLOW.txt",
-    "melkak/vendor/moderation/provenance.json"
+    "melkak/vendor/moderation/provenance.json",
+    "melkak/account-deletion.js",
+    "melkak-privacy.html",
+    "account-deletion.html",
+    "melkak/deletion-page.js"
   ]
 }

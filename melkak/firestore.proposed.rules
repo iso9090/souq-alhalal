@@ -77,6 +77,20 @@ service cloud.firestore {
   function cityData(d){return d.keys().hasOnly(['country','region','name','enabled','updatedAt','auditId']) && d.country in ['AE','SA','EG','OM','JO','MA'] && d.region is string && d.region.trim().size()>0 && d.region.size()<=100 && d.name is string && d.name.trim().size()>0 && d.name.size()<=100 && d.enabled is bool;}
   match /marketplaceSettings/{id}{allow read: if id=='public';allow create,update: if id=='public' && owner() && settingData(request.resource.data) && request.resource.data.updatedAt==request.time && audit(request.resource.data,'marketplaceSettings',id,'settings-update','updated');allow delete: if false;}
   match /marketplaceCities/{id}{allow read: if true;allow create,update: if owner() && cityData(request.resource.data) && request.resource.data.updatedAt==request.time && audit(request.resource.data,'marketplaceCities',id,'city-update','updated');allow delete: if false;}
+
+  // Verified deletion requests; clients can neither process nor forge completion.
+  match /marketplaceAccountDeletionRequests/{uid} {
+   allow get: if request.auth!=null && (request.auth.uid==uid || owner());
+   allow list: if owner();
+   allow create: if request.auth!=null && request.auth.uid==uid
+    && request.auth.token.auth_time is int
+    && request.auth.token.auth_time * 1000 <= request.time.toMillis()
+    && request.time.toMillis()-request.auth.token.auth_time * 1000 <= 600000
+    && request.resource.data.keys().hasOnly(['uid','status','createdAt','policyVersion'])
+    && request.resource.data.uid==uid && request.resource.data.status=='requested'
+    && request.resource.data.createdAt==request.time && request.resource.data.policyVersion=='2026-09-14';
+   allow update,delete: if false;
+  }
   // Read support for the real auth adapter; role/registry writes stay unavailable in this proposal.
   match /users/{uid}{allow read: if request.auth!=null && (request.auth.uid==uid || permit('users_view'));allow write: if false;}
   match /adminAccess/{uid}{allow read: if request.auth!=null && (request.auth.uid==uid || permit('assistants_view'));allow write: if false;}

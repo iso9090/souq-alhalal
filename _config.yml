@@ -79,6 +79,7 @@
     "firebase.melkak-release.json",
     "melkak/firestore.transition.rules",
     "package-lock.json",
-    "MELKAK_FREE_MODERATION_RELEASE_REPORT.md"
+    "MELKAK_FREE_MODERATION_RELEASE_REPORT.md",
+    "tools"
   ]
 }

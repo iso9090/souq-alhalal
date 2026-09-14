@@ -1,3 +1,4 @@
+import {requestAccountDeletion} from './account-deletion.js';
 import {attachProductionListingAdmin} from './production-listing-admin.js';
 import {attachProductionSettings} from './production-settings.js';
 import {attachProductionAdmin} from './production-admin.js';
@@ -12,6 +13,7 @@ const currencies={AE:'AED',SA:'SAR',EG:'EGP',OM:'OMR',JO:'JOD',MA:'MAD'};
 
 /** Production writer. Explicit release configuration enables writes; Firestore Rules remain authoritative. Rules are authoritative. */
 export function attachProductionServices(store,{sdk,db,auth,config={},countries}={}) {
+ store.requestAccountDeletion=()=>requestAccountDeletion({sdk,db,auth,config});
  const actor=()=>{if(config.writesEnabled!==true)fail('WRITES_DISABLED');const a=auth?.state?.actor;if(!a?.uid)fail('AUTH');if(a.status!=='active')fail('ACCOUNT');return a;};
  const admin=permission=>{const a=actor();if(permission==='super_admin'?a.role!=='super_admin':!can(a,permission))fail('PERMISSION');return a;};
  const raw=id=>{if(typeof id!=='string'||id.startsWith('legacy-'))fail('LEGACY');const item=store.state.listings.find(x=>x.id===id);if(item?.legacy||item?.readOnly||item?.sourceCollection==='animals')fail('LEGACY');const value=item?.sourceId||id.replace(/^marketplace-/,'');if(!value||value.includes('/'))fail('MISSING');return value;};

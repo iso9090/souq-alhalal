@@ -1,0 +1,28 @@
+import fs from 'node:fs';
+import {initializeTestEnvironment,assertFails,assertSucceeds} from '@firebase/rules-unit-testing';
+import * as sdk from 'firebase/firestore';
+if(process.env.FIRESTORE_EMULATOR_HOST!=='127.0.0.1:8080')throw Error('LOCAL_EMULATOR_REQUIRED');
+sdk.setLogLevel('silent');
+const env=await initializeTestEnvironment({projectId:'demo-melkak-account-deletion',firestore:{rules:fs.readFileSync(process.env.MELKAK_DELETION_RULES||'melkak/firestore.proposed.rules','utf8')}});
+let n=0;const check=async(name,fn)=>{await fn();console.log('PASS',name);n++;};
+const db=(uid,age=0,claims={})=>env.authenticatedContext(uid,{auth_time:Math.floor(Date.now()/1000)-age,...claims}).firestore();
+const ref=(d,uid)=>sdk.doc(d,'marketplaceAccountDeletionRequests',uid);
+const body=uid=>({uid,status:'requested',createdAt:sdk.serverTimestamp(),policyVersion:'2026-09-14'});
+try{await env.clearFirestore();await env.withSecurityRulesDisabled(async c=>{for(const [id,data]of [['users/boss',{status:'active'}],['users/assistant',{status:'active'}],['users/suspended',{status:'suspended'}],['adminSecurity/config',{enabled:true,superAdminUids:['boss']}],['adminAccess/assistant',{role:'admin_assistant',adminStatus:'active',permissions:['users_manage','users_view']}]] )await sdk.setDoc(sdk.doc(c.firestore(),id),data);});
+ await check('anonymous request denied',()=>assertFails(sdk.setDoc(ref(env.unauthenticatedContext().firestore(),'u'),body('u'))));
+ await check('fresh owner can request',()=>assertSucceeds(sdk.setDoc(ref(db('u'),'u'),body('u'))));
+ await check('other UID cannot be requested',()=>assertFails(sdk.setDoc(ref(db('other'),'u2'),body('u2'))));
+ await check('stale session denied',()=>assertFails(sdk.setDoc(ref(db('stale',601),'stale'),body('stale'))));
+ await check('future auth time denied',()=>assertFails(sdk.setDoc(ref(db('future',-120),'future'),body('future'))));
+ await check('forged complete denied',()=>assertFails(sdk.setDoc(ref(db('fake'),'fake'),{...body('fake'),status:'completed'})));
+ await check('forged verification metadata denied',()=>assertFails(sdk.setDoc(ref(db('fake'),'fake'),{...body('fake'),verified:true})));
+ await check('suspended user can request',()=>assertSucceeds(sdk.setDoc(ref(db('suspended'),'suspended'),body('suspended'))));
+ await check('owner can read own request',()=>assertSucceeds(sdk.getDoc(ref(db('u'),'u'))));
+ await check('other account cannot read request',()=>assertFails(sdk.getDoc(ref(db('other'),'u'))));
+ await check('assistant cannot read request',()=>assertFails(sdk.getDoc(ref(db('assistant'),'u'))));
+ await check('Super Admin can review queue',()=>assertSucceeds(sdk.getDocs(sdk.collection(db('boss',0,{admin:true}),'marketplaceAccountDeletionRequests'))));
+ await check('owner cannot mark completed',()=>assertFails(sdk.updateDoc(ref(db('u'),'u'),{status:'completed'})));
+ await check('Super Admin browser cannot fake completed deletion',()=>assertFails(sdk.updateDoc(ref(db('boss',0,{admin:true}),'u'),{status:'completed'})));
+ await check('client cannot remove pending request',()=>assertFails(sdk.deleteDoc(ref(db('u'),'u'))));
+ console.log(`SUMMARY ${n}/${n} PASS`);
+}finally{await env.cleanup();}
