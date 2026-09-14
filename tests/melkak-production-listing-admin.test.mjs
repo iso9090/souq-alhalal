@@ -8,7 +8,7 @@ function setup({role='super_admin',enabled=true,listing={}}={}){const records=ne
  const f=setup();await f.store.adminDeleteListing('marketplace-item','Remove clean listing');assert.ok(!f.records.has('marketplaceListings/item'));const tomb=f.records.get('marketplaceDeletions/item');assert.deepEqual(Object.keys(tomb).sort(),['listingId','ownerUid','actorUid','reason','auditId','timestamp'].sort());assert.equal(tomb.ownerUid,'seller');assert.equal(f.records.get('marketplaceAuditLogs/1').result,'deleted');assert.ok(!JSON.stringify([...f.records]).includes('inline-private-image'));
 }
 {
- const f=setup({listing:{hasHistory:true}});await f.store.adminDeleteListing('marketplace-item','Preserve historical record');assert.deepEqual(f.archives,[['marketplace-item','archived','Preserve historical record']]);assert.ok(f.records.has('marketplaceListings/item'));assert.ok(!f.records.has('marketplaceDeletions/item'));
+ const f=setup({listing:{hasHistory:true}});await f.store.adminDeleteListing('marketplace-item','Preserve historical record');assert.deepEqual(f.archives,[]);assert.equal(f.records.get('marketplaceListings/item').removed,true);assert.equal(f.records.get('marketplaceListings/item').moderationLocked,true);assert.equal(f.records.get('marketplaceAuditLogs/1').action,'listing-removed');assert.ok(f.records.has('marketplaceListings/item'));assert.ok(!f.records.has('marketplaceDeletions/item'));
 }
 for(const priority of [-1,101,0.5,'3'])await assert.rejects(()=>setup().store.setFeaturedPriority('item',priority,'reason'),{code:'FIELDS'});
 for(const listing of [{status:'hidden'},{featured:false},{featuredStatus:'pending'},{featuredEndAt:1}])await assert.rejects(()=>setup({listing}).store.setFeaturedPriority('item',1,'reason'),{code:'STATE'});

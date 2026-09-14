@@ -15,11 +15,11 @@ export function attachProductionListingAdmin(store,{sdk,db,auth,config={}}={}){
  };
  store.adminDeleteListing=async(id,reason)=>{
   const a=actor(),key=raw(id);reason=reasonText(reason);const ref=sdk.doc(db,'marketplaceListings',key);
-  const archived=await sdk.runTransaction(db,async tx=>{const listing=await read(tx,ref,a);if(listing.hasHistory!==false)return true;
+  const archived=await sdk.runTransaction(db,async tx=>{const listing=await read(tx,ref,a);if(listing.removed===true)fail('REMOVED');if(listing.hasHistory!==false){const log=freshLog();tx.update(ref,{status:'archived',hiddenBy:'',moderationLocked:true,removed:true,hasHistory:true,auditId:log.id,updatedAt:sdk.serverTimestamp()});audit(tx,log,a,key,'listing-removed',reason,'archived');return true;}
    if(typeof listing.ownerUid!=='string'||!listing.ownerUid)fail('STATE');
    const log=freshLog();tx.delete(ref);tx.set(sdk.doc(db,'marketplaceDeletions',key),{listingId:key,ownerUid:listing.ownerUid,actorUid:a.uid,reason,auditId:log.id,timestamp:sdk.serverTimestamp()});audit(tx,log,a,key,'listing-deleted',reason,'deleted');return false;
   });
-  if(archived){await store.moderate(id,'archived',reason);return {archived:true,deleted:false};}
+  if(archived){await store.refresh?.();return {archived:true,deleted:false};}
   await store.refresh?.();return {archived:false,deleted:true};
  };
  return store;

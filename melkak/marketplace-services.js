@@ -70,10 +70,10 @@ export function attachLocalServices(store,countries) {
   };
   store.actOnReport=(id,action,reason,actor)=>{
     check(actor,'reports_manage');requireReason(reason);const r=state.reports.find(r=>r.id===id);if(!r)reject('MISSING');
-    if(!['review','dismiss','hide','suspend','escalate'].includes(action))reject('STATE');
-    if(action==='hide'){check(actor,'listings_manage');const a=state.listings.find(a=>a.id===r.listingId);if(!a)reject('MISSING');a.status='hidden';a.hiddenBy='admin';a.moderationLocked=true;a.history=true;}
+    if(!['open','reviewing','escalated'].includes(r.status)||!['review','dismiss','hide','suspend','escalate','resolve','needs_review'].includes(action))reject('STATE');
+    if(action==='hide'||action==='needs_review'){check(actor,'listings_manage');const a=state.listings.find(a=>a.id===r.listingId);if(!a)reject('MISSING');if(a.removed||a.legacy)reject('STATE');a.status=action==='hide'?'hidden':'needs_review';a.hiddenBy='admin';a.moderationLocked=true;a.history=true;}
     if(action==='suspend'){check(actor,'users_suspend');const a=state.listings.find(a=>a.id===r.listingId);const u=state.users.find(u=>u.uid===(r.targetUid||a?.ownerUid));if(!u)reject('MISSING');if(u.role==='super_admin'||u.uid===actor.uid)reject('PERMISSION');u.status='suspended';for(const ad of state.listings.filter(a=>a.ownerUid===u.uid)){ad.status='hidden';ad.moderationLocked=true;ad.history=true;}}
-    r.status={review:'reviewing',dismiss:'dismissed',hide:'resolved',suspend:'resolved',escalate:'escalated'}[action];log(actor,'report-'+action,id,reason);
+    r.status={resolve:'resolved',needs_review:'reviewing',review:'reviewing',dismiss:'dismissed',hide:'resolved',suspend:'resolved',escalate:'escalated'}[action];log(actor,'report-'+action,id,reason);
   };
   return store;
 }

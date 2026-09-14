@@ -1,0 +1,29 @@
+{
+  "nsfwjs": "4.4.0",
+  "tensorflow": "4.22.0",
+  "model": "MobileNetV2 224",
+  "source": "https://github.com/infinitered/nsfwjs",
+  "packageSource": "https://registry.npmjs.org/nsfwjs/-/nsfwjs-4.4.0.tgz",
+  "files": {
+    "runtime.js": {
+      "bytes": 1962486,
+      "sha256": "d76657bcc8c522e84bc0a8e1ec4bd7109257e66128dd3c6f172145e780e19127"
+    },
+    "model/model.json": {
+      "bytes": 117923,
+      "sha256": "7fb4f4e845ba0997e936361cbcb48111f07d8ddf1ab9776bdd617e7403937aa9"
+    },
+    "model/weights.bin": {
+      "bytes": 2619461,
+      "sha256": "8e7dddbb16acacc1bf1601b1b8a761e730ff934b7f2d7771312b2f000e5f5f13"
+    },
+    "LICENSE-NSFWJS.txt": {
+      "bytes": 1075,
+      "sha256": "2f7fe40b4f0d97020f0a0dc2214d637471f6204e565eb83e9fd414f0e5287d94"
+    },
+    "LICENSE-TENSORFLOW.txt": {
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  }
+}

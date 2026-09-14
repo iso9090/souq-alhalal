@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {createProductionDatasource} from '../melkak/production-datasource.js';
+const admin={uid:'admin',role:'super_admin',status:'active',ready:true};let listener;const auth={state:{actor:admin},subscribe(fn){listener=fn;fn(this.state);return()=>{}},set(actor){this.state={actor};listener(this.state)}};
+let resolveRead,reads=0;const sdk={collection:(_,name)=>({name}),query:(r,...filters)=>({...r,filters}),where:(...args)=>args,orderBy:(...args)=>args,limit:n=>n,doc:(_,name,id)=>({name,id}),getDocs:async()=>({docs:[]}),getDoc:async()=>{reads++;return new Promise(resolve=>resolveRead=resolve)}};
+const store=await createProductionDatasource({sdk,db:{},auth,config:{includeLegacy:false}});
+assert.equal(typeof store.loadUser,'function','authorized single-user read exists');
+const snap=data=>({exists:()=>!!data,data:()=>data});
+let pending=store.loadUser('target');resolveRead(snap({displayName:'Late user',status:'active'}));const row=await pending;assert.equal(row.uid,'target');assert.equal(row.displayName,'Late user');
+pending=store.loadUser('target');auth.set({});resolveRead(snap({displayName:'Private stale name'}));assert.equal(await pending,null);assert.deepEqual(store.state.users,[]);
+const before=reads;assert.equal(await store.loadUser('target'),null);assert.equal(reads,before);
+auth.set({...admin,role:'admin_assistant',permissions:['reports_view']});assert.equal(await store.loadUser('target'),null);assert.equal(reads,before);
+auth.set(admin);assert.equal(await store.loadUser('../invalid'),null);assert.equal(reads,before);
+pending=store.loadUser('missing');resolveRead(snap(null));assert.equal(await pending,null);assert.equal(store.state.capabilities['user:missing'].status,'empty');
+store.dispose();console.log('PASS lazy user read permission, invalid ID, missing record and logout race');

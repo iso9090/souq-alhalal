@@ -77,6 +77,8 @@
     "melkak/assets/demo-appliances.webp",
     "melkak/firestore.indexes.json",
     "firebase.melkak-release.json",
-    "melkak/firestore.transition.rules"
+    "melkak/firestore.transition.rules",
+    "package-lock.json",
+    "MELKAK_FREE_MODERATION_RELEASE_REPORT.md"
   ]
 }

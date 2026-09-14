@@ -2,7 +2,8 @@ const fs=require('fs'),path=require('path'),assert=require('node:assert/strict')
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/asus/AppData/Local/OpenAI/Codex/runtimes/cua_node/b58ca2eaa616c2da/bin/node_modules/playwright-core');
 const out=process.env.MELKAK_QA||path.join(require('os').tmpdir(),'melkak-final-ui');fs.mkdirSync(out,{recursive:true});let passed=0,failed=0;
 (async()=>{const browser=await chromium.launch({channel:'msedge',headless:true});try{
-const p=await browser.newPage({viewport:{width:1440,height:900}}),errors=[],remote=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text())});p.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8786/'))remote.push(r.url())});await p.goto('http://127.0.0.1:8786/');await p.waitForFunction(()=>window.__melkak);await p.evaluate(()=>document.fonts.ready);
+const p=await browser.newPage({viewport:{width:1440,height:900}}),errors=[],remote=[];p.on('pageerror',e=>errors.push(e.message));p.on('console',m=>{if(m.type()==='error')errors.push(m.text())});p.on('request',r=>{if(!r.url().startsWith('http://127.0.0.1:8786/'))remote.push(r.url())});await require('./mock-neutral-moderation.cjs')(p);
+await p.goto('http://127.0.0.1:8786/');await p.waitForFunction(()=>window.__melkak);await p.evaluate(()=>document.fonts.ready);
 const pristineListings=await p.evaluate(()=>structuredClone(window.__melkak.store.state.listings));
 const test=async(name,fn)=>{try{await fn();passed++;console.log('PASS | '+name)}catch(e){failed++;console.error('FAIL | '+name+' | '+e.message)}};
 const nav=async route=>{await p.evaluate(r=>location.hash='#/'+r,route);await p.waitForTimeout(100)};

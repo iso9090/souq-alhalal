@@ -48,6 +48,15 @@
     "melkak/production-listing-admin.js",
     "robots.txt",
     "sitemap.xml",
-    "melkak/commercial-final.css"
+    "melkak/commercial-final.css",
+    "melkak/image-moderation.js",
+    "melkak/reporting.js",
+    "melkak/report-moderation-view.js",
+    "melkak/vendor/moderation/runtime.js",
+    "melkak/vendor/moderation/model/model.json",
+    "melkak/vendor/moderation/model/weights.bin",
+    "melkak/vendor/moderation/LICENSE-NSFWJS.txt",
+    "melkak/vendor/moderation/LICENSE-TENSORFLOW.txt",
+    "melkak/vendor/moderation/provenance.json"
   ]
 }

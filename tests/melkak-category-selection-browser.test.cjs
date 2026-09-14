@@ -3,6 +3,7 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/asus/AppData/L
 (async()=>{const {CATEGORIES}=await import('../melkak/config.js');const browser=await chromium.launch({channel:'chrome',headless:true});let count=0;
 try{const page=await browser.newPage({hasTouch:true}),errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.route('**/*',r=>{const u=new URL(r.request().url());if(u.origin!=='http://127.0.0.1:8817')return r.abort();const name=u.pathname.slice(1)||'index.html';if(name==='melkak/runtime-config.js')return r.fulfill({contentType:'text/javascript',body:'export default {mode:"local",datasource:"demo",reviewOrigin:""}'});const file=path.resolve(name);if(!file.startsWith(process.cwd()+path.sep)||!fs.existsSync(file))return r.fulfill({status:404,body:''});return r.fulfill({body:fs.readFileSync(file),contentType:({'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml','.webp':'image/webp','.ttf':'font/ttf'})[path.extname(file)]||'application/octet-stream'});});
+await require('./mock-neutral-moderation.cjs')(page);
 await page.goto('http://127.0.0.1:8817');await page.waitForFunction(()=>window.__melkak);await page.locator('#preview-role').selectOption('user');
 const next=()=>page.locator('#wizard-form button[type=submit]').click();
 for(const width of [390,1440]){await page.setViewportSize({width,height:950});for(const lang of ['ar','en']){await page.evaluate(lang=>{window.__melkak.state.lang=lang;window.__melkak.render()},lang);

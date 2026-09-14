@@ -22,16 +22,16 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'C:/Users/asus/AppData/L
   }
   await page.evaluate(()=>{const m=window.__melkak;m.store.state.reports.push({id:'reason-test',listingId:'AE-cars',status:'open',reason:'بلاغ تجريبي'});location.hash='#/admin/reports';});
   await page.locator('#preview-role').selectOption('super_admin');
-  await page.locator('[data-action=resolve-report][data-id=reason-test]').click();
-  assert.equal(await page.locator('#resolve-report-form').count(),1);passed++;
+  await page.locator('[data-action=report-actions][data-id=reason-test]').click();
+  assert.equal(await page.locator('#report-action-form').count(),1);await page.locator('#report-action-form select').selectOption('resolve');passed++;
   for(const reason of ['', '   ']){
-   await page.locator('#resolve-report-form textarea').fill(reason);
-   await page.locator('#resolve-report-form').evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
+   await page.locator('#report-action-form textarea').fill(reason);
+   await page.locator('#report-action-form').evaluate(f=>f.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})));
    assert.equal(await page.evaluate(()=>window.__melkak.store.state.reports.find(r=>r.id==='reason-test').status),'open');passed++;
   }
   const reason='  تمت مراجعة البلاغ والتحقق منه  ';
-  await page.locator('#resolve-report-form textarea').fill(reason);await page.locator('#resolve-report-form [type=submit]').click();
-  const audit=await page.evaluate(()=>window.__melkak.store.state.audit[0]);assert.equal(audit.reason,reason);assert.equal(audit.actorUid,'demo-owner');passed++;
+  await page.locator('#report-action-form textarea').fill(reason);await page.locator('#report-action-form [type=submit]').click();
+  await page.waitForFunction(()=>window.__melkak.store.state.reports.find(r=>r.id==='reason-test').status==='resolved');const audit=await page.evaluate(()=>window.__melkak.store.state.audit[0]);assert.equal(audit.reason,reason.trim());assert.equal(audit.actorUid,'demo-owner');passed++;
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);passed++;
   console.log('JavaScript critical errors: '+errors.length);console.log(`SUMMARY | ${passed}/${passed} PASS`);
  }finally{await browser.close();}

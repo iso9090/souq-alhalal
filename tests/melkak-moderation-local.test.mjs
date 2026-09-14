@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {createLocalStore} from '../melkak/model.js';
+import {attachLocalServices} from '../melkak/marketplace-services.js';
+const admin={uid:'a',role:'super_admin'},helper={uid:'h',role:'admin_assistant',permissions:['listings_manage']};
+const s=createLocalStore({listings:[{id:'l',ownerUid:'u',status:'active',images:['one','two']}],countries:{},users:[{uid:'a'}]});
+assert.equal(typeof s.removeListingImage,'function','mock exact-image moderation exists');
+assert.throws(()=>s.removeListingImage('l','one','reason',{uid:'u'}),{code:'PERMISSION'});
+s.removeListingImage('l','two','Image reviewed',admin);assert.deepEqual(s.state.listings[0].images,['one']);assert.equal(s.state.listings[0].status,'needs_review');
+assert.throws(()=>s.removeListingImage('l','two','Image reviewed',admin),{code:'STATE'});
+s.removeListingImage('l','one','Last image reviewed',admin);assert.throws(()=>s.moderate('l','active','Recheck',admin),{code:'STATE'});
+assert.throws(()=>s.adminDeleteListing('l','Removal reviewed',helper),{code:'PERMISSION'});
+assert.deepEqual(s.adminDeleteListing('l','Removal reviewed',admin),{archived:true,deleted:false});assert.equal(s.state.listings[0].removed,true);
+assert.throws(()=>s.moderate('l','active','Attempt reopen',admin),{code:'STATE'});
+console.log('PASS local exact-image moderation and permanently locked archive');
+
+const reports=attachLocalServices(createLocalStore({listings:[{id:'r-listing',status:'active',images:['image']}],countries:{}}),{});
+reports.state.reports.push({id:'r',listingId:'r-listing',status:'open'});
+reports.actOnReport('r','needs_review','Review evidence',admin);
+assert.equal(reports.state.reports[0].status,'reviewing');assert.equal(reports.state.listings[0].status,'needs_review');
+reports.actOnReport('r','resolve','Evidence resolved',admin);assert.equal(reports.state.reports[0].status,'resolved');
+assert.throws(()=>reports.actOnReport('r','review','Repeat closed review',admin),{code:'STATE'});
+console.log('PASS local report review and resolution lifecycle');
